@@ -1,9 +1,12 @@
-# Alera
+# 🌿 Alera
 
 ## 1. Nama dan Deskripsi Singkat Aplikasi
 
-**Alera** adalah aplikasi pengingat kesehatan terpadu berbasis **React Native** yang membantu pengguna menjaga rutinitas sehat dan kepatuhan minum obat melalui sistem notifikasi pintar.  
-Nama **Alera** berasal dari kata Latin *“Alere”* yang berarti menyehatkan, memelihara, dan memberi kehidupan. Makna tersebut menggambarkan tujuan aplikasi ini sebagai asisten kesehatan digital yang membantu pengguna menjalani gaya hidup lebih sehat dan teratur.
+**Alera** adalah aplikasi pengingat kesehatan terpadu berbasis **React Native** yang membantu pengguna menjaga rutinitas sehat, mematuhi jadwal minum obat, serta mengelola kebiasaan positif melalui sistem notifikasi pintar.  
+Aplikasi ini dirancang untuk meningkatkan disiplin dan kesadaran kesehatan masyarakat dengan menyediakan fitur pelacakan aktivitas, pengingat obat, serta analisis perkembangan kesehatan harian dan mingguan.
+
+Nama **Alera** berasal dari kata Latin *“Alere”* yang berarti *menyehatkan, memelihara,* dan *memberi kehidupan.*  
+Makna tersebut mencerminkan filosofi aplikasi ini, untuk menjadi asisten kesehatan digital yang membantu pengguna merawat diri, menjaga keseimbangan hidup, dan membangun kebiasaan sehat secara konsisten.
 
 ---
 
@@ -22,19 +25,19 @@ Nama **Alera** berasal dari kata Latin *“Alere”* yang berarti menyehatkan, m
 
 ## 3. Rencana Fitur yang Akan Ada di Aplikasi
 
-1. **Jadwal Minum Obat**  
+1. **💊 Jadwal Minum Obat**  
    Pengguna dapat menambahkan nama obat, dosis, waktu minum, serta durasi konsumsi. Dilengkapi dengan notifikasi pengingat otomatis dan opsi penundaan (*snooze*).
 
-2. **Healthy Habit Tracker**  
+2. **💧 Healthy Habit Tracker**  
    Menyediakan daftar kebiasaan sehat seperti minum air, olahraga, tidur cukup, dan meditasi. Pengguna dapat mengatur pengingat masing-masing aktivitas.
 
-3. **Progress & Statistik**  
+3. **📊 Progress & Statistik**  
    Menampilkan grafik perkembangan kepatuhan pengguna terhadap jadwal minum obat dan aktivitas sehat per minggu.
 
-4. **Health Tips & Motivation**  
+4. **💡 Health Tips & Motivation**  
    Memberikan kutipan motivasi serta tips hidup sehat harian agar pengguna tetap semangat menjaga rutinitasnya.
 
-5. **Cloud Sync (Firebase)**  
+5. **☁️ Cloud Sync (Firebase)**  
    Seluruh data tersimpan aman di cloud menggunakan Firebase dan dapat diakses lintas perangkat.
 
 ---
@@ -45,7 +48,6 @@ Nama **Alera** berasal dari kata Latin *“Alere”* yang berarti menyehatkan, m
 **Framework:** [Expo (React Native)](https://expo.dev)  
 **SDK Version:** Expo SDK 54  
 **Bahasa Pemrograman:** JavaScript / TypeScript  
-
 **Tools Pendukung:**  
 - Node.js v18+  
 - npm v9+  
@@ -57,7 +59,7 @@ Nama **Alera** berasal dari kata Latin *“Alere”* yang berarti menyehatkan, m
 ## 5. Cara Instalasi dan Menjalankan Project
 
 ### Persyaratan Awal
-Pastikan Anda telah menginstal:
+Pastikan telah menginstal:
 - Node.js versi 20 atau lebih baru  
 - npm  
 - Expo CLI  
