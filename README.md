@@ -1,50 +1,83 @@
-# Welcome to your Expo app 👋
+# Alera
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## 1. Nama dan Deskripsi Singkat Aplikasi
 
-## Get started
+**Alera** adalah aplikasi pengingat kesehatan terpadu berbasis **React Native** yang membantu pengguna menjaga rutinitas sehat dan kepatuhan minum obat melalui sistem notifikasi pintar.  
+Nama **Alera** berasal dari kata Latin *“Alere”* yang berarti menyehatkan, memelihara, dan memberi kehidupan. Makna tersebut menggambarkan tujuan aplikasi ini sebagai asisten kesehatan digital yang membantu pengguna menjalani gaya hidup lebih sehat dan teratur.
 
-1. Install dependencies
+---
 
+## 2. Anggota Kelompok
+
+| No | Nama Lengkap | NIM | Peran |
+|----|---------------|-----|--------|
+| 1 | **Muhammad Niki Ramandika** | 231402097 | Project Manager |
+| 2 | **Sopi Aura Nisa** | 231402006 | Anggota |
+| 3 | **Mhd. Ridwan Adly Nasution** | 231402021 | Anggota |
+| 4 | **Finorosa Tabitha** | 231402033 | Anggota |
+| 5 | **Nancy Nadine Natalioniva** | 231402048 | Anggota |
+| 6 | **Diva Salsabila** | 231402069 | Anggota |
+
+---
+
+## 3. Rencana Fitur yang Akan Ada di Aplikasi
+
+1. **Jadwal Minum Obat**  
+   Pengguna dapat menambahkan nama obat, dosis, waktu minum, serta durasi konsumsi. Dilengkapi dengan notifikasi pengingat otomatis dan opsi penundaan (*snooze*).
+
+2. **Healthy Habit Tracker**  
+   Menyediakan daftar kebiasaan sehat seperti minum air, olahraga, tidur cukup, dan meditasi. Pengguna dapat mengatur pengingat masing-masing aktivitas.
+
+3. **Progress & Statistik**  
+   Menampilkan grafik perkembangan kepatuhan pengguna terhadap jadwal minum obat dan aktivitas sehat per minggu.
+
+4. **Health Tips & Motivation**  
+   Memberikan kutipan motivasi serta tips hidup sehat harian agar pengguna tetap semangat menjaga rutinitasnya.
+
+5. **Cloud Sync (Firebase)**  
+   Seluruh data tersimpan aman di cloud menggunakan Firebase dan dapat diakses lintas perangkat.
+
+---
+
+## 4. Deskripsi Project
+
+**Jenis Aplikasi:** Cross-Platform  
+**Framework:** [Expo (React Native)](https://expo.dev)  
+**SDK Version:** Expo SDK 54  
+**Bahasa Pemrograman:** JavaScript / TypeScript  
+
+**Tools Pendukung:**  
+- Node.js v18+  
+- npm v9+  
+- Visual Studio Code  
+- Firebase (untuk autentikasi dan sinkronisasi data)
+
+---
+
+## 5. Cara Instalasi dan Menjalankan Project
+
+### Persyaratan Awal
+Pastikan Anda telah menginstal:
+- Node.js versi 20 atau lebih baru  
+- npm  
+- Expo CLI  
+- Android Studio (untuk emulator Android) atau Xcode (untuk simulator iOS)
+
+### Langkah-langkah
+
+1. **Clone repository**
+   ```bash
+   git clone https://github.com/nikiramandika/alera.git
+2. **Masuk ke direktori project**
+   ```bash
+   cd alera
+3. **Instal dependensi**
    ```bash
    npm install
-   ```
-
-2. Start the app
-
+4. **Jalankan aplikasi**
    ```bash
    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+5. **Pilih metode pengujian**
+   - Tekan **a** untuk menjalankan di Android Emulator  
+   - Tekan **i** untuk menjalankan di iOS Simulator (hanya macOS)  
+   - Atau pindai **QR Code** di terminal menggunakan aplikasi **Expo Go**
