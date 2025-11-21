@@ -1,0 +1,212 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useAuth } from './AuthContext';
+import { habitService, habitHistoryService } from '@/services';
+import { Habit, HabitHistory } from '@/types';
+
+interface HabitContextType {
+  habits: Habit[];
+  habitHistory: HabitHistory[];
+  loading: boolean;
+  addHabit: (habit: Omit<Habit, 'habitId' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
+  updateHabit: (id: string, habit: Partial<Habit>) => Promise<{ success: boolean; error?: string }>;
+  deleteHabit: (id: string) => Promise<{ success: boolean; error?: string }>;
+  markHabitCompleted: (habitId: string, value?: number, notes?: string) => Promise<{ success: boolean; error?: string }>;
+  markHabitIncomplete: (habitId: string) => Promise<{ success: boolean; error?: string }>;
+  getTodayHabits: () => Habit[];
+  getHabitProgress: (habitId: string) => number;
+  refreshHabits: () => Promise<void>;
+  getTodayProgress: () => number;
+}
+
+const HabitContext = createContext<HabitContextType | undefined>(undefined);
+
+export const useHabit = () => {
+  const context = useContext(HabitContext);
+  if (context === undefined) {
+    throw new Error('useHabit must be used within a HabitProvider');
+  }
+  return context;
+};
+
+export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [habitHistory, setHabitHistory] = useState<HabitHistory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch habits and history
+  const fetchData = async () => {
+    if (!user) {
+      setHabits([]);
+      setHabitHistory([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const [habitsData, historyData] = await Promise.all([
+        habitService.getHabits(user.userId),
+        habitHistoryService.getTodayHabitHistory(user.userId)
+      ]);
+
+      setHabits(habitsData);
+      setHabitHistory(historyData);
+    } catch (error) {
+      console.error('Error fetching habit data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add new habit
+  const addHabit = async (habit: Omit<Habit, 'habitId' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) return { success: false, error: 'User not authenticated' };
+
+    try {
+      await habitService.addHabit(user.userId, habit);
+      await fetchData(); // Refresh data
+      return { success: true };
+    } catch (error) {
+      console.error('Error adding habit:', error);
+      return { success: false, error: 'Failed to add habit' };
+    }
+  };
+
+  // Update habit
+  const updateHabit = async (id: string, updates: Partial<Habit>) => {
+    if (!user) return { success: false, error: 'User not authenticated' };
+
+    try {
+      await habitService.updateHabit(user.userId, id, updates);
+      await fetchData(); // Refresh data
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating habit:', error);
+      return { success: false, error: 'Failed to update habit' };
+    }
+  };
+
+  // Delete habit
+  const deleteHabit = async (id: string) => {
+    if (!user) return { success: false, error: 'User not authenticated' };
+
+    try {
+      await habitService.deleteHabit(user.userId, id);
+      await fetchData(); // Refresh data
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting habit:', error);
+      return { success: false, error: 'Failed to delete habit' };
+    }
+  };
+
+  // Mark habit as completed
+  const markHabitCompleted = async (habitId: string, value?: number, notes?: string) => {
+    if (!user) return { success: false, error: 'User not authenticated' };
+
+    try {
+      await habitHistoryService.markHabitCompleted(user.userId, habitId, value, notes);
+      await fetchData(); // Refresh data to update streaks
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking habit as completed:', error);
+      return { success: false, error: 'Failed to mark habit as completed' };
+    }
+  };
+
+  // Mark habit as incomplete (undo completion)
+  const markHabitIncomplete = async (habitId: string) => {
+    if (!user) return { success: false, error: 'User not authenticated' };
+
+    try {
+      await habitHistoryService.markHabitIncomplete(user.userId, habitId);
+      await fetchData(); // Refresh data to update streaks
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking habit as incomplete:', error);
+      return { success: false, error: 'Failed to undo habit completion' };
+    }
+  };
+
+  // Get today's habits
+  const getTodayHabits = () => {
+    const now = new Date();
+    return habits.filter(habit => {
+      if (habit.schedule.type === 'daily') return true;
+      if (habit.schedule.type === 'specific_days') {
+        const today = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        return habit.schedule.days?.includes(dayNames[today]);
+      }
+      return false;
+    });
+  };
+
+  // Get progress for specific habit (0-100%)
+  const getHabitProgress = (habitId: string): number => {
+    const habit = habits.find(h => h.habitId === habitId);
+    if (!habit) return 0;
+
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const isCompletedToday = habit.completedDates.includes(today);
+
+    // If target is based on value (like glasses of water)
+    if (habit.target.unit !== 'times') {
+      const todayHistory = habitHistory.filter(h =>
+        h.habitId === habitId &&
+        h.completed &&
+        h.date.toISOString().split('T')[0] === today
+      );
+      const totalValue = todayHistory.reduce((sum, h) => sum + (h.value || 1), 0);
+      return Math.min(100, Math.round((totalValue / habit.target.value) * 100));
+    }
+
+    // For frequency-based habits
+    return isCompletedToday ? 100 : 0;
+  };
+
+  // Get today's overall progress
+  const getTodayProgress = (): number => {
+    const todayHabits = getTodayHabits();
+    if (todayHabits.length === 0) return 100;
+
+    const completedCount = todayHabits.filter(habit => {
+      const progress = getHabitProgress(habit.habitId);
+      return progress >= 100;
+    }).length;
+
+    return Math.round((completedCount / todayHabits.length) * 100);
+  };
+
+  // Refresh habit data
+  const refreshHabits = async () => {
+    await fetchData();
+  };
+
+  // Fetch data when user changes
+  useEffect(() => {
+    fetchData();
+  }, [user]);
+
+  const value: HabitContextType = {
+    habits,
+    habitHistory,
+    loading,
+    addHabit,
+    updateHabit,
+    deleteHabit,
+    markHabitCompleted,
+    markHabitIncomplete,
+    getTodayHabits,
+    getHabitProgress,
+    refreshHabits,
+    getTodayProgress,
+  };
+
+  return (
+    <HabitContext.Provider value={value}>
+      {children}
+    </HabitContext.Provider>
+  );
+};
