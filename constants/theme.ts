@@ -59,7 +59,7 @@ export const Colors = {
 
     // UI colors
     text: '#ECEDEE',
-    textSecondary: '#9BA1A6',
+    textSecondary: '#9BAfA6',
     background: '#1C1C1E',
     backgroundSecondary: '#2C2C2E',
     card: '#2C2C2E',

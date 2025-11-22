@@ -187,7 +187,7 @@ export default function ProfileScreen() {
             Weight
           </Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
-            {user?.profile?.weight ? ${user.profile.weight} kg : 'Not set'}
+            {user?.profile?.weight ? `${user.profile.weight} kg` : 'Not set'}
           </Text>
         </View>
       </View>
@@ -199,7 +199,7 @@ export default function ProfileScreen() {
             Age
           </Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
-            {user?.profile?.age ? ${user.profile.age} years : 'Not set'}
+            {user?.profile?.age ? `${user.profile.age} years` : 'Not set'}
           </Text>
         </View>
       </View>

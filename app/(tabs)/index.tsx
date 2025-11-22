@@ -1,695 +1,816 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
-  Dimensions,
-  Platform,
   Text,
   TextInput,
   TouchableOpacity,
-  Modal,
   ScrollView,
+  Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import Animated from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withDelay,
+  FadeInDown,
+} from 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, BorderRadius } from '@/constants/theme';
-import { useMedicine } from '@/contexts/MedicineContext';
-import { useHabit } from '@/contexts/HabitContext';
+import { Colors } from '@/constants/theme';
 
-const { width } = Dimensions.get('window');
+interface Task {
+  id: string;
+  title: string;
+  subtitle: string;
+  time: string;
+  completed: boolean;
+  icon: string;
+  color: string;
+}
 
 export default function HomeScreen() {
-  const router = useRouter();
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { medicines, medicineHistory } = useMedicine();
-  const { habits, habitHistory } = useHabit();
 
-  // Calendar state
-  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [calendarDays, setCalendarDays] = useState<any[]>([]);
+  // Animation values
+  const headerScale = useSharedValue(0.9);
+  const cardTranslateY = useSharedValue(50);
 
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-
-  // Generate calendar days and tasks
   useEffect(() => {
-    const getWeekDays = (offset = 0, year = selectedYear) => {
-      const today = new Date();
-      const startOfWeek = new Date(year, today.getMonth(), today.getDate());
-      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + (offset * 7));
-      startOfWeek.setHours(0, 0, 0, 0);
+    headerScale.value = withDelay(200, withSpring(1, {
+      damping: 15,
+      stiffness: 100,
+    }));
 
-      const days = [];
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startOfWeek);
-        date.setDate(startOfWeek.getDate() + i);
-        const isToday = date.toDateString() === today.toDateString();
+    cardTranslateY.value = withDelay(400, withSpring(0, {
+      damping: 15,
+      stiffness: 100,
+    }));
+  }, [headerScale, cardTranslateY]);
 
-        days.push({
-          date: date,
-          dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i],
-          dayNumber: date.getDate(),
-          month: date.getMonth(),
-          year: date.getFullYear(),
-          isToday: isToday,
-          weekOffset: offset,
-          isSelected: date.toDateString() === selectedDate.toDateString()
-        });
+  // Header animation
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: headerScale.value }]
+  }));
+
+  // Cards animation
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: cardTranslateY.value }]
+  }));
+
+  // Sample tasks data
+  const tasks: {
+    overdue: Task[];
+    allDay: Task[];
+    timeBased: { [time: string]: Task[] };
+  } = {
+    overdue: [
+      {
+        id: 'vitamin-d',
+        title: 'niki ganteng',
+        subtitle: '1 tablet • Daily reminder',
+        time: 'All Day',
+        completed: false,
+        icon: 'medical-outline',
+        color: '#84CC16'
+      },
+      {
+        id: 'morning-meds',
+        title: 'Morning Medication',
+        subtitle: '2 tablets • Should have been taken',
+        time: '8:00 AM',
+        completed: false,
+        icon: 'medical-outline',
+        color: '#F43F5E'
       }
-      return days;
-    };
-
-    const days = getWeekDays(currentWeekOffset, selectedYear);
-    const daysWithTasks = days.map(day => {
-      const dayStart = new Date(day.date);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayStart.getDate() + 1);
-
-      // Get medicines for this day
-      const dayMedicines = medicines.filter(medicine => {
-        if (medicine.frequency.type === 'daily') return true;
-        if (medicine.frequency.type === 'specific_days') {
-          return medicine.frequency.specificDays?.includes(day.date.getDay());
+    ],
+    allDay: [
+      {
+        id: 'vitamin-d',
+        title: 'Vitamin D Supplement',
+        subtitle: '1 tablet • Daily reminder',
+        time: 'All Day',
+        completed: false,
+        icon: 'medical-outline',
+        color: '#84CC16'
+      },
+      {
+        id: 'drink-water',
+        title: 'Drink Water',
+        subtitle: '8 glasses • Daily goal',
+        time: 'All Day',
+        completed: true,
+        icon: 'water-outline',
+        color: '#84CC16'
+      }
+    ],
+    timeBased: {
+      '6:00 AM': [
+        {
+          id: 'morning-walk',
+          title: 'Morning Walk',
+          subtitle: '30 minutes',
+          time: '6:00 AM',
+          completed: true,
+          icon: 'walk-outline',
+          color: '#84CC16'
         }
-        return false;
-      });
-
-      // Get habits for this day
-      const dayHabits = habits.filter(habit => {
-        if (!habit.isActive) return false;
-        return true; // Simplified - assume habits are daily
-      });
-
-      return {
-        ...day,
-        medicines: dayMedicines,
-        habits: dayHabits,
-        completedMedicines: medicineHistory.filter(history =>
-          history.status === 'taken' &&
-          new Date(history.scheduledTime) >= dayStart &&
-          new Date(history.scheduledTime) < dayEnd
-        ).length,
-        completedHabits: habitHistory.filter(history =>
-          history.completed &&
-          new Date(history.date) >= dayStart &&
-          new Date(history.date) < dayEnd
-        ).length
-      };
-    });
-    setCalendarDays(daysWithTasks);
-  }, [currentWeekOffset, selectedYear, medicines, habits, medicineHistory, habitHistory, selectedDate]);
-
-  
-  // Get time-based greeting
-  const currentHour = new Date().getHours();
-  const getGreeting = () => {
-    if (currentHour < 12) return 'Good Morning';
-    if (currentHour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
-  // Helper functions for calendar display
-  const getWeekDisplayText = () => {
-    if (currentWeekOffset === 0) return 'This Week';
-    if (currentWeekOffset === 1) return 'Next Week';
-    if (currentWeekOffset === -1) return 'Last Week';
-    if (currentWeekOffset > 0) return ${currentWeekOffset} Weeks Ahead;
-    return ${Math.abs(currentWeekOffset)} Weeks Ago;
-  };
-
-  const getMonthYearText = () => {
-    if (calendarDays.length === 0) return '';
-    const firstDay = calendarDays[0].date;
-    const lastDay = calendarDays[calendarDays.length - 1].date;
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    if (firstDay.getMonth() === lastDay.getMonth()) {
-      return ${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()};
-    } else {
-      return ${monthNames[firstDay.getMonth()]} - ${monthNames[lastDay.getMonth()]} ${firstDay.getFullYear()};
-    }
-  };
-
-  // Get selected date tasks
-  const getSelectedDateTasks = () => {
-    const selectedDay = calendarDays.find(day => day.isSelected);
-    if (!selectedDay) return null;
-    return selectedDay;
-  };
-
-  // Handle date selection
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-  };
-
-  // Year navigation
-  const changeYear = (direction: number) => {
-    setSelectedYear(prev => prev + direction);
-  };
-
-  
-  // Search functionality
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-
-    if (query.trim() === '') {
-      setSearchResults([]);
-      return;
-    }
-
-    const lowerQuery = query.toLowerCase();
-    const results: any[] = [];
-
-    // Search medicines
-    medicines.forEach(medicine => {
-      if (
-        medicine.medicineName.toLowerCase().includes(lowerQuery) ||
-        medicine.dosage.toLowerCase().includes(lowerQuery) ||
-        medicine.instructions?.toLowerCase().includes(lowerQuery)
-      ) {
-        results.push({
-          type: 'medicine',
-          id: medicine.reminderId,
-          title: medicine.medicineName,
-          subtitle: ${medicine.dosage} • ${medicine.medicineType},
-          data: medicine,
+      ],
+      '8:00 AM': [
+        {
+          id: 'morning-meds',
+          title: 'Morning Medication',
+          subtitle: '2 tablets',
+          time: '8:00 AM',
+          completed: true,
           icon: 'medical-outline',
-          color: medicine.color,
-        });
-      }
-    });
-
-    // Search habits
-    habits.forEach(habit => {
-      if (
-        habit.habitName.toLowerCase().includes(lowerQuery) ||
-        habit.description?.toLowerCase().includes(lowerQuery)
-      ) {
-        results.push({
-          type: 'habit',
-          id: habit.habitId,
-          title: habit.habitName,
-          subtitle: ${habit.target.value} ${habit.target.unit} per ${habit.target.frequency},
-          data: habit,
-          icon: 'repeat-outline',
-          color: habit.color,
-        });
-      }
-    });
-
-    setSearchResults(results);
-  };
-
-  const handleSearchResultPress = (result: any) => {
-    setShowSearchModal(false);
-    if (result.type === 'medicine') {
-      router.push('/(tabs)/medication');
-    } else if (result.type === 'habit') {
-      router.push('/(tabs)/habits');
+          color: '#84CC16'
+        }
+      ],
+      '9:00 AM': [
+        {
+          id: 'exercise',
+          title: 'Exercise',
+          subtitle: '30 minutes workout',
+          time: '9:00 AM',
+          completed: false,
+          icon: 'fitness-outline',
+          color: '#84CC16'
+        }
+      ],
+      '12:00 PM': [
+        {
+          id: 'lunch-meds',
+          title: 'Lunch Medication',
+          subtitle: '1 tablet with food',
+          time: '12:00 PM',
+          completed: false,
+          icon: 'medical-outline',
+          color: '#84CC16'
+        }
+      ],
+      '2:00 PM': [
+        {
+          id: 'afternoon-meds',
+          title: 'Afternoon Medication',
+          subtitle: '1 tablet',
+          time: '2:00 PM',
+          completed: false,
+          icon: 'medical-outline',
+          color: '#84CC16'
+        }
+      ],
+      '6:00 PM': [
+        {
+          id: 'reading-time',
+          title: 'Reading Time',
+          subtitle: '30 minutes',
+          time: '6:00 PM',
+          completed: false,
+          icon: 'book-outline',
+          color: '#84CC16'
+        }
+      ],
+      '8:00 PM': [
+        {
+          id: 'evening-meds',
+          title: 'Evening Medication',
+          subtitle: '2 tablets',
+          time: '8:00 PM',
+          completed: false,
+          icon: 'medical-outline',
+          color: '#84CC16'
+        }
+      ],
+      '9:00 PM': [
+        {
+          id: 'wind-down',
+          title: 'Wind Down Routine',
+          subtitle: 'Meditation & sleep prep',
+          time: '9:00 PM',
+          completed: false,
+          icon: 'bed-outline',
+          color: '#84CC16'
+        }
+      ],
+      '10:00 AM': [
+        {
+          id: 'check-emails',
+          title: 'Check Emails',
+          subtitle: 'Important messages only',
+          time: '10:00 AM',
+          completed: false,
+          icon: 'mail-outline',
+          color: '#84CC16'
+        }
+      ]
     }
   };
 
-return (
+  // Filter tasks based on search query (for search modal only)
+  const filteredTasks = {
+    overdue: tasks.overdue.filter(task =>
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+    allDay: tasks.allDay.filter(task =>
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+    timeBased: Object.fromEntries(
+      Object.entries(tasks.timeBased).map(([time, taskList]) => [
+        time,
+        taskList.filter(task =>
+          task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      ]).filter(([_, taskList]) => taskList.length > 0)
+    ) as { [time: string]: Task[] }
+  };
+
+  // Clear search when modal closes
+  const handleCloseSearch = () => {
+    setSearchQuery('');
+    setShowSearch(false);
+  };
+
+  // Get task counts
+  const getTaskCount = (tasks: Task[]) => tasks.length;
+
+  // Calendar navigation functions
+  const previousMonth = () => {
+    setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1));
+  };
+
+  const nextMonth = () => {
+    setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1));
+  };
+
+  const changeYear = (year: number) => {
+    setCalendarMonth(new Date(year, calendarMonth.getMonth()));
+  };
+
+  const changeMonth = (month: number) => {
+    setCalendarMonth(new Date(calendarMonth.getFullYear(), month));
+  };
+
+  // Generate calendar days (3 days backward + today + 3 days forward)
+  const generateCalendarDays = () => {
+    const today = new Date();
+    const days = [];
+    const startOffset = -3; // 3 days before today
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + startOffset + i);
+      const isToday = date.toDateString() === today.toDateString();
+      const isSelected = date.toDateString() === selectedDate.toDateString();
+
+      days.push({
+        date: date,
+        dayNumber: date.getDate(),
+        dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()],
+        isToday,
+        isSelected
+      });
+    }
+    return days;
+  };
+
+  const calendarDays = generateCalendarDays();
+
+  
+  return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background} />
 
+      {/* Search Modal */}
+      <Modal
+        visible={showSearch}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowSearch(false)}
+      >
+        <SafeAreaView style={[styles.searchModalContainer, { backgroundColor: colors.background }]}>
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
-      <ScrollView
-      style={styles.scrollView}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-    >
-      <View style={styles.mainContainer}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-          <View style={styles.headerContent}>
-            <View style={styles.greetingSection}>
-              <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-                {getGreeting()}
-              </Text>
-              <Text style={[styles.userName, { color: colors.text }]}>
-                Hello, User! 👋
-              </Text>
-            </View>
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.searchButton}
-                onPress={() => setShowSearchModal(true)}
-              >
-                <Ionicons name="search" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-              <View style={styles.headerLogo}>
-                <Image
-                  source={require("@/assets/images/aleraLogo.png")}
-                  style={styles.logoIcon}
-                  contentFit="contain"
-                />
-              </View>
-            </View>
+          <View style={styles.searchModalHeader}>
+            <TouchableOpacity onPress={handleCloseSearch}>
+              <Ionicons name="chevron-down" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.searchModalTitle, { color: colors.text }]}>Search Tasks</Text>
+            <TouchableOpacity onPress={handleCloseSearch}>
+              <Text style={[styles.searchModalCancel, { color: colors.primary }]}>Cancel</Text>
+            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Calendar - Main Content */}
-          <View style={[styles.calendarMain, { backgroundColor: colors.background }]}>
+          <View style={styles.searchModalContent}>
+            <View style={[styles.searchInputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Ionicons name="search" size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Search tasks..."
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoFocus
+                clearButtonMode="while-editing"
+              />
+            </View>
 
-            {/* Compact Navigation Bar */}
-            <View style={[styles.compactNavigation, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            {searchQuery.length > 0 && (
+              <View style={styles.searchResultsSection}>
+                <Text style={[styles.searchResultsTitle, { color: colors.textSecondary }]}>
+                  Search Results for &quot;{searchQuery}&quot;
+                </Text>
 
-              {/* Year Picker */}
-              <View style={styles.compactYearPicker}>
-                <TouchableOpacity
-                  onPress={() => changeYear(-1)}
-                  style={[
-                    styles.compactNavButton,
-                    { opacity: selectedYear <= new Date().getFullYear() - 5 ? 0.4 : 1 }
-                  ]}
-                  disabled={selectedYear <= new Date().getFullYear() - 5}
-                >
-                  <Ionicons name="chevron-back" size={16} color={colors.primary} />
-                </TouchableOpacity>
-                <Text style={[styles.compactYearText, { color: colors.text }]}>{selectedYear}</Text>
-                <TouchableOpacity
-                  onPress={() => changeYear(1)}
-                  style={[
-                    styles.compactNavButton,
-                    { opacity: selectedYear >= new Date().getFullYear() + 5 ? 0.4 : 1 }
-                  ]}
-                  disabled={selectedYear >= new Date().getFullYear() + 5}
-                >
-                  <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-                </TouchableOpacity>
+                {getTaskCount(filteredTasks.overdue) === 0 &&
+                 getTaskCount(filteredTasks.allDay) === 0 &&
+                 Object.keys(filteredTasks.timeBased).length === 0 ? (
+                  <View style={styles.noResultsContainer}>
+                    <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
+                    <Text style={[styles.noResultsText, { color: colors.text }]}>No results found</Text>
+                    <Text style={[styles.noResultsSubtext, { color: colors.textSecondary }]}>
+                      Try different keywords
+                    </Text>
+                  </View>
+                ) : (
+                  <ScrollView
+                    style={styles.searchResultsScroll}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {/* Overdue Tasks */}
+                    {getTaskCount(filteredTasks.overdue) > 0 && (
+                      <View style={styles.searchTaskSection}>
+                        <View style={styles.searchSectionHeader}>
+                          <Text style={[styles.searchSectionLabel, { color: '#F43F5E' }]}>Overdue</Text>
+                          <Text style={[styles.searchTaskCount, { backgroundColor: '#F43F5E20', color: '#F43F5E' }]}>
+                            {getTaskCount(filteredTasks.overdue)}
+                          </Text>
+                        </View>
+                        {filteredTasks.overdue.map((task) => (
+                          <View key={task.id} style={[styles.searchTaskItem, { backgroundColor: colors.card }]}>
+                            <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
+                              <Ionicons name={task.icon as any} size={16} color={task.color} />
+                            </View>
+                            <View style={styles.taskInfo}>
+                              <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                              <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* All Day Tasks */}
+                    {getTaskCount(filteredTasks.allDay) > 0 && (
+                      <View style={styles.searchTaskSection}>
+                        <View style={styles.searchSectionHeader}>
+                          <Text style={[styles.searchSectionLabel, { color: '#60A5FA' }]}>All Day</Text>
+                          <Text style={[styles.searchTaskCount, { backgroundColor: '#60A5FA20', color: '#60A5FA' }]}>
+                            {getTaskCount(filteredTasks.allDay)}
+                          </Text>
+                        </View>
+                        {filteredTasks.allDay.map((task) => (
+                          <View key={task.id} style={[styles.searchTaskItem, { backgroundColor: colors.card }]}>
+                            <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
+                              <Ionicons name={task.icon as any} size={16} color={task.color} />
+                            </View>
+                            <View style={styles.taskInfo}>
+                              <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                              <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Time-based Tasks */}
+                    {Object.entries(filteredTasks.timeBased).map(([time, taskList]) => (
+                      <View key={time} style={styles.searchTaskSection}>
+                        <View style={styles.searchSectionHeader}>
+                          <Text style={[styles.searchSectionLabel, { color: '#84CC16' }]}>{time}</Text>
+                          <Text style={[styles.searchTaskCount, { backgroundColor: '#84CC1620', color: '#84CC16' }]}>
+                            {getTaskCount(taskList)}
+                          </Text>
+                        </View>
+                        {taskList.map((task) => (
+                          <View key={task.id} style={[styles.searchTaskItem, { backgroundColor: colors.card }]}>
+                            <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
+                              <Ionicons name={task.icon as any} size={16} color={task.color} />
+                            </View>
+                            <View style={styles.taskInfo}>
+                              <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                              <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
               </View>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
 
-              {/* Week Picker */}
-              <View style={styles.compactWeekPicker}>
-                <TouchableOpacity
-                  onPress={() => setCurrentWeekOffset(prev => Math.max(prev - 1, -12))}
-                  style={[
-                    styles.compactNavButton,
-                    { opacity: currentWeekOffset <= -12 ? 0.4 : 1 }
-                  ]}
-                  disabled={currentWeekOffset <= -12}
-                >
-                  <Ionicons name="chevron-back" size={16} color={colors.primary} />
-                </TouchableOpacity>
-                <View style={styles.compactWeekInfo}>
-                  <Text style={[styles.compactWeekText, { color: colors.text }]}>{getWeekDisplayText()}</Text>
-                  <Text style={[styles.compactMonthText, { color: colors.textSecondary }]}>{getMonthYearText()}</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setCurrentWeekOffset(prev => Math.min(prev + 1, 12))}
-                  style={[
-                    styles.compactNavButton,
-                    { opacity: currentWeekOffset >= 12 ? 0.4 : 1 }
-                  ]}
-                  disabled={currentWeekOffset >= 12}
-                >
-                  <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
+      {/* Calendar Modal */}
+      <Modal
+        visible={showCalendar}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCalendar(false)}
+      >
+        <SafeAreaView style={[styles.calendarModal, { backgroundColor: colors.background }]}>
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
-              {/* Today Button */}
-              <TouchableOpacity
-                onPress={() => {
-                  setCurrentWeekOffset(0);
-                  setSelectedYear(new Date().getFullYear());
-                  setSelectedDate(new Date());
-                }}
-                style={[styles.compactTodayButton, { backgroundColor: colors.primary }]}
-              >
-                <Ionicons name="today" size={14} color="white" />
+          {/* Month/Year Navigation */}
+          <View style={[styles.calendarHeader, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={() => setShowCalendar(false)}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+
+            <View style={styles.calendarNavigation}>
+              <TouchableOpacity onPress={previousMonth} style={styles.navButton}>
+                <Ionicons name="chevron-back" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              <Text style={[styles.calendarTitle, { color: colors.text }]}>
+                {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </Text>
+              <TouchableOpacity onPress={nextMonth} style={styles.navButton}>
+                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
               </TouchableOpacity>
             </View>
 
-            {/* Date Selector - Small Cards */}
+            <TouchableOpacity onPress={() => setShowCalendar(false)}>
+              <Text style={[styles.calendarDone, { color: colors.primary }]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Month Year Quick Select */}
+          <View style={[styles.quickSelectContainer, { borderBottomColor: colors.border }]}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.monthYearScroll}
+            >
+              {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, index) => (
+                <TouchableOpacity
+                  key={month}
+                  style={[
+                    styles.monthButton,
+                    {
+                      backgroundColor: calendarMonth.getMonth() === index ? colors.primary : colors.card,
+                      borderColor: colors.border
+                    }
+                  ]}
+                  onPress={() => changeMonth(index)}
+                >
+                  <Text style={[
+                    styles.monthButtonText,
+                    {
+                      color: calendarMonth.getMonth() === index ? '#FFFFFF' : colors.text
+                    }
+                  ]}>
+                    {month}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.yearScroll}
+            >
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
+                <TouchableOpacity
+                  key={year}
+                  style={[
+                    styles.yearButton,
+                    {
+                      backgroundColor: calendarMonth.getFullYear() === year ? colors.primary : colors.card,
+                      borderColor: colors.border
+                    }
+                  ]}
+                  onPress={() => changeYear(year)}
+                >
+                  <Text style={[
+                    styles.yearButtonText,
+                    {
+                      color: calendarMonth.getFullYear() === year ? '#FFFFFF' : colors.text
+                    }
+                  ]}>
+                    {year}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Calendar Grid */}
+          <View style={styles.calendarGrid}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <View key={day} style={styles.dayHeader}>
+                <Text style={styles.dayHeaderText}>{day}</Text>
+              </View>
+            ))}
+
+            {Array.from({ length: 35 }, (_, i) => {
+              const dayNumber = i - 2; // Adjust for calendar starting position
+              const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), dayNumber);
+              const isValidDate = dayNumber > 0 && dayNumber <= new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+              const isToday = isValidDate && date.toDateString() === new Date().toDateString();
+              const isSelected = isValidDate && date.toDateString() === selectedDate.toDateString();
+
+              if (!isValidDate) {
+                return <View key={i} style={styles.dayCell} />;
+              }
+
+              return (
+                <View key={i} style={styles.dayCell}>
+                  <TouchableOpacity
+                    style={[
+                      styles.dayButton,
+                      {
+                        backgroundColor: isSelected ? colors.primary : (isToday ? colors.primary + '20' : 'transparent')
+                      }
+                    ]}
+                    onPress={() => {
+                      setSelectedDate(date);
+                      setShowCalendar(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.dayButtonText,
+                      {
+                        color: isSelected ? '#FFFFFF' : (isToday ? colors.primary : colors.text)
+                      }
+                    ]}>
+                      {dayNumber}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      <View style={styles.container}>
+        {/* Header Section */}
+        <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
+          <LinearGradient
+            colors={[colors.background, colors.backgroundSecondary, colors.gradientStart]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.headerGradient}
+          >
+            <View
+              style={[
+                styles.circleBackground,
+                { backgroundColor: colors.primary + '20' }
+              ]}
+            />
+
+            <View style={styles.headerContent}>
+              {/* Left side - Greeting */}
+              <Text style={[styles.greeting, { color: colors.primary }]}>Hi, User!</Text>
+            </View>
+
+            {/* Right side - Search and Calendar */}
+            <View style={styles.headerRight}>
+              <View style={styles.buttonsContainer}>
+                <TouchableOpacity
+                  style={[styles.searchButton, { backgroundColor: colors.card }]}
+                  onPress={() => {
+                    setSearchQuery(''); // Clear search when opening modal
+                    setShowSearch(true);
+                  }}
+                >
+                  <Ionicons name="search" size={24} color={colors.primary} />
+                </TouchableOpacity>
+                <View style={styles.calendarWithDate}>
+                  <Text style={[styles.smallDateText, { color: colors.textSecondary }]}>
+                    {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.calendarButton, { backgroundColor: colors.card }]}
+                    onPress={() => setShowCalendar(true)}
+                  >
+                    <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Date Selector */}
+        <Animated.View
+          style={[
+            styles.dateSelectorContainer,
+            cardAnimatedStyle,
+            {
+              backgroundColor: colors.background,
+              shadowColor: colors.shadow,
+              borderBottomColor: colors.border
+            }
+          ]}
+        >
+          <View style={styles.dateSelectorSection}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.dateScrollContainer}
+              overScrollMode="never"
             >
+              <View style={styles.datePaddingLeft} />
               {calendarDays.map((day, index) => (
                 <TouchableOpacity
                   key={index}
                   style={[
                     styles.dateCard,
                     {
-                      backgroundColor: day.isToday ? colors.primary + '15' :
-                                     day.isSelected ? colors.primary + '10' : colors.card,
-                      borderColor: day.isToday ? colors.primary :
-                                 day.isSelected ? colors.primary : colors.border,
-                      borderWidth: (day.isToday || day.isSelected) ? 2 : 1,
+                      backgroundColor: day.isSelected ? colors.primary : (day.isToday ? colors.primary + '15' : colors.card),
+                      borderColor: day.isSelected || day.isToday ? colors.primary : colors.border,
+                      shadowColor: colors.shadow,
                     }
                   ]}
-                  onPress={() => handleDateSelect(day.date)}
+                  onPress={() => setSelectedDate(day.date)}
                 >
                   <Text style={[
-                    styles.dateDayName,
-                    { color: day.isToday ? colors.primary : colors.textSecondary }
+                    styles.dateDay,
+                    {
+                      color: day.isSelected ? '#FFFFFF' : (day.isToday ? colors.primary : colors.textSecondary)
+                    }
                   ]}>
                     {day.dayName}
                   </Text>
                   <Text style={[
-                    styles.dateDayNumber,
+                    styles.dateNumber,
                     {
-                      color: day.isToday ? colors.primary :
-                             day.isSelected ? colors.primary : colors.text,
-                      fontWeight: (day.isToday || day.isSelected) ? '700' : '600'
+                      color: day.isSelected ? '#FFFFFF' : (day.isToday ? colors.primary : colors.text),
+                      fontWeight: day.isToday ? '800' : '700'
                     }
                   ]}>
                     {day.dayNumber}
                   </Text>
-                  {(day.medicines.length > 0 || day.habits.length > 0) && (
-                    <View style={styles.dateTaskDots}>
-                      {day.medicines.length > 0 && (
-                        <View style={[styles.dateDot, { backgroundColor: colors.primary }]} />
-                      )}
-                      {day.habits.length > 0 && (
-                        <View style={[styles.dateDot, { backgroundColor: colors.accent }]} />
-                      )}
-                    </View>
-                  )}
                 </TouchableOpacity>
               ))}
+              <View style={styles.datePaddingRight} />
             </ScrollView>
+          </View>
+        </Animated.View>
 
-            {/* Selected Date Tasks */}
-            <View style={styles.tasksContainer}>
-              {(() => {
-                const selectedDay = getSelectedDateTasks();
-                if (!selectedDay) return null;
-
-                const totalTasks = selectedDay.medicines.length + selectedDay.habits.length;
-                const completedTasks = selectedDay.completedMedicines + selectedDay.completedHabits;
-                const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-                return (
-                  <View style={[styles.tasksCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-                    <View style={styles.tasksHeader}>
-                      <Text style={[styles.tasksDate, { color: colors.text }]}>
-                        {selectedDay.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                      </Text>
-                      {selectedDay.isToday && (
-                        <View style={[styles.todayBadge, { backgroundColor: colors.primary }]}>
-                          <Text style={[styles.todayBadgeText, { color: 'white' }]}>Today</Text>
-                        </View>
-                      )}
+      {/* Tasks Section */}
+      <Animated.View style={[styles.tasksContainer, cardAnimatedStyle]}>
+        <ScrollView
+          style={styles.tasksScrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.tasksContent}>
+            {/* Overdue Tasks */}
+            {getTaskCount(tasks.overdue) > 0 && (
+              <View style={styles.taskSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionLabel, { color: '#F43F5E' }]}>Overdue</Text>
+                  <Text style={[styles.taskCount, { backgroundColor: '#F43F5E20', color: '#F43F5E' }]}>{getTaskCount(tasks.overdue)}</Text>
+                </View>
+                {tasks.overdue.map((task, index) => (
+                  <Animated.View
+                    entering={FadeInDown.delay(index * 100)}
+                    key={task.id}
+                    style={[
+                      styles.taskItem,
+                      styles.overdueTask,
+                      {
+                        backgroundColor: colors.card,
+                        borderLeftColor: task.color
+                      }
+                    ]}
+                  >
+                    <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
+                      <Ionicons name={task.icon as any} size={20} color={task.color} />
                     </View>
+                    <View style={styles.taskInfo}>
+                      <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                      <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                    </View>
+                    <View style={styles.taskStatus}>
+                      <Ionicons name="radio-button-off" size={20} color={task.color} />
+                    </View>
+                  </Animated.View>
+                ))}
+              </View>
+            )}
 
-                    {totalTasks > 0 ? (
-                      <>
-                        {/* Progress Overview */}
-                        <View style={styles.progressOverview}>
-                          <View style={styles.progressInfo}>
-                            <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-                              Daily Progress
-                            </Text>
-                            <Text style={[styles.progressPercentage, { color: colors.primary }]}>
-                              {progressPercentage}%
-                            </Text>
-                          </View>
-                          <View style={[styles.progressBarLarge, { backgroundColor: colors.backgroundSecondary }]}>
-                            <View
-                              style={[
-                                styles.progressFill,
-                                {
-                                  width: ${progressPercentage}%,
-                                  backgroundColor: colors.primary
-                                }
-                              ]}
-                            />
-                          </View>
-                        </View>
-
-                        {/* Medicine Tasks */}
-                        {selectedDay.medicines.length > 0 && (
-                          <View style={styles.taskSectionLarge}>
-                            <View style={styles.taskHeader}>
-                              <Ionicons name="medical-outline" size={16} color={colors.primary} />
-                              <Text style={[styles.taskTitle, { color: colors.text }]}>
-                                Medications ({selectedDay.completedMedicines}/{selectedDay.medicines.length})
-                              </Text>
-                            </View>
-                            <View style={styles.taskItems}>
-                              {selectedDay.medicines.map((medicine: any, medIdx: number) => (
-                                <View key={medIdx} style={[styles.taskItemLarge, { borderBottomColor: colors.border }]}>
-                                  <View
-                                    style={[
-                                      styles.taskStatusDot,
-                                      {
-                                        backgroundColor: colors.primary,
-                                        opacity: medIdx < selectedDay.completedMedicines ? 0.4 : 1
-                                      }
-                                    ]}
-                                  />
-                                  <View style={styles.taskDetails}>
-                                    <Text style={[
-                                      styles.taskName,
-                                      {
-                                        color: colors.text,
-                                        opacity: medIdx < selectedDay.completedMedicines ? 0.5 : 1,
-                                        textDecorationLine: medIdx < selectedDay.completedMedicines ? 'line-through' : 'none'
-                                      }
-                                    ]}>
-                                      {medicine.medicineName}
-                                    </Text>
-                                    <Text style={[styles.taskDosage, { color: colors.textSecondary }]}>
-                                      {medicine.dosage} - {medicine.medicineType}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.taskStatus}>
-                                    {medIdx < selectedDay.completedMedicines ? (
-                                      <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                                    ) : (
-                                      <Ionicons name="radio-button-off" size={20} color={colors.textSecondary} />
-                                    )}
-                                  </View>
-                                </View>
-                              ))}
-                            </View>
-                          </View>
-                        )}
-
-                        {/* Habit Tasks */}
-                        {selectedDay.habits.length > 0 && (
-                          <View style={styles.taskSectionLarge}>
-                            <View style={styles.taskHeader}>
-                              <Ionicons name="repeat-outline" size={16} color={colors.accent} />
-                              <Text style={[styles.taskTitle, { color: colors.text }]}>
-                                Habits ({selectedDay.completedHabits}/{selectedDay.habits.length})
-                              </Text>
-                            </View>
-                            <View style={styles.taskItems}>
-                              {selectedDay.habits.map((habit: any, habitIdx: number) => (
-                                <View key={habitIdx} style={[styles.taskItemLarge, { borderBottomColor: colors.border }]}>
-                                  <View
-                                    style={[
-                                      styles.taskStatusDot,
-                                      {
-                                        backgroundColor: colors.accent,
-                                        opacity: habitIdx < selectedDay.completedHabits ? 0.4 : 1
-                                      }
-                                    ]}
-                                  />
-                                  <View style={styles.taskDetails}>
-                                    <Text style={[
-                                      styles.taskName,
-                                      {
-                                        color: colors.text,
-                                        opacity: habitIdx < selectedDay.completedHabits ? 0.5 : 1,
-                                        textDecorationLine: habitIdx < selectedDay.completedHabits ? 'line-through' : 'none'
-                                      }
-                                    ]}>
-                                      {habit.habitName}
-                                    </Text>
-                                    <Text style={[styles.taskDosage, { color: colors.textSecondary }]}>
-                                      {habit.target.value} {habit.target.unit} per {habit.target.frequency}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.taskStatus}>
-                                    {habitIdx < selectedDay.completedHabits ? (
-                                      <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                                    ) : (
-                                      <Ionicons name="radio-button-off" size={20} color={colors.textSecondary} />
-                                    )}
-                                  </View>
-                                </View>
-                              ))}
-                            </View>
-                          </View>
-                        )}
-                      </>
+            {/* All Day Tasks */}
+            <View style={styles.taskSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionLabel, { color: '#60A5FA' }]}>All Day</Text>
+                <Text style={[styles.taskCount, { backgroundColor: '#60A5FA20', color: '#60A5FA' }]}>{getTaskCount(tasks.allDay)}</Text>
+              </View>
+              {tasks.allDay.map((task, index) => (
+                <Animated.View
+                  entering={FadeInDown.delay(index * 100 + 200)}
+                  key={task.id}
+                  style={[
+                    styles.taskItem,
+                    {
+                      backgroundColor: colors.card
+                    }
+                  ]}
+                >
+                  <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
+                    <Ionicons name={task.icon as any} size={20} color={task.color} />
+                  </View>
+                  <View style={styles.taskInfo}>
+                    <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                    <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                  </View>
+                  <View style={styles.taskStatus}>
+                    {task.completed ? (
+                      <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                     ) : (
-                      <View style={styles.emptyTasksState}>
-                        <Ionicons name="checkmark-circle-outline" size={48} color={colors.textSecondary} />
-                        <Text style={[styles.emptyTasksTitle, { color: colors.text }]}>
-                          No tasks scheduled
-                        </Text>
-                        <Text style={[styles.emptyTasksSubtitle, { color: colors.textSecondary }]}>
-                          Enjoy your free day!
-                        </Text>
-                      </View>
+                      <Ionicons name="radio-button-off" size={20} color={colors.border} />
                     )}
                   </View>
-                );
-              })()}
-            </View>
-
-            {/* Weekly Summary */}
-            <View style={[styles.weeklySummary, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
-              <Text style={[styles.summaryTitle, { color: colors.text }]}>
-                Week Summary
-              </Text>
-              <View style={styles.summaryStats}>
-                <View style={styles.summaryStat}>
-                  <View style={[styles.statIconLarge, { backgroundColor: colors.primary + '20' }]}>
-                    <Ionicons name="medical-outline" size={20} color={colors.primary} />
-                  </View>
-                  <Text style={[styles.statNumber, { color: colors.text }]}>
-                    {calendarDays.reduce((sum, day) => sum + day.medicines.length, 0)}
-                  </Text>
-                  <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>
-                    Medications
-                  </Text>
-                </View>
-                <View style={styles.summaryStat}>
-                  <View style={[styles.statIconLarge, { backgroundColor: colors.accent + '20' }]}>
-                    <Ionicons name="repeat-outline" size={20} color={colors.accent} />
-                  </View>
-                  <Text style={[styles.statNumber, { color: colors.text }]}>
-                    {calendarDays.reduce((sum, day) => sum + day.habits.length, 0)}
-                  </Text>
-                  <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>
-                    Habits
-                  </Text>
-                </View>
-                <View style={styles.summaryStat}>
-                  <View style={[styles.statIconLarge, { backgroundColor: colors.success + '20' }]}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                  </View>
-                  <Text style={[styles.statNumber, { color: colors.text }]}>
-                    {calendarDays.reduce((sum, day) => sum + day.completedMedicines + day.completedHabits, 0)}
-                  </Text>
-                  <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>
-                    Completed
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-      </View>
-    </ScrollView>
-
-      {/* Search Modal */}
-      <Modal
-        visible={showSearchModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowSearchModal(false)}
-      >
-        <BlurView
-          intensity={100}
-          tint={colorScheme === 'dark' ? 'dark' : 'light'}
-          style={styles.searchModalOverlay}
-        >
-          <SafeAreaView style={[styles.searchModalContainer, { backgroundColor: colors.background }]}>
-            <View style={styles.searchModalHeader}>
-              <TouchableOpacity onPress={() => setShowSearchModal(false)}>
-                <Ionicons name="close-outline" size={24} color={colors.text} />
-              </TouchableOpacity>
-              <Text style={[styles.searchModalTitle, { color: colors.text }]}>
-                Search
-              </Text>
-              <View style={{ width: 24 }} />
-            </View>
-
-            {/* Search Input */}
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color={colors.textSecondary} />
-              <TextInput
-                style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Search medicines or habits..."
-                placeholderTextColor={colors.textSecondary}
-                value={searchQuery}
-                onChangeText={handleSearch}
-                autoFocus
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => handleSearch('')}>
-                  <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Search Results */}
-            <ScrollView style={styles.searchResultsContainer} showsVerticalScrollIndicator={false}>
-              {searchResults.length === 0 && searchQuery.length > 0 && (
-                <View style={styles.noResultsContainer}>
-                  <Ionicons name="search" size={48} color={colors.textSecondary} />
-                  <Text style={[styles.noResultsText, { color: colors.textSecondary }]}>
-                    No results found
-                  </Text>
-                  <Text style={[styles.noResultsSubtext, { color: colors.textSecondary }]}>
-                    Try searching with different keywords
-                  </Text>
-                </View>
-              )}
-
-              {searchResults.map((result) => (
-                <TouchableOpacity
-                  key={result.id}
-                  style={[styles.searchResultItem, { backgroundColor: colors.card }]}
-                  onPress={() => handleSearchResultPress(result)}
-                >
-                  <View style={[styles.resultIconContainer, { backgroundColor: result.color + '20' }]}>
-                    <Ionicons name={result.icon as any} size={20} color={result.color} />
-                  </View>
-                  <View style={styles.resultInfo}>
-                    <Text style={[styles.resultTitle, { color: colors.text }]}>
-                      {result.title}
-                    </Text>
-                    <Text style={[styles.resultSubtitle, { color: colors.textSecondary }]}>
-                      {result.subtitle}
-                    </Text>
-                  </View>
-                  <View style={styles.resultTypeContainer}>
-                    <Text style={[
-                      styles.resultType,
-                      {
-                        color: result.type === 'medicine' ? colors.primary : colors.secondary,
-                        backgroundColor: result.type === 'medicine' ? colors.primary + '20' : colors.secondary + '20',
-                      }
-                    ]}>
-                      {result.type}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                </Animated.View>
               ))}
-            </ScrollView>
-          </SafeAreaView>
-        </BlurView>
-      </Modal>
+            </View>
 
-      {/* Blur Safe Area Overlay */}
-      <Animated.View style={styles.blurOverlay}>
-        <BlurView
-          intensity={80}
-          tint={colorScheme === 'dark' ? 'dark' : 'light'}
-          style={styles.blurView}
-        />
+            {/* Time-based Tasks */}
+            {Object.entries(tasks.timeBased).map(([time, taskList], sectionIndex) => (
+              <View key={time} style={styles.taskSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionLabel, { color: '#84CC16' }]}>{time}</Text>
+                  <Text style={[styles.taskCount, { backgroundColor: '#84CC1620', color: '#84CC16' }]}>{getTaskCount(taskList)}</Text>
+                </View>
+                {taskList.map((task, taskIndex) => (
+                  <Animated.View
+                    entering={FadeInDown.delay(sectionIndex * 100 + taskIndex * 50 + 400)}
+                    key={task.id}
+                    style={[
+                      styles.taskItem,
+                      {
+                        backgroundColor: colors.card
+                      }
+                    ]}
+                  >
+                    <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
+                      <Ionicons name={task.icon as any} size={20} color={task.color} />
+                    </View>
+                    <View style={styles.taskInfo}>
+                      <Text style={[
+                        styles.taskTitle,
+                        {
+                          color: colors.text,
+                          textDecorationLine: task.completed ? 'line-through' : 'none',
+                          opacity: task.completed ? 0.6 : 1
+                        }
+                      ]}>
+                        {task.title}
+                      </Text>
+                      <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                    </View>
+                    <View style={styles.taskStatus}>
+                      {task.completed ? (
+                        <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                      ) : (
+                        <Ionicons name="radio-button-off" size={20} color={colors.border} />
+                      )}
+                    </View>
+                  </Animated.View>
+                ))}
+              </View>
+            ))}
+
+            {/* Empty State */}
+            {getTaskCount(tasks.overdue) === 0 &&
+             getTaskCount(tasks.allDay) === 0 &&
+             Object.keys(tasks.timeBased).length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.emptyStateText, { color: colors.text }]}>No tasks found</Text>
+                <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>Try adjusting your search</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
       </Animated.View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -698,55 +819,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  mainContainer: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
+  headerContainer: {
     paddingBottom: 20,
+    minHeight: 88,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1.5,
+      },
+      android: {
+        elevation: 6,
+        backgroundColor: '#ffffff',
+      }
+    })
   },
-  header: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  headerContent: {
+  headerGradient: {
+    paddingTop: 20,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    minHeight: 88,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  stickyHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-  },
-  blurOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 44, // Status bar height approximation
-    zIndex: 99,
-  },
-  blurView: {
-    flex: 1,
-  },
-  headerContainer: {
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    overflow: 'hidden',
-    elevation: Platform.OS === 'android' ? 8 : 0,
-  },
-  headerGradient: {
-    paddingTop: 16,
-    paddingBottom: 32,
-    paddingHorizontal: 24,
-    minHeight: 200,
   },
   circleBackground: {
     position: 'absolute',
@@ -757,233 +855,196 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     opacity: 0.3,
   },
-  oldHeaderContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  greetingSection: {
+  headerContent: {
     flex: 1,
+    justifyContent: 'center',
   },
   greeting: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '700',
-    color: '#000',
-    ...Platform.select({
-      ios: {
-        fontFamily: 'SF Pro Display',
-      }
-    })
   },
-  headerActions: {
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  buttonsContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  calendarWithDate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  smallDateText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
   },
   searchButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.sm,
-  },
-  headerLogo: {
-    width: 48,
-    height: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoIcon: {
-    width: 32,
-    height: 32,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
+  dateSelectorContainer: {
+    borderBottomWidth: 1,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 12,
+        shadowRadius: 8,
       },
       android: {
         elevation: 4,
       }
     })
   },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: 8,
+  dateSelectorSection: {
+    paddingTop: 20,
+    paddingBottom: 24,
   },
-  progressContainer: {
-    marginBottom: 8,
+  dateScrollContainer: {
+  },
+  dateCard: {
+    width: 70,
+    height: 80,
+    borderRadius: 15,
     alignItems: 'center',
-  },
-  progressBar: {
-    width: '100%',
-    height: 4,
-    backgroundColor: '#E5E5E7',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginVertical: 4,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  progressPercent: {
-    fontSize: 10,
-    color: '#666',
-    marginTop: 2,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  sectionContainer: {
-    paddingHorizontal: 24,
-    marginTop: 24,
-  },
-  healthTipCard: {
-    borderRadius: 16,
-    padding: 20,
+    justifyContent: 'center',
+    borderWidth: 2,
+    marginRight: 12, // Increased gap
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
       },
       android: {
         elevation: 3,
       }
     })
   },
-  healthTipHeader: {
+  datePaddingLeft: {
+    width: 20,
+  },
+  datePaddingRight: {
+    width: 20,
+  },
+  dateDay: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  dateNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  tasksContainer: {
+    flex: 1,
+  },
+  tasksScrollView: {
+    flex: 1,
+  },
+  tasksContent: {
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  taskSection: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  healthTipIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  healthTipTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  healthTipContent: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    marginBottom: 16,
+  sectionLabel: {
+    fontSize: 18,
     fontWeight: '700',
   },
-  featuresGrid: {
+  taskCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 30,
+    textAlign: 'center',
+  },
+  taskItem: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  featureCard: {
-    width: (width - 60) / 2, // Two columns with gap
-    marginBottom: 8,
-  },
-  featureCardContent: {
-    borderRadius: 16,
+    alignItems: 'center',
     padding: 16,
-    height: 160, // Fixed height for consistency
+    borderRadius: 12,
+    marginBottom: 8,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 6,
+        backgroundColor: '#ffffff',
       }
     })
   },
-  featureIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: 'rgba(244, 123, 159, 0.1)',
+  overdueTask: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF5252',
+  },
+  taskIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginRight: 12,
   },
-  featureIcon: {
-    fontSize: 28,
-  },
-  featureTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 6,
-    minHeight: 20, // Consistent height for titles
-  },
-  featureDescription: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginBottom: 12,
-    minHeight: 32, // Consistent height for descriptions
-  },
-  featureArrow: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-  },
-  arrowText: {
-    fontSize: 18,
-    fontWeight: '300',
-  },
-  motivationCard: {
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-  },
-  motivationQuote: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 8,
-    fontStyle: 'italic',
-  },
-  motivationAuthor: {
-    fontSize: 14,
-    fontStyle: 'italic',
-  },
-  footerSpace: {
-    height: 64,
-  },
-  searchModalOverlay: {
+  taskInfo: {
     flex: 1,
   },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  taskSubtitle: {
+    fontSize: 14,
+  },
+  taskStatus: {
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+  },
+  // Search Modal
   searchModalContainer: {
     flex: 1,
   },
@@ -991,655 +1052,196 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E7',
+    borderBottomColor: '#F0F0F0',
   },
   searchModalTitle: {
     fontSize: 18,
     fontWeight: '600',
   },
+  searchModalCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  searchModalContent: {
+    flex: 1,
+    padding: 20,
+  },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
     borderRadius: 12,
-    padding: Spacing.md,
-    margin: Spacing.lg,
-    marginBottom: Spacing.md,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    borderWidth: 1,
+    marginBottom: 20,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    marginLeft: Spacing.sm,
   },
-  searchResultsContainer: {
+  searchResultsSection: {
     flex: 1,
-    paddingHorizontal: Spacing.lg,
+  },
+  searchResultsTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 16,
+  },
+  searchResultsScroll: {
+    flex: 1,
+  },
+  searchTaskSection: {
+    marginBottom: 24,
+  },
+  searchSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  searchSectionLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  searchTaskCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    minWidth: 25,
+    textAlign: 'center',
+  },
+  searchTaskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   noResultsContainer: {
     alignItems: 'center',
-    padding: Spacing.xl,
+    justifyContent: 'center',
+    paddingVertical: 60,
   },
   noResultsText: {
     fontSize: 18,
     fontWeight: '600',
-    marginTop: Spacing.md,
-    marginBottom: Spacing.sm,
+    marginTop: 12,
+    marginBottom: 4,
   },
   noResultsSubtext: {
     fontSize: 14,
-    textAlign: 'center',
   },
-  searchResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.sm,
-  },
-  resultIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.md,
-  },
-  resultInfo: {
+  // Calendar Modal
+  calendarModal: {
     flex: 1,
-  },
-  resultTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  resultSubtitle: {
-    fontSize: 14,
-  },
-  resultTypeContainer: {
-    alignItems: 'center',
-  },
-  resultType: {
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-  },
-  // Calendar Widget Styles
-  calendarCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      }
-    })
+    backgroundColor: 'white',
   },
   calendarHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  navButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  calendarTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  calendarContent: {
-    flex: 1,
-  },
-  weekDaysContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  dayCard: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 8,
-    marginHorizontal: 2,
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 100,
-    justifyContent: 'flex-start',
-  },
-  dayName: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  dayNumber: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  taskIndicators: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  taskRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  taskDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  moreIndicator: {
-    fontSize: 8,
-    fontWeight: '500',
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    fontSize: 8,
-    fontWeight: '500',
-    textAlign: 'center',
-    opacity: 0.6,
-  },
-  taskSummary: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  summaryItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  summaryText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  summaryCount: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  // Calendar-Focused Styles
-  calendarMain: {
-    flex: 1,
-  },
-  weekNavigation: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  navButtonLarge: {
+  calendarNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  navButton: {
+    padding: 4,
+  },
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    minWidth: 150,
+    textAlign: 'center',
+  },
+  quickSelectContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  monthYearScroll: {
+    marginBottom: 8,
+    paddingHorizontal: 20,
+  },
+  monthButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  monthButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  yearScroll: {
+    paddingHorizontal: 20,
+  },
+  yearButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  yearButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  calendarDone: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#84CC16',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  dayHeader: {
+    width: `${100/7}%`,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dayHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    color: '#999',
+  },
+  dayCell: {
+    width: `${100/7}%`,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  dayButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
-  weekInfo: {
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 16,
-  },
-  weekTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  monthYear: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  weekScrollContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  dayCardLarge: {
-    width: 200,
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 12,
-    minHeight: 300,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      }
-    })
-  },
-  dayHeader: {
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  dayNameLarge: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  dayNumberLarge: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  taskSection: {
-    flex: 1,
-    gap: 12,
-  },
-  taskGroup: {
-    gap: 8,
-  },
-  taskGroupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  taskGroupTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  taskList: {
-    gap: 6,
-  },
-  taskItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  taskIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  taskText: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  moreTasksText: {
-    fontSize: 10,
-    fontWeight: '500',
-    fontStyle: 'italic',
-  },
-  emptyDayState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    opacity: 0.6,
-  },
-  emptyDayText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyDaySubtext: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  dayProgress: {
-    marginTop: 12,
-    gap: 6,
-  },
-  progressDayBar: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFillLarge: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  weeklySummary: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 20,
-    borderRadius: 16,
-    borderTopWidth: 0,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      }
-    })
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 16,
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  summaryStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 16,
-  },
-  summaryStat: {
-    alignItems: 'center',
-    flex: 1,
-    paddingVertical: 6,
-  },
-  statIconLarge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 4,
-    letterSpacing: -0.3,
-  },
-  summaryStatLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  // Compact Navigation Styles
-  compactNavigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    marginBottom: 12,
-    gap: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      }
-    })
-  },
-
-  // Compact Year Picker
-  compactYearPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  compactNavButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-  },
-  compactYearText: {
-    fontSize: 16,
-    fontWeight: '700',
-    minWidth: 60,
-    textAlign: 'center',
-  },
-
-  // Compact Week Picker
-  compactWeekPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 8,
-  },
-  compactWeekInfo: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  compactWeekText: {
-    fontSize: 15,
-    fontWeight: '700',
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  compactMonthText: {
-    fontSize: 11,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-
-  // Compact Today Button
-  compactTodayButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateScrollContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-    gap: 8,
-  },
-  dateCard: {
-    width: 70,
-    height: 80,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-    borderWidth: 1.5,
-    position: 'relative',
-    gap: 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 2,
-      }
-    })
-  },
-  dateDayName: {
-    fontSize: 9,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  dateDayNumber: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  dateTaskDots: {
-    flexDirection: 'row',
-    gap: 2,
-    position: 'absolute',
-    bottom: 6,
-  },
-  dateDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  tasksContainer: {
-    flex: 1,
-    marginTop: 24,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-  },
-  tasksCard: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      }
-    })
-  },
-  tasksHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
-  },
-  tasksDate: {
-    fontSize: 16,
-    fontWeight: '700',
-    flex: 1,
-    letterSpacing: -0.3,
-  },
-  todayBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  todayBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  progressOverview: {
-    marginBottom: 24,
-    gap: 8,
-  },
-  progressInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  progressLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  progressPercentage: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  progressBarLarge: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  taskSectionLarge: {
-    marginBottom: 24,
-  },
-  taskHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  taskTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  taskItems: {
-    gap: 12,
-  },
-  taskItemLarge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
-  taskStatusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  taskDetails: {
-    flex: 1,
-    gap: 2,
-  },
-  taskName: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  taskDosage: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  taskStatus: {
-    alignItems: 'center',
-  },
-  emptyTasksState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    gap: 12,
-  },
-  emptyTasksTitle: {
+  dayButtonText: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  emptyTasksSubtitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-    opacity: 0.7,
   },
 });

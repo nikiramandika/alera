@@ -170,8 +170,8 @@ export default function MedicationScreen() {
     const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     if (diffHours > 24) return 'Tomorrow';
-    if (diffHours > 0) return In ${diffHours}h ${diffMins}m;
-    if (diffMins > 0) return In ${diffMins}m;
+    if (diffHours > 0) return `In ${diffHours}h ${diffMins}m`;
+    if (diffMins > 0) return `In ${diffMins}m`;
     return 'Now';
   };
 
@@ -258,7 +258,7 @@ export default function MedicationScreen() {
                   style={[
                     styles.progressFill,
                     {
-                      width: ${(item.stockQuantity / Math.max(item.stockQuantity, item.stockAlert)) * 100}%,
+                      width: `${(item.stockQuantity / Math.max(item.stockQuantity, item.stockAlert)) * 100}%`,
                       backgroundColor: item.color,
                     }
                   ]}
@@ -412,7 +412,7 @@ export default function MedicationScreen() {
                     style={[
                       styles.overallProgressFill,
                       {
-                        width: ${getCompletionPercentage()}%,
+                        width: `${getCompletionPercentage()}%`,
                         backgroundColor: colors.success,
                       }
                     ]}

@@ -152,7 +152,7 @@ export default function HabitsScreen() {
     const progressAnimatedStyle = useAnimatedStyle(() => {
       if (!progressValue) return { width: '0%' };
       return {
-        width: ${progressValue.value}%,
+        width: `${progressValue.value}%`,
       };
     });
 
@@ -302,7 +302,7 @@ export default function HabitsScreen() {
                 style={[
                   styles.overallProgressFill,
                   {
-                    width: ${getCompletionPercentage()}%,
+                    width: `${getCompletionPercentage()}%`,
                     backgroundColor: colors.success,
                   }
                 ]}
@@ -370,7 +370,7 @@ export default function HabitsScreen() {
                   style={[styles.quickHabitOption, { backgroundColor: colors.card }]}
                   onPress={() => {
                     // Handle quick add logic here
-                    Alert.alert('Quick Add', ${habitName} habit would be added here);
+                    Alert.alert('Quick Add', `${habitName} habit would be added here`);
                     setShowAddModal(false);
                   }}
                 >
