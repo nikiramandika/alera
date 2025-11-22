@@ -4,64 +4,109 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
       <LinearGradient
-        colors={["#FFE6EC", "#FFFFFF"]}
+        colors={[colors.gradientStart, colors.background]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Soft pink glow circle */}
-      <View style={styles.circleBackground} />
+      {/* Content */}
+      <View style={styles.contentContainer}>
+        {/* Header with Logo */}
+        <View style={styles.headerContainer}>
+          <Image
+            source={require("@/assets/images/aleraLogo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.title, { color: colors.text }]}>
+            Welcome to Alera
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Your personal health companion for medication reminders and habit tracking
+          </Text>
+        </View>
 
-      {/* Greeting Section */}
-      <View style={styles.textContainer}>
-        <View>
-          <Text style={styles.title}>Welcome</Text>
-          <View style={styles.logoRow}>
-            <Text style={styles.toText}>to</Text>
-            <Image
-              source={require("@/assets/images/aleraLogo.png")}
-              style={styles.logoIcon}
-              resizeMode="contain"
-            />
-            <Text style={styles.logoText}>lera</Text>
+        {/* Features */}
+        <View style={styles.featuresContainer}>
+          <View style={styles.featureItem}>
+            <View style={[styles.featureIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="notifications-outline" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.featureContent}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>
+                Smart Reminders
+              </Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
+                Never miss your medication with timely notifications
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <View style={[styles.featureIcon, { backgroundColor: colors.accent + '20' }]}>
+              <Ionicons name="heart-outline" size={24} color={colors.accent} />
+            </View>
+            <View style={styles.featureContent}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>
+                Habit Tracking
+              </Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
+                Build and maintain healthy daily routines
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <View style={[styles.featureIcon, { backgroundColor: colors.success + '20' }]}>
+              <Ionicons name="analytics-outline" size={24} color={colors.success} />
+            </View>
+            <View style={styles.featureContent}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>
+                Health Analytics
+              </Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
+                Monitor your progress and stay motivated
+              </Text>
+            </View>
           </View>
         </View>
-        <Text style={styles.subtitle}>
-          Explore the app, Find some peace of mind to prepare for meditation.
-        </Text>
-      </View>
 
-      {/* Illustration */}
-      <Image
-        source={require("@/assets/images/Alera.png")}
-        style={styles.image}
-        resizeMode="contain"
-      />
+        {/* Illustration */}
 
-      {/* Buttons */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.getStartedButton}
-          onPress={() => router.push("/screens/auth/RegisterScreen")}
-        >
-          <Text style={styles.getStartedButtonText}>Get Started</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.loginButton}
-          onPress={() => router.push("/screens/auth/LoginScreen")}
-        >
-          <Text style={styles.loginButtonText}>Sign In</Text>
-        </TouchableOpacity>
+        {/* Buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.getStartedButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push("/screens/auth/RegisterScreen")}
+          >
+            <Text style={styles.getStartedButtonText}>Get Started</Text>
+            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.loginButton, { borderColor: colors.primary }]}
+            onPress={() => router.push("/screens/auth/LoginScreen")}
+          >
+            <Text style={[styles.loginButtonText, { color: colors.primary }]}>
+              Sign In
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -70,100 +115,101 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 40,
   },
-  // 🌸 Circle glow di belakang ilustrasi
-  circleBackground: {
-    position: "absolute",
-    top: "35%",
-    left: "50%",
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: "#FDD6E0",
-    opacity: 0.5,
-    transform: [{ translateX: -200 }],
-    zIndex: -1,
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xl,
+    justifyContent: 'space-between',
   },
-
-  textContainer: {
-    alignItems: "center",
-    paddingHorizontal: 25,
-    marginTop: 20,
-    gap: 20,
+  headerContainer: {
+    alignItems: 'center',
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xl,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: Spacing.lg,
   },
   title: {
-    fontSize: 30,
-    fontWeight: "bold",
-    color: "#000",
-    marginBottom: 4,
-  },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-    justifyContent: "center",
-  },
-  toText: {
-    fontSize: 30,
-    color: "#000",
-    marginRight: 6,
-    fontWeight: "600",
-  },
-  logoText: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "#F47B9F",
-  },
-  logoIcon: {
-    width: 36,
-    height: 36,
-    marginRight: -4,
-    marginLeft: -4,
+    ...Typography.h1,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
   },
   subtitle: {
-    fontSize: 14,
-    textAlign: "center",
-    color: "#555",
-    marginTop: 4,
-    paddingHorizontal: 24,
+    ...Typography.body,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.lg,
+    lineHeight: 22,
+  },
+  featuresContainer: {
+    marginVertical: Spacing.xl,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.sm,
+  },
+  featureIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  featureContent: {
+    flex: 1,
+  },
+  featureTitle: {
+    ...Typography.h4,
+    fontWeight: '600',
+    marginBottom: Spacing.xs / 2,
+  },
+  featureDescription: {
+    ...Typography.caption,
+    lineHeight: 16,
   },
   image: {
-    width: 250,
-    height: 250,
+    width: 220,
+    height: 220,
+    alignSelf: 'center',
+    marginVertical: Spacing.lg,
   },
   buttonContainer: {
-    width: "100%",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 40,
+    width: '100%',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   getStartedButton: {
-    backgroundColor: "#F47B9F",
-    borderRadius: 30,
-    paddingVertical: 16,
-    alignItems: "center",
-    width: "80%",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    width: '85%',
   },
   getStartedButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    ...Typography.body,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginRight: Spacing.sm,
   },
   loginButton: {
     borderWidth: 2,
-    borderColor: "#F47B9F",
-    borderRadius: 30,
-    paddingVertical: 16,
-    alignItems: "center",
-    width: "80%",
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    width: '85%',
   },
   loginButtonText: {
-    color: "#F47B9F",
-    fontSize: 16,
-    fontWeight: "600",
+    ...Typography.body,
+    fontWeight: '600',
   },
 });
