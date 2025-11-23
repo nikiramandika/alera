@@ -92,7 +92,7 @@ export default function WelcomeScreen() {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.getStartedButton, { backgroundColor: colors.primary }]}
-            onPress={() => router.push("/screens/auth/RegisterScreen")}
+            onPress={() => router.push("/(auth)/register")}
           >
             <Text style={styles.getStartedButtonText}>Get Started</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
@@ -100,7 +100,7 @@ export default function WelcomeScreen() {
 
           <TouchableOpacity
             style={[styles.loginButton, { borderColor: colors.primary }]}
-            onPress={() => router.push("/screens/auth/LoginScreen")}
+            onPress={() => router.push("/(auth)/login")}
           >
             <Text style={[styles.loginButtonText, { color: colors.primary }]}>
               Sign In

@@ -25,24 +25,12 @@ export default function RootLayout() {
             <NotificationProvider>
               <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
-                  <Stack.Screen name="screens/auth/WelcomeScreen" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="screens/habits-manage" options={{
-                    headerLargeTitle: true,
-                    headerTransparent: true,
-                    title: "Manage Habits",
-                    headerBackButtonDisplayMode: "minimal"
-                  }} />
+                  <Stack.Screen name="medicine" options={{ headerShown: false }} />
+                  <Stack.Screen name="habits" options={{ headerShown: false }} />
                   <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-                  <Stack.Screen name="screens/auth/LoginScreen" options={{ headerShown: false }} />
-                  <Stack.Screen name="screens/auth/RegisterScreen" options={{ headerShown: false }} />
-                  <Stack.Screen name="screens/auth/OnboardingScreen" options={{ headerShown: false }} />
-                  <Stack.Screen name="screens/medication/AddMedicineScreen" options={{
-                    headerLargeTitle: true,
-                    title: "Add Medicine",
-                    headerBackButtonDisplayMode: "minimal"
-                  }} />
-                </Stack>
+                  </Stack>
                 <StatusBar style="auto" />
               </ThemeProvider>
             </NotificationProvider>

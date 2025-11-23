@@ -7,7 +7,7 @@ interface MedicineContextType {
   medicines: MedicineReminder[];
   medicineHistory: MedicineHistory[];
   loading: boolean;
-  addMedicine: (medicine: Omit<MedicineReminder, 'reminderId' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
+  addMedicine: (medicine: Omit<MedicineReminder, 'reminderId' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
   updateMedicine: (id: string, medicine: Partial<MedicineReminder>) => Promise<{ success: boolean; error?: string }>;
   deleteMedicine: (id: string) => Promise<{ success: boolean; error?: string }>;
   markMedicineTaken: (reminderId: string, scheduledTime: Date) => Promise<{ success: boolean; error?: string }>;
@@ -64,7 +64,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Add new medicine
-  const addMedicine = async (medicine: Omit<MedicineReminder, 'reminderId' | 'createdAt' | 'updatedAt'>) => {
+  const addMedicine = async (medicine: Omit<MedicineReminder, 'reminderId' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {

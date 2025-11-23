@@ -75,7 +75,7 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             await signOut();
-            router.replace('/screens/auth/LoginScreen');
+            router.replace('/(auth)/login');
           },
         },
       ]
@@ -312,7 +312,7 @@ export default function ProfileScreen() {
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
           style={[styles.actionCard, { backgroundColor: colors.card }]}
-          onPress={() => router.push('/screens/auth/OnboardingScreen')}
+          onPress={() => router.push('/(auth)/onboarding')}
         >
           <Ionicons name="refresh-outline" size={24} color={colors.primary} />
           <Text style={[styles.actionText, { color: colors.text }]}>

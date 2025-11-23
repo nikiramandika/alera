@@ -19,11 +19,12 @@ import { MedicineReminder, MedicineHistory } from '@/types';
 // MEDICINES COLLECTION (subcollection under users)
 export const medicineService = {
   // Add new medicine
-  async addMedicine(userId: string, medicine: Omit<MedicineReminder, 'reminderId' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async addMedicine(userId: string, medicine: Omit<MedicineReminder, 'reminderId' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const medicinesRef = collection(db, 'users', userId, 'medicines');
       const docRef = await addDoc(medicinesRef, {
         ...medicine,
+        userId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -49,6 +50,11 @@ export const medicineService = {
         return {
           ...data,
           reminderId: doc.id,
+          duration: {
+            ...data.duration,
+            startDate: data.duration?.startDate?.toDate?.() || new Date(),
+            endDate: data.duration?.endDate?.toDate?.() || null,
+          },
           stock: {
             current: data.stock?.current || 0,
             currentStock: data.stock?.currentStock || data.stockQuantity || 0,
@@ -77,6 +83,11 @@ export const medicineService = {
         return {
           ...data,
           reminderId: medicineDoc.id,
+          duration: {
+            ...data.duration,
+            startDate: data.duration?.startDate?.toDate?.() || new Date(),
+            endDate: data.duration?.endDate?.toDate?.() || null,
+          },
           stock: {
             current: data.stock?.current || 0,
             currentStock: data.stock?.currentStock || data.stockQuantity || 0,

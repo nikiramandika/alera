@@ -39,7 +39,7 @@ export default function RegisterScreen() {
         user.profile.age;
 
       if (!hasCompletedOnboarding) {
-        router.replace('/screens/auth/OnboardingScreen');
+        router.replace('/(auth)/onboarding');
       } else {
         router.replace('/(tabs)');
       }
@@ -86,7 +86,7 @@ export default function RegisterScreen() {
       console.log('🔍 [DEBUG] RegisterScreen - signUp result:', result);
       if (result.success) {
         // Navigate to onboarding
-        router.replace('/screens/auth/OnboardingScreen');
+        router.replace('/(auth)/onboarding');
       } else {
         Alert.alert('Registration Failed', result.error || 'An error occurred');
       }
@@ -103,7 +103,7 @@ export default function RegisterScreen() {
     try {
       const result = await signInWithGoogle();
       if (result.success) {
-        router.replace('/screens/auth/OnboardingScreen');
+        router.replace('/(auth)/onboarding');
       } else {
         Alert.alert('Google Sign-Up Failed', result.error || 'An error occurred');
       }
@@ -239,7 +239,7 @@ export default function RegisterScreen() {
         {/* Sign In Link */}
         <View style={styles.signInContainer}>
           <Text style={[styles.signInText, { color: colors.textSecondary }]}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push("/screens/auth/LoginScreen")}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
             <Text style={[styles.signInLink, { color: colors.primary }]}>Sign In</Text>
           </TouchableOpacity>
         </View>

@@ -17,7 +17,7 @@ export default function Index() {
         setHasRedirected(true);
 
         // Get current route to prevent unnecessary redirects
-        const currentRoute = router.pathname || '';
+        const currentRoute = ''; // Reset for proper routing
 
         if (user) {
           // User is logged in, check if they have completed onboarding
@@ -27,24 +27,15 @@ export default function Index() {
             user.profile.age;
 
           if (!hasCompletedOnboarding) {
-            // Only redirect if not already on onboarding or auth screens
-            if (!currentRoute.includes('/screens/auth/')) {
-              console.log('User needs onboarding, redirecting...');
-              router.replace('/screens/auth/OnboardingScreen');
-            }
+            console.log('User needs onboarding, redirecting...');
+            router.replace('/(auth)/onboarding');
           } else {
-            // Only redirect if not already on tabs
-            if (!currentRoute.includes('/(tabs)')) {
-              console.log('User has completed onboarding, redirecting to tabs...');
-              router.replace('/(tabs)');
-            }
+            console.log('User has completed onboarding, redirecting to tabs...');
+            router.replace('/(tabs)');
           }
         } else {
-          // Only redirect if not already on welcome or other auth screens
-          if (!currentRoute.includes('/screens/auth/')) {
-            console.log('User not logged in, redirecting to welcome...');
-            router.replace('/screens/auth/WelcomeScreen');
-          }
+          console.log('User not logged in, redirecting to welcome...');
+          router.replace('/(auth)/welcome');
         }
       };
 

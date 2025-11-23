@@ -37,7 +37,7 @@ export default function LoginScreen() {
         user.profile.age;
 
       if (!hasCompletedOnboarding) {
-        router.replace('/screens/auth/OnboardingScreen');
+        router.replace('/(auth)/onboarding');
       } else {
         router.replace('/(tabs)');
       }
@@ -185,7 +185,7 @@ export default function LoginScreen() {
         {/* Sign Up Link */}
         <View style={styles.signUpContainer}>
           <Text style={[styles.signUpText, { color: colors.textSecondary }]}>Don&apos;t have an account? </Text>
-          <TouchableOpacity onPress={() => router.push("/screens/auth/RegisterScreen")}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
             <Text style={[styles.signUpLink, { color: colors.primary }]}>Sign Up</Text>
           </TouchableOpacity>
         </View>

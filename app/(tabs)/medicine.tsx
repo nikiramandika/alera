@@ -27,25 +27,25 @@ import { useRouter } from "expo-router";
 import { Swipeable } from "react-native-gesture-handler";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
-import { useHabit } from "@/contexts/HabitContext";
+import { useMedicine } from "@/contexts/MedicineContext";
 
-export default function HabitsScreen() {
+export default function MedicationScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const {
-    habits,
-    refreshHabits,
-    markHabitCompleted,
-    markHabitIncomplete,
-    deleteHabit,
-  } = useHabit();
+    medicines,
+    refreshMedicines,
+    markMedicineTaken,
+    deleteMedicine,
+  } = useMedicine();
 
-  const [selectedHabit, setSelectedHabit] = useState<any>(null);
+  const [selectedMedication, setSelectedMedication] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [deletingHabitId, setDeletingHabitId] = useState<string | null>(null);
-  const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<string>>(new Set());
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [deletingMedicineId, setDeletingMedicineId] = useState<string | null>(null);
+const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<string>>(new Set());
 
   // Animation values
   const headerScale = useSharedValue(0.9);
@@ -53,21 +53,46 @@ export default function HabitsScreen() {
 
   useEffect(() => {
     // Animate header in
-    headerScale.value = withDelay(200, withSpring(1, {
-      damping: 15,
-      stiffness: 100,
-    }));
+    headerScale.value = withDelay(
+      200,
+      withSpring(1, {
+        damping: 15,
+        stiffness: 100,
+      })
+    );
 
     // Animate cards in
-    cardTranslateY.value = withDelay(400, withSpring(0, {
-      damping: 15,
-      stiffness: 100,
-    }));
+    cardTranslateY.value = withDelay(
+      400,
+      withSpring(0, {
+        damping: 15,
+        stiffness: 100,
+      })
+    );
+
+    // Update time every minute
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+
+    return () => clearInterval(timer);
   }, [headerScale, cardTranslateY]);
 
-  // Filter habits to exclude optimistically deleted ones
-  const filteredHabits = habits.filter(
-    habit => !optimisticallyDeletedIds.has(habit.habitId)
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshMedicines();
+    } finally {
+      // Small delay for smooth UX
+      setTimeout(() => {
+        setRefreshing(false);
+      }, 300);
+    }
+  };
+
+  // Filter medicines to exclude optimistically deleted ones
+  const filteredMedicines = medicines.filter(
+    medicine => !optimisticallyDeletedIds.has(medicine.reminderId)
   );
 
   // Animated styles
@@ -79,64 +104,53 @@ export default function HabitsScreen() {
     transform: [{ translateY: cardTranslateY.value }],
   }));
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refreshHabits();
-    } finally {
-      // Small delay for smooth UX
-      setTimeout(() => {
-        setRefreshing(false);
-      }, 300);
-    }
-  };
+  const toggleMedicationStatus = async (medicineId: string, time: string) => {
+    const scheduledTime = new Date();
+    const [hours, minutes] = time.split(":").map(Number);
+    scheduledTime.setHours(hours, minutes, 0, 0);
 
-  const toggleHabitStatus = async (habitId: string) => {
-    // In real app, you'd check if habit is completed today
-    // For now, we'll just mark it as completed
-    const result = await markHabitCompleted(habitId, 1);
+    // If time is in the past, schedule for tomorrow
+    if (scheduledTime < currentTime) {
+      scheduledTime.setDate(scheduledTime.getDate() + 1);
+    }
+
+    const result = await markMedicineTaken(medicineId, scheduledTime);
     if (!result.success) {
-      Alert.alert("Error", result.error || "Failed to mark habit as completed");
+      Alert.alert("Error", result.error || "Failed to mark medicine as taken");
     } else {
-      await refreshHabits();
+      await refreshMedicines();
     }
   };
 
-  const getHabitIcon = (habitType: string) => {
-    switch (habitType) {
-      case "water":
-        return "water-outline";
-      case "exercise":
-        return "fitness-outline";
-      case "sleep":
-        return "moon-outline";
-      case "meditation":
-        return "leaf-outline";
-      default:
-        return "checkmark-circle-outline";
+  const getNextDoseTime = (time: string) => {
+    const [hours, minutes, period] = time.split(/[:\s]/);
+    let hour24 = parseInt(hours);
+    if (period === "PM" && hour24 !== 12) hour24 += 12;
+    if (period === "AM" && hour24 === 12) hour24 = 0;
+
+    const now = currentTime;
+    const medTime = new Date();
+    medTime.setHours(hour24, parseInt(minutes), 0, 0);
+
+    if (medTime <= now) {
+      medTime.setDate(medTime.getDate() + 1);
     }
+
+    const diffMs = medTime.getTime() - now.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (diffHours > 24) return "Tomorrow";
+    if (diffHours > 0) return `In ${diffHours}h ${diffMins}m`;
+    if (diffMins > 0) return `In ${diffMins}m`;
+    return "Now";
   };
 
-  const getHabitTypeLabel = (habitType: string) => {
-    switch (habitType) {
-      case "water":
-        return "Water";
-      case "exercise":
-        return "Exercise";
-      case "sleep":
-        return "Sleep";
-      case "meditation":
-        return "Meditation";
-      default:
-        return "Custom";
-    }
-  };
-
-  const handleDeleteHabit = (habit: any) => {
-    console.log("Deleting habit:", habit);
+  const handleDeleteMedicine = (medicine: any) => {
+    console.log('Deleting medicine:', medicine); // Debug log
     Alert.alert(
-      "Delete Habit",
-      `Are you sure you want to delete "${habit.habitName}"? This action cannot be undone.`,
+      "Delete Medicine",
+      `Are you sure you want to delete "${medicine.medicineName}"? This action cannot be undone.`,
       [
         {
           text: "Cancel",
@@ -147,42 +161,47 @@ export default function HabitsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Optimistic delete: immediately remove from UI
-              setOptimisticallyDeletedIds(prev => new Set(prev).add(habit.habitId));
-              setDeletingHabitId(habit.habitId);
+              // Use reminderId instead of id
+              const medicineId = medicine.reminderId || medicine.id;
+              console.log('Using medicine ID:', medicineId); // Debug log
 
-              const result = await deleteHabit(habit.habitId);
+              // Optimistic delete: immediately remove from UI
+              setOptimisticallyDeletedIds(prev => new Set(prev).add(medicineId));
+              setDeletingMedicineId(medicineId);
+
+              const result = await deleteMedicine(medicineId);
               if (result.success) {
-                // Success - habit is already removed from UI
-                console.log("Delete successful");
+                // Success - medicine is already removed from UI
+                console.log('Delete successful');
               } else {
-                // Failed - restore the habit in UI
+                // Failed - restore the medicine in UI
                 setOptimisticallyDeletedIds(prev => {
                   const newSet = new Set(prev);
-                  newSet.delete(habit.habitId);
+                  newSet.delete(medicineId);
                   return newSet;
                 });
 
                 Alert.alert(
                   "Error",
-                  result.error || "Failed to delete habit"
+                  result.error || "Failed to delete medicine"
                 );
               }
             } catch {
-              // Error - restore the habit in UI
+              // Error - restore the medicine in UI
+              const medicineId = medicine.reminderId || medicine.id;
               setOptimisticallyDeletedIds(prev => {
                 const newSet = new Set(prev);
-                newSet.delete(habit.habitId);
+                newSet.delete(medicineId);
                 return newSet;
               });
 
               Alert.alert(
                 "Error",
-                "An unexpected error occurred while deleting the habit"
+                "An unexpected error occurred while deleting the medicine"
               );
             } finally {
               // Clear loading state
-              setDeletingHabitId(null);
+              setDeletingMedicineId(null);
             }
           },
         },
@@ -191,10 +210,11 @@ export default function HabitsScreen() {
   };
 
   // Render right action for swipeable
-  const renderRightActions = (habit: any) => {
-    console.log("Render right actions for habit:", habit.habitName);
+  const renderRightActions = (medicine: any) => {
+    console.log('Render right actions for medicine:', medicine.medicineName); // Debug log
 
-    const isDeleting = deletingHabitId === habit.habitId;
+    const medicineId = medicine.reminderId || medicine.id;
+    const isDeleting = deletingMedicineId === medicineId;
 
     return (
       <View style={styles.deleteContainer}>
@@ -205,8 +225,8 @@ export default function HabitsScreen() {
           ]}
           onPress={() => {
             if (!isDeleting) {
-              console.log("Delete button pressed for:", habit.habitName);
-              handleDeleteHabit(habit);
+              console.log('Delete button pressed for:', medicine.medicineName); // Debug log
+              handleDeleteMedicine(medicine);
             }
           }}
           activeOpacity={0.9}
@@ -230,7 +250,36 @@ export default function HabitsScreen() {
     );
   };
 
-  const renderHabitCard = ({
+  // Helper function to safely format dates
+  const formatDate = (date: any) => {
+    if (!date) return "Not set";
+    const dateObj = date instanceof Date ? date : new Date(date);
+    if (isNaN(dateObj.getTime())) return "Invalid date";
+    return dateObj.toLocaleDateString();
+  };
+
+  // Handle edit medication
+  const handleEditMedication = () => {
+    if (!selectedMedication) return;
+
+    // Pass the medication data to edit screen
+    console.log("Editing medication:", selectedMedication);
+
+    // Close the detail modal
+    setShowDetailModal(false);
+
+    // Navigate to add screen with edit data
+    router.push({
+      pathname: "/medicine/add",
+      params: {
+        editMode: "true",
+        medicineId: selectedMedication.reminderId,
+        medicineData: JSON.stringify(selectedMedication),
+      },
+    });
+  };
+
+  const renderMedicationCard = ({
     item,
     index,
   }: {
@@ -247,7 +296,7 @@ export default function HabitsScreen() {
         <Animated.View
           entering={FadeInDown.delay(index * 100)}
           style={[
-            styles.habitCard,
+            styles.medicationCard,
             {
               backgroundColor: colors.card,
               borderColor: colors.border,
@@ -259,7 +308,7 @@ export default function HabitsScreen() {
           <TouchableOpacity
             style={styles.cardContent}
             onPress={() => {
-              setSelectedHabit(item);
+              setSelectedMedication(item);
               setShowDetailModal(true);
             }}
             activeOpacity={0.7}
@@ -268,10 +317,10 @@ export default function HabitsScreen() {
               style={[styles.colorIndicator, { backgroundColor: item.color }]}
             />
 
-            <View style={styles.habitInfo}>
+            <View style={styles.medicationInfo}>
               <View style={styles.headerRow}>
-                <Text style={[styles.habitName, { color: colors.text }]}>
-                  {item.habitName}
+                <Text style={[styles.medicationName, { color: colors.text }]}>
+                  {item.medicineName}
                 </Text>
                 <TouchableOpacity
                   style={[
@@ -282,7 +331,12 @@ export default function HabitsScreen() {
                     },
                   ]}
                   onPress={() => {
-                    toggleHabitStatus(item.habitId);
+                    if (item.frequency.times.length > 0) {
+                      toggleMedicationStatus(
+                        item.reminderId,
+                        item.frequency.times[0]
+                      );
+                    }
                   }}
                 >
                   <Ionicons
@@ -293,48 +347,50 @@ export default function HabitsScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Text style={[styles.habitType, { color: colors.textSecondary }]}>
-                {getHabitTypeLabel(item.habitType)}
+              <Text style={[styles.dosage, { color: colors.textSecondary }]}>
+                {item.dosage} • {item.medicineType}
               </Text>
 
-              <View style={styles.targetRow}>
-                <Ionicons
-                  name="at-outline"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-                <Text style={[styles.target, { color: colors.textSecondary }]}>
-                  {item.target.value} {item.target.unit} • {item.target.frequency}
-                </Text>
+              <View style={styles.timeRow}>
                 <Ionicons
                   name="time-outline"
                   size={16}
                   color={colors.textSecondary}
                 />
-                <Text style={[styles.times, { color: colors.textSecondary }]}>
-                  {item.reminderTimes.join(", ")}
+                <Text style={[styles.time, { color: colors.textSecondary }]}>
+                  {item.frequency.times.join(", ")}
+                </Text>
+                <Text style={[styles.nextDose, { color: colors.primary }]}>
+                  {item.frequency.times.length > 0
+                    ? getNextDoseTime(item.frequency.times[0])
+                    : "As needed"}
                 </Text>
               </View>
 
-              <View style={styles.streakRow}>
-                <View style={styles.streakContainer}>
-                  <Ionicons
-                    name="flame-outline"
-                    size={16}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.streakText, { color: colors.text }]}>
-                    Current: {item.streak}
-                  </Text>
-                </View>
-                <View style={styles.streakContainer}>
-                  <Ionicons
-                    name="trophy-outline"
-                    size={16}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.streakText, { color: colors.text }]}>
-                    Best: {item.bestStreak}
+              <View style={styles.progressRow}>
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBar}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${
+                            (item.stockQuantity /
+                              Math.max(item.stockQuantity, item.stockAlert)) *
+                            100
+                          }%`,
+                          backgroundColor: item.color,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.progressText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {item.stockQuantity} left
                   </Text>
                 </View>
               </View>
@@ -355,7 +411,7 @@ export default function HabitsScreen() {
       <SafeAreaView
         style={[styles.modalContainer, { backgroundColor: colors.background }]}
       >
-        {selectedHabit && (
+        {selectedMedication && (
           <>
             {/* Modal Header */}
             <View
@@ -368,9 +424,10 @@ export default function HabitsScreen() {
                 <Ionicons name="close-outline" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Habit Details
+                Medicine Details
               </Text>
               <TouchableOpacity
+                onPress={handleEditMedication}
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
               >
                 <Ionicons name="create" size={16} color="#FFFFFF" />
@@ -378,24 +435,35 @@ export default function HabitsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-              {/* Habit Overview Card */}
-              <View style={[styles.detailCard, { backgroundColor: colors.card }]}>
-                <View style={styles.habitHeader}>
+            <ScrollView
+              style={styles.modalContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Medicine Overview Card */}
+              <View
+                style={[styles.detailCard, { backgroundColor: colors.card }]}
+              >
+                <View style={styles.medicineHeader}>
                   <View
                     style={[
                       styles.colorIndicatorLarge,
-                      { backgroundColor: selectedHabit?.color || "#4ECDC4" },
+                      {
+                        backgroundColor: selectedMedication?.color || "#F47B9F",
+                      },
                     ]}
                   />
-                  <View style={styles.habitInfo}>
+                  <View style={styles.medicineInfo}>
                     <Text style={[styles.detailName, { color: colors.text }]}>
-                      {selectedHabit?.habitName}
+                      {selectedMedication?.medicineName}
                     </Text>
                     <Text
-                      style={[styles.detailType, { color: colors.textSecondary }]}
+                      style={[
+                        styles.detailDosage,
+                        { color: colors.textSecondary },
+                      ]}
                     >
-                      {selectedHabit && getHabitTypeLabel(selectedHabit.habitType)}
+                      {selectedMedication?.dosage} •{" "}
+                      {selectedMedication?.medicineType}
                     </Text>
                   </View>
                 </View>
@@ -409,12 +477,12 @@ export default function HabitsScreen() {
                     ]}
                   >
                     <Ionicons
-                      name="at-outline"
+                      name="time-outline"
                       size={20}
                       color={colors.primary}
                     />
                     <Text style={[styles.statText, { color: colors.text }]}>
-                      {selectedHabit?.target.value} {selectedHabit?.target.unit}
+                      {selectedMedication?.frequency.times.length}x daily
                     </Text>
                   </View>
                   <View
@@ -424,37 +492,21 @@ export default function HabitsScreen() {
                     ]}
                   >
                     <Ionicons
-                      name="flame-outline"
+                      name="medical-outline"
                       size={20}
                       color={colors.primary}
                     />
                     <Text style={[styles.statText, { color: colors.text }]}>
-                      {selectedHabit?.streak} streak
+                      {selectedMedication?.stockQuantity} left
                     </Text>
                   </View>
                 </View>
               </View>
 
-              {/* Target Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.card }]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons
-                    name="at-outline"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Target
-                  </Text>
-                </View>
-                <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
-                  {selectedHabit?.target.value} {selectedHabit?.target.unit} per{" "}
-                  {selectedHabit?.target.frequency}
-                </Text>
-              </View>
-
               {/* Schedule Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.card }]}>
+              <View
+                style={[styles.detailSection, { backgroundColor: colors.card }]}
+              >
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="time-outline"
@@ -465,46 +517,169 @@ export default function HabitsScreen() {
                     Schedule
                   </Text>
                 </View>
-                <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
-                  {selectedHabit?.reminderTimes.join(", ")}
-                </Text>
+                <View>
+                  <Text style={[styles.scheduleText, { color: colors.text }]}>
+                    {selectedMedication?.frequency.times.join(", ")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.frequencyType,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {selectedMedication?.frequency.type
+                      .replace("_", " ")
+                      .toUpperCase()}
+                  </Text>
+                </View>
               </View>
 
-              {/* Progress Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.card }]}>
+              {/* Instructions Section */}
+              {selectedMedication?.instructions && (
+                <View
+                  style={[
+                    styles.detailSection,
+                    { backgroundColor: colors.card },
+                  ]}
+                >
+                  <View style={styles.sectionHeader}>
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      Instructions
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.sectionContent,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {selectedMedication.instructions}
+                  </Text>
+                </View>
+              )}
+
+              {/* Duration Section */}
+              <View
+                style={[styles.detailSection, { backgroundColor: colors.card }]}
+              >
                 <View style={styles.sectionHeader}>
                   <Ionicons
-                    name="stats-chart-outline"
+                    name="calendar-outline"
                     size={20}
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Progress
+                    Duration
                   </Text>
                 </View>
-                <View style={styles.progressContent}>
-                  <View style={styles.progressItem}>
+                <View style={styles.durationContent}>
+                  <View style={styles.durationItem}>
                     <Text
-                      style={[styles.progressLabel, { color: colors.textSecondary }]}
+                      style={[
+                        styles.durationLabel,
+                        { color: colors.textSecondary },
+                      ]}
                     >
-                      Current Streak
+                      Started
                     </Text>
-                    <Text style={[styles.progressValue, { color: colors.text }]}>
-                      {selectedHabit?.streak} days
+                    <Text
+                      style={[styles.durationValue, { color: colors.text }]}
+                    >
+                      {formatDate(selectedMedication?.duration.startDate)}
                     </Text>
                   </View>
-                  <View style={styles.progressItem}>
-                    <Text
-                      style={[styles.progressLabel, { color: colors.textSecondary }]}
-                    >
-                      Best Streak
+                  {selectedMedication?.duration.endDate && (
+                    <View style={styles.durationItem}>
+                      <Text
+                        style={[
+                          styles.durationLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Ends
+                      </Text>
+                      <Text
+                        style={[styles.durationValue, { color: colors.text }]}
+                      >
+                        {formatDate(selectedMedication.duration.endDate)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Stock Section */}
+              <View
+                style={[styles.detailSection, { backgroundColor: colors.card }]}
+              >
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="storefront-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Stock
+                  </Text>
+                </View>
+                <View style={styles.stockContent}>
+                  <View style={styles.stockInfo}>
+                    <Text style={[styles.stockAmount, { color: colors.text }]}>
+                      {selectedMedication?.stockQuantity}
                     </Text>
-                    <Text style={[styles.progressValue, { color: colors.text }]}>
-                      {selectedHabit?.bestStreak} days
+                    <Text
+                      style={[
+                        styles.stockLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      remaining
+                    </Text>
+                  </View>
+                  <View
+                    style={[styles.stockAlert, { backgroundColor: "#FEF3C7" }]}
+                  >
+                    <Ionicons name="alert-outline" size={16} color="#D97706" />
+                    <Text style={[styles.stockAlertText, { color: "#92400E" }]}>
+                      Alert at {selectedMedication?.stockAlert}
                     </Text>
                   </View>
                 </View>
               </View>
+
+              {/* Notes Section */}
+              {selectedMedication?.notes && (
+                <View
+                  style={[
+                    styles.detailSection,
+                    { backgroundColor: colors.card },
+                  ]}
+                >
+                  <View style={styles.sectionHeader}>
+                    <Ionicons
+                      name="create-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      Notes
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.sectionContent,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {selectedMedication.notes}
+                  </Text>
+                </View>
+              )}
             </ScrollView>
           </>
         )}
@@ -543,13 +718,17 @@ export default function HabitsScreen() {
 
             <View style={styles.headerContent}>
               <Text style={[styles.greeting, { color: colors.primary }]}>
-                My Habits
+                My Medications
               </Text>
               <View
-                style={[styles.totalHabitsBadge, { backgroundColor: "#4ECDC4" }]}
+                style={[
+                  styles.totalMedicationsBadge,
+                  { backgroundColor: "#84CC16" },
+                ]}
               >
-                <Text style={styles.totalHabitsText}>
-                  {habits.length} Total Habit{habits.length !== 1 ? "s" : ""}
+                <Text style={styles.totalMedicationsText}>
+                  {medicines.length} Total Medication
+                  {medicines.length !== 1 ? "s" : ""}
                 </Text>
               </View>
             </View>
@@ -565,15 +744,15 @@ export default function HabitsScreen() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
           >
-            {filteredHabits.length === 0 ? (
+            {filteredMedicines.length === 0 ? (
               <View style={styles.emptyStateContainer}>
                 <Ionicons
-                  name="sparkles-outline"
+                  name="medical-outline"
                   size={80}
                   color={colors.textSecondary}
                 />
                 <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                  No Habits Yet!
+                  No Medications!
                 </Text>
                 <Text
                   style={[
@@ -581,26 +760,28 @@ export default function HabitsScreen() {
                     { color: colors.textSecondary },
                   ]}
                 >
-                  You have {filteredHabits.length} habits setup. Kindly setup a
+                  You have {filteredMedicines.length} medications setup. Kindly setup a
                   new one!
                 </Text>
                 <TouchableOpacity
                   style={[
-                    styles.addHabitButton,
+                    styles.addMedicationButton,
                     { backgroundColor: colors.primary },
                   ]}
-                  onPress={() => router.push("/habits/category")}
+                  onPress={() => router.push("/medicine/add")}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
-                  <Text style={styles.addHabitButtonText}>Add Habit</Text>
+                  <Text style={styles.addMedicationButtonText}>
+                    Add Medication
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.habitsContainer}>
+              <View style={styles.medicationsContainer}>
                 <FlatList
-                  data={filteredHabits}
-                  renderItem={renderHabitCard}
-                  keyExtractor={(item) => item.habitId}
+                  data={filteredMedicines}
+                  renderItem={renderMedicationCard}
+                  keyExtractor={(item) => item.reminderId}
                   showsVerticalScrollIndicator={false}
                   scrollEnabled={false}
                 />
@@ -611,10 +792,23 @@ export default function HabitsScreen() {
       </View>
 
       {/* Floating Action Button */}
-      {filteredHabits.length > 0 && (
+      {filteredMedicines.length > 0 && (
         <TouchableOpacity
-          style={[styles.floatingActionButton, { backgroundColor: "#4ECDC4" }]}
-          onPress={() => router.push("/habits/category")}
+          style={[styles.floatingActionButton, { backgroundColor: "#84CC16" }]}
+          onPress={() => {
+            console.log("FAB pressed - navigating to add screen");
+            console.log("Current medicines count:", filteredMedicines.length);
+            console.log("Router object:", router);
+            try {
+              const result = router.push("/medicine/add");
+              console.log("Navigation result:", result);
+            } catch (error) {
+              console.error("Navigation error:", error);
+              // Fallback: try alternative navigation
+              console.log("Trying fallback navigation...");
+              router.replace("/medicine/add");
+            }
+          }}
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={28} color="#FFFFFF" />
@@ -635,7 +829,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
     paddingBottom: 20,
-    minHeight: 88,
+    minHeight: 88, // Height to center greeting vertically
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -678,20 +872,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 8,
   },
-  totalHabitsBadge: {
+  totalMedicationsBadge: {
     alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
-  totalHabitsText: {
+  totalMedicationsText: {
     fontSize: 12,
     fontWeight: "600",
     color: "#FFFFFF",
   },
   floatingActionButton: {
     position: "absolute",
-    bottom: 100,
+    bottom: 100, // Increased from 24 to avoid tab overlap
     right: 24,
     width: 60,
     height: 60,
@@ -717,13 +911,14 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  habitsContainer: {
+  medicationsContainer: {
     paddingTop: 20,
     marginHorizontal: 20,
   },
-  habitCard: {
+  medicationCard: {
     borderRadius: 12,
     marginBottom: 0,
+
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -746,7 +941,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginRight: 12,
   },
-  habitInfo: {
+  medicationInfo: {
     flex: 1,
   },
   headerRow: {
@@ -755,7 +950,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
-  habitName: {
+  medicationName: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 4,
@@ -768,36 +963,46 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  habitType: {
+  dosage: {
     fontSize: 14,
     marginBottom: 8,
   },
-  targetRow: {
+  timeRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
     gap: 8,
   },
-  target: {
+  time: {
     fontSize: 12,
   },
-  times: {
+  nextDose: {
     fontSize: 12,
+    fontWeight: "600",
     marginLeft: "auto",
   },
-  streakRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  progressRow: {
     marginTop: 8,
   },
-  streakContainer: {
+  progressContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 8,
   },
-  streakText: {
+  progressBar: {
+    flex: 1,
+    height: 6,
+    backgroundColor: "#E5E5E7",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  progressText: {
     fontSize: 12,
-    fontWeight: "500",
+    minWidth: 50,
   },
   emptyStateContainer: {
     alignItems: "center",
@@ -817,7 +1022,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 32,
   },
-  addHabitButton: {
+  addMedicationButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -837,7 +1042,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  addHabitButtonText: {
+  addMedicationButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
@@ -870,7 +1075,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 4,
   },
-  detailType: {
+  detailDosage: {
     fontSize: 16,
   },
   detailSection: {
@@ -887,6 +1092,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
   },
+  // New modal styles
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -914,10 +1120,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
-  habitHeader: {
+  medicineHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 20,
+  },
+  medicineInfo: {
+    flex: 1,
+    marginLeft: 16,
   },
   quickStats: {
     flexDirection: "row",
@@ -944,20 +1154,57 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 10,
   },
-  progressContent: {
+  scheduleText: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  frequencyType: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  durationContent: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  progressItem: {
+  durationItem: {
     alignItems: "center",
   },
-  progressLabel: {
+  durationLabel: {
     fontSize: 14,
     marginBottom: 4,
   },
-  progressValue: {
+  durationValue: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  stockContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  stockInfo: {
+    alignItems: "center",
+  },
+  stockAmount: {
+    fontSize: 32,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  stockLabel: {
+    fontSize: 14,
+  },
+  stockAlert: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  stockAlertText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
   deleteContainer: {
     width: 100,
@@ -975,15 +1222,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 16,
   },
-  deleteButtonDisabled: {
-    backgroundColor: "#999999",
-    opacity: 0.7,
-  },
-  deleteLoadingContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-  },
   deleteIconContainer: {
     width: 40,
     height: 40,
@@ -999,6 +1237,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.5,
     textTransform: "uppercase",
+  },
+  deleteButtonDisabled: {
+    backgroundColor: "#999999",
+    opacity: 0.7,
+  },
+  deleteLoadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
   },
   cardWrapper: {
     marginBottom: 12,

@@ -52,7 +52,7 @@ export const useAuthNavigation = () => {
         console.log('🔍 [DEBUG] AuthNavigation - user.profile:', user.profile);
         if (needsOnboardingResult) {
           console.log('🔍 [DEBUG] AuthNavigation - Navigating to onboarding');
-          router.replace('/screens/auth/OnboardingScreen');
+          router.replace('/(auth)/onboarding');
         } else {
           console.log('🔍 [DEBUG] AuthNavigation - User complete, no navigation needed');
         }
