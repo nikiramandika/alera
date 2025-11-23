@@ -126,9 +126,9 @@ export default function HabitCategoryScreen() {
   ];
 
   const handleCategorySelect = (category: typeof habitCategories[0]) => {
-    // Navigate to manage screen with pre-filled data
+    // Navigate to create-step1 screen with pre-filled data
     router.push({
-      pathname: '/habits/manage',
+      pathname: '/habits/create-step1',
       params: {
         template: JSON.stringify(category.defaults)
       }
@@ -136,8 +136,8 @@ export default function HabitCategoryScreen() {
   };
 
   const handleCustomHabit = () => {
-    // Navigate to manage screen without template (empty form)
-    router.push('/habits/manage');
+    // Navigate to create-step1 screen without template (empty form)
+    router.push('/habits/create-step1');
   };
 
   const renderCategoryCard = (category: typeof habitCategories[0]) => (

@@ -270,9 +270,14 @@ export default function HabitsScreen() {
 
             <View style={styles.habitInfo}>
               <View style={styles.headerRow}>
-                <Text style={[styles.habitName, { color: colors.text }]}>
-                  {item.habitName}
-                </Text>
+                <View style={styles.habitTitleRow}>
+                  {item.icon && (
+                    <Text style={styles.habitIcon}>{item.icon}</Text>
+                  )}
+                  <Text style={[styles.habitName, { color: colors.text }]}>
+                    {item.habitName}
+                  </Text>
+                </View>
                 <TouchableOpacity
                   style={[
                     styles.checkButton,
@@ -387,7 +392,11 @@ export default function HabitsScreen() {
                       styles.colorIndicatorLarge,
                       { backgroundColor: selectedHabit?.color || "#4ECDC4" },
                     ]}
-                  />
+                  >
+                    {selectedHabit?.icon && (
+                      <Text style={styles.detailIconInCircle}>{selectedHabit.icon}</Text>
+                    )}
+                  </View>
                   <View style={styles.habitInfo}>
                     <Text style={[styles.detailName, { color: colors.text }]}>
                       {selectedHabit?.habitName}
@@ -755,10 +764,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
+  habitTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  habitIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
   habitName: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 4,
+    flex: 1,
   },
   checkButton: {
     width: 32,
@@ -864,11 +883,17 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     marginBottom: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  detailIconInCircle: {
+    fontSize: 36,
   },
   detailName: {
     fontSize: 24,
     fontWeight: "700",
     marginBottom: 4,
+    flex: 1,
   },
   detailType: {
     fontSize: 16,

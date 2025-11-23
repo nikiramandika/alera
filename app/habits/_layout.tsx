@@ -14,6 +14,24 @@ export default function HabitsLayout() {
         }}
       />
       <Stack.Screen
+        name="create-step1"
+        options={{
+          headerLargeTitle: true,
+          headerTransparent: true,
+          title: "Create Habit - Step 1",
+          headerBackButtonDisplayMode: "minimal"
+        }}
+      />
+      <Stack.Screen
+        name="create-step2"
+        options={{
+          headerLargeTitle: true,
+          headerTransparent: true,
+          title: "Create Habit - Step 2",
+          headerBackButtonDisplayMode: "minimal"
+        }}
+      />
+      <Stack.Screen
         name="manage"
         options={{
           headerLargeTitle: true,

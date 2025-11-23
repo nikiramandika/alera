@@ -270,7 +270,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
 
     // Navigate to add screen with edit data
     router.push({
-      pathname: "/medicine/add",
+      pathname: "/medicine/add-step1",
       params: {
         editMode: "true",
         medicineId: selectedMedication.reminderId,
@@ -768,7 +768,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                     styles.addMedicationButton,
                     { backgroundColor: colors.primary },
                   ]}
-                  onPress={() => router.push("/medicine/add")}
+                  onPress={() => router.push("/medicine/add-step1")}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
                   <Text style={styles.addMedicationButtonText}>
@@ -806,7 +806,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
               console.error("Navigation error:", error);
               // Fallback: try alternative navigation
               console.log("Trying fallback navigation...");
-              router.replace("/medicine/add");
+              router.replace("/medicine/add-step1");
             }
           }}
           activeOpacity={0.8}
