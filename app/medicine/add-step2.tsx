@@ -26,6 +26,8 @@ interface Step1Data {
   instructions?: string;
   stockQuantity?: number;
   stockAlert?: number;
+  editMode?: boolean;
+  medicineId?: string;
 }
 
 interface FrequencyOption {
@@ -62,14 +64,22 @@ export default function AddMedicineStep2Screen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { addMedicine } = useMedicine();
+  const { addMedicine, updateMedicine } = useMedicine();
   const { user } = useAuth();
   const params = useLocalSearchParams();
 
   // Parse step1 data
   const step1Data = params.step1Data ? JSON.parse(params.step1Data as string) as Step1Data : {};
 
-  const [activeFrequencyTab, setActiveFrequencyTab] = useState('daily');
+  // Check if edit mode
+  const editMode = step1Data.editMode || false;
+  const medicineId = step1Data.medicineId || '';
+
+  const [activeFrequencyTab, setActiveFrequencyTab] = useState(
+    editMode && step1Data.frequency?.type ?
+      (step1Data.frequency.type === 'specific_days' ? 'weekly' :
+       step1Data.frequency.type === 'as_needed' ? 'as-needed' : 'daily') : 'daily'
+  );
   const [loading, setLoading] = useState(false);
 
   const [medicineData, setMedicineData] = useState({
@@ -80,10 +90,10 @@ export default function AddMedicineStep2Screen() {
 
     // Frequency settings
     frequency: 'daily',
-    selectedDays: [0, 1, 2, 3, 4, 5, 6], // All days by default
+    selectedDays: step1Data.frequency?.specificDays || [0, 1, 2, 3, 4, 5, 6], // Use edit data or all days by default
 
     // Reminder settings
-    reminderTimes: ['08:00'],
+    reminderTimes: step1Data.frequency?.times || ['08:00'],
 
     // Stock settings
     stockQuantity: step1Data.stockQuantity || 30,
@@ -93,8 +103,7 @@ export default function AddMedicineStep2Screen() {
   const handleSaveMedicine = async () => {
     setLoading(true);
     try {
-      const newMedicine = {
-        userId: user?.userId || '',
+      const medicinePayload = {
         medicineName: medicineData.medicineName,
         dosage: medicineData.dosage,
         medicineType: medicineData.medicineType,
@@ -123,12 +132,23 @@ export default function AddMedicineStep2Screen() {
         icon: '💊',
       };
 
-      const result = await addMedicine(newMedicine);
+      let result;
+      if (editMode && medicineId) {
+        // Update existing medicine
+        result = await updateMedicine(medicineId, medicinePayload);
+      } else {
+        // Add new medicine
+        const newMedicine = {
+          userId: user?.userId || '',
+          ...medicinePayload,
+        };
+        result = await addMedicine(newMedicine);
+      }
 
       if (result.success) {
         router.replace('/(tabs)/medicine');
       } else {
-        Alert.alert('Error', result.error || 'Failed to add medicine');
+        Alert.alert('Error', result.error || `Failed to ${editMode ? 'update' : 'add'} medicine`);
       }
     } catch {
       Alert.alert('Error', 'An unexpected error occurred');
@@ -224,7 +244,7 @@ export default function AddMedicineStep2Screen() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Add Medicine
+          {editMode ? 'Edit Medicine' : 'Add Medicine'}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -429,10 +449,10 @@ export default function AddMedicineStep2Screen() {
           activeOpacity={0.8}
         >
           {loading ? (
-            <Text style={styles.saveButtonText}>Adding...</Text>
+            <Text style={styles.saveButtonText}>{editMode ? 'Updating...' : 'Adding...'}</Text>
           ) : (
             <>
-              <Text style={styles.saveButtonText}>Add Medicine</Text>
+              <Text style={styles.saveButtonText}>{editMode ? 'Update Medicine' : 'Add Medicine'}</Text>
               <Ionicons name="checkmark" size={20} color="#FFFFFF" />
             </>
           )}

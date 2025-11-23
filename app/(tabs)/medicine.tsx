@@ -269,12 +269,22 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
     setShowDetailModal(false);
 
     // Navigate to add screen with edit data
+    console.log("Sending edit data:", selectedMedication);
     router.push({
       pathname: "/medicine/add-step1",
       params: {
         editMode: "true",
         medicineId: selectedMedication.reminderId,
-        medicineData: JSON.stringify(selectedMedication),
+        medicineData: JSON.stringify({
+          medicineName: selectedMedication.medicineName,
+          dosage: selectedMedication.dosage,
+          medicineType: selectedMedication.medicineType,
+          instructions: selectedMedication.instructions,
+          stockQuantity: selectedMedication.stockQuantity,
+          stockAlert: selectedMedication.stockAlert,
+          frequency: selectedMedication.frequency,
+          reminderId: selectedMedication.reminderId,
+        }),
       },
     });
   };
@@ -797,17 +807,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
           style={[styles.floatingActionButton, { backgroundColor: "#84CC16" }]}
           onPress={() => {
             console.log("FAB pressed - navigating to add screen");
-            console.log("Current medicines count:", filteredMedicines.length);
-            console.log("Router object:", router);
-            try {
-              const result = router.push("/medicine/add");
-              console.log("Navigation result:", result);
-            } catch (error) {
-              console.error("Navigation error:", error);
-              // Fallback: try alternative navigation
-              console.log("Trying fallback navigation...");
-              router.replace("/medicine/add-step1");
-            }
+            router.push("/medicine/add-step1");
           }}
           activeOpacity={0.8}
         >

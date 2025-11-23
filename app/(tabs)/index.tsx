@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -22,6 +22,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { useHabit } from '@/contexts/HabitContext';
+import { useMedicine } from '@/contexts/MedicineContext';
 
 interface Task {
   id: string;
@@ -31,16 +33,22 @@ interface Task {
   completed: boolean;
   icon: string;
   color: string;
+  type: 'habit' | 'medicine';
 }
 
 export default function HomeScreen() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  // Initialize with current date (no timezone offset for date comparison)
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  // Import contexts for real data
+  const { habits } = useHabit();
+  const { medicines } = useMedicine();
 
   // Animation values
   const headerScale = useSharedValue(0.9);
@@ -58,6 +66,7 @@ export default function HomeScreen() {
     }));
   }, [headerScale, cardTranslateY]);
 
+  
   // Header animation
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: headerScale.value }]
@@ -68,154 +77,285 @@ export default function HomeScreen() {
     transform: [{ translateY: cardTranslateY.value }]
   }));
 
-  // Sample tasks data
+// Generate tasks from real data - defined outside useMemo to avoid dependency issues
+const generateTasksFromData = React.useCallback(() => {
+  // Helper function to convert time string to Indonesia time for comparison
+  const getIndonesiaTime = (date: Date = new Date()) => {
+    // Get current UTC time
+    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+    // Convert to WIB (UTC+7)
+    const indonesiaTime = new Date(utcTime + (7 * 60 * 60 * 1000));
+    return indonesiaTime;
+  };
+
+  // Helper function to convert date to string format YYYY-MM-DD
+  const dateToString = (date: any): string | null => {
+    if (!date) return null;
+    
+    let d: Date;
+    
+    try {
+      // Handle Firestore Timestamp format
+      if (date && typeof date === 'object' && 'seconds' in date && 'nanoseconds' in date) {
+        // Convert Firestore timestamp to Date
+        d = new Date(date.seconds * 1000 + Math.floor(date.nanoseconds / 1000000));
+      } else if (typeof date === 'string') {
+        d = new Date(date);
+      } else if (date instanceof Date) {
+        d = date;
+      } else {
+        console.warn('Unknown date type:', typeof date, date);
+        return null;
+      }
+      
+      // Check if date is valid
+      if (!(d instanceof Date) || isNaN(d.getTime())) {
+        console.error('Invalid date:', date);
+        return null;
+      }
+      
+      return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+    } catch (e) {
+      console.error('Error parsing date:', date, e);
+      return null;
+    }
+  };
+
+  // Initialize tasks object first
   const tasks: {
     overdue: Task[];
     allDay: Task[];
     timeBased: { [time: string]: Task[] };
   } = {
-    overdue: [
-      {
-        id: 'vitamin-d',
-        title: 'niki ganteng',
-        subtitle: '1 tablet • Daily reminder',
-        time: 'All Day',
-        completed: false,
-        icon: 'medical-outline',
-        color: '#84CC16'
-      },
-      {
-        id: 'morning-meds',
-        title: 'Morning Medication',
-        subtitle: '2 tablets • Should have been taken',
-        time: '8:00 AM',
-        completed: false,
-        icon: 'medical-outline',
-        color: '#F43F5E'
-      }
-    ],
-    allDay: [
-      {
-        id: 'vitamin-d',
-        title: 'Vitamin D Supplement',
-        subtitle: '1 tablet • Daily reminder',
-        time: 'All Day',
-        completed: false,
-        icon: 'medical-outline',
-        color: '#84CC16'
-      },
-      {
-        id: 'drink-water',
-        title: 'Drink Water',
-        subtitle: '8 glasses • Daily goal',
-        time: 'All Day',
-        completed: true,
-        icon: 'water-outline',
-        color: '#84CC16'
-      }
-    ],
-    timeBased: {
-      '6:00 AM': [
-        {
-          id: 'morning-walk',
-          title: 'Morning Walk',
-          subtitle: '30 minutes',
-          time: '6:00 AM',
-          completed: true,
-          icon: 'walk-outline',
-          color: '#84CC16'
-        }
-      ],
-      '8:00 AM': [
-        {
-          id: 'morning-meds',
-          title: 'Morning Medication',
-          subtitle: '2 tablets',
-          time: '8:00 AM',
-          completed: true,
-          icon: 'medical-outline',
-          color: '#84CC16'
-        }
-      ],
-      '9:00 AM': [
-        {
-          id: 'exercise',
-          title: 'Exercise',
-          subtitle: '30 minutes workout',
-          time: '9:00 AM',
-          completed: false,
-          icon: 'fitness-outline',
-          color: '#84CC16'
-        }
-      ],
-      '12:00 PM': [
-        {
-          id: 'lunch-meds',
-          title: 'Lunch Medication',
-          subtitle: '1 tablet with food',
-          time: '12:00 PM',
-          completed: false,
-          icon: 'medical-outline',
-          color: '#84CC16'
-        }
-      ],
-      '2:00 PM': [
-        {
-          id: 'afternoon-meds',
-          title: 'Afternoon Medication',
-          subtitle: '1 tablet',
-          time: '2:00 PM',
-          completed: false,
-          icon: 'medical-outline',
-          color: '#84CC16'
-        }
-      ],
-      '6:00 PM': [
-        {
-          id: 'reading-time',
-          title: 'Reading Time',
-          subtitle: '30 minutes',
-          time: '6:00 PM',
-          completed: false,
-          icon: 'book-outline',
-          color: '#84CC16'
-        }
-      ],
-      '8:00 PM': [
-        {
-          id: 'evening-meds',
-          title: 'Evening Medication',
-          subtitle: '2 tablets',
-          time: '8:00 PM',
-          completed: false,
-          icon: 'medical-outline',
-          color: '#84CC16'
-        }
-      ],
-      '9:00 PM': [
-        {
-          id: 'wind-down',
-          title: 'Wind Down Routine',
-          subtitle: 'Meditation & sleep prep',
-          time: '9:00 PM',
-          completed: false,
-          icon: 'bed-outline',
-          color: '#84CC16'
-        }
-      ],
-      '10:00 AM': [
-        {
-          id: 'check-emails',
-          title: 'Check Emails',
-          subtitle: 'Important messages only',
-          time: '10:00 AM',
-          completed: false,
-          icon: 'mail-outline',
-          color: '#84CC16'
-        }
-      ]
-    }
+    overdue: [],
+    allDay: [],
+    timeBased: {}
   };
+
+  // Use selected date (clean to midnight) but keep the date for comparison
+  const selectedDateClean = new Date(selectedDate);
+  selectedDateClean.setHours(0, 0, 0, 0);
+  // Format date consistently (YYYY-MM-DD)
+  const selectedDateStr = dateToString(selectedDateClean);
+  
+  // Guard: if selectedDateStr is null, something went wrong
+  if (!selectedDateStr) {
+    console.error('Failed to parse selected date');
+    return tasks;
+  }
+
+  // Get current time in Indonesia timezone
+  const now = getIndonesiaTime();
+  const todayStr = dateToString(now);
+  
+  // Guard: if todayStr is null, something went wrong
+  if (!todayStr) {
+    console.error('Failed to parse today date');
+    return tasks;
+  }
+  
+  const isToday = selectedDateStr === todayStr;
+
+  console.log('DEBUG: Total habits:', habits.length);
+  console.log('DEBUG: Total medicines:', medicines.length);
+  console.log('DEBUG: Selected date:', selectedDateStr);
+
+  // Process habits
+  habits.forEach((habit: any) => {
+    // Check if habit has started on or before selected date
+    const habitStartDate = dateToString(habit.startDate);
+    const hasStarted = !habitStartDate || habitStartDate <= selectedDateStr;
+
+    console.log(`DEBUG Habit: ${habit.habitName}, StartDate: ${habitStartDate}, Selected: ${selectedDateStr}, HasStarted: ${hasStarted}`);
+
+    if (!hasStarted) {
+      console.log(`SKIP Habit ${habit.habitName}: Belum dimulai`);
+      return; // Skip if habit hasn't started yet
+    }
+
+    const habitTask: Task = {
+      id: `habit-${habit.habitId}`,
+      title: habit.habitName,
+      subtitle: `${habit.target.value} ${habit.target.unit} • ${habit.target.frequency}`,
+      time: 'All Day',
+      completed: habit.completedDates?.includes(selectedDateStr) || false,
+      icon: habit.icon || '🎯',
+      color: habit.color || '#84CC16',
+      type: 'habit',
+    };
+
+    // Check if habit is active for selected date
+    const selectedDayOfWeek = selectedDateClean.getDay();
+    const isActiveOnSelectedDate = habit.reminderDays?.includes(selectedDayOfWeek) || false;
+
+    // Temporarily disable date checks to debug
+    const habitIsActive = habit.isActive !== undefined ? habit.isActive : true;
+
+    console.log('DEBUG Habit Details:', {
+      name: habit.habitName,
+      isActiveOnSelectedDate,
+      habitIsActive,
+      selectedDate: selectedDateStr,
+      reminderDays: habit.reminderDays,
+      selectedDayOfWeek
+    });
+
+    if (isActiveOnSelectedDate && habitIsActive) {
+      if (habit.reminderTimes && habit.reminderTimes.length > 0) {
+        // Time-based habit
+        habit.reminderTimes.forEach((time: string) => {
+          // Check if overdue (only if selected date is today and time has passed)
+          const [hours, minutes] = time.split(':').map(Number);
+
+          // Create reminder time for comparison in Indonesia timezone
+          const reminderTime = new Date(selectedDateClean);
+          reminderTime.setHours(hours, minutes, 0, 0);
+          const indonesiaReminderTime = getIndonesiaTime(reminderTime);
+
+          // Check if habit is already completed on selected date
+          // Future dates should NOT be marked as completed
+          const isFutureDate = selectedDateStr > todayStr;
+          const isCompletedOnSelectedDate = !isFutureDate && (habit.completedDates?.includes(selectedDateStr) || false);
+
+          // Only check overdue if it's today AND not completed AND time has passed in WIB
+          const isOverdue = isToday && !isCompletedOnSelectedDate && indonesiaReminderTime < now;
+
+          if (isOverdue && !tasks.overdue.some((t: any) => t.id === habitTask.id)) {
+            // Add to overdue with completed=false (because it's not completed)
+            tasks.overdue.push({
+              ...habitTask,
+              time: time,
+              completed: false
+            });
+          } else if (!isOverdue) {
+            // Add to time-based with actual completion status
+            if (!tasks.timeBased[time]) {
+              tasks.timeBased[time] = [];
+            }
+            tasks.timeBased[time].push({
+              ...habitTask,
+              time: time,
+              completed: isCompletedOnSelectedDate
+            });
+          }
+        });
+      } else {
+        // All-day habit with correct completion status
+        const isFutureDate = selectedDateStr > todayStr;
+        const isCompletedOnSelectedDate = !isFutureDate && (habit.completedDates?.includes(selectedDateStr) || false);
+
+        tasks.allDay.push({
+          ...habitTask,
+          completed: isCompletedOnSelectedDate
+        });
+      }
+    }
+  });
+
+  // Process medicines
+  medicines.forEach((medicine: any) => {
+    // Check if medicine has started on or before selected date
+    const medicineStartDate = dateToString(medicine.startDate);
+    const hasStarted = !medicineStartDate || medicineStartDate <= selectedDateStr;
+
+    console.log(`DEBUG Medicine: ${medicine.medicineName}, StartDate: ${medicineStartDate}, Selected: ${selectedDateStr}, HasStarted: ${hasStarted}`);
+
+    if (!hasStarted) {
+      console.log(`SKIP Medicine ${medicine.medicineName}: Belum dimulai`);
+      return; // Skip if medicine hasn't started yet
+    }
+
+    const medicineTask: Task = {
+      id: `medicine-${medicine.reminderId}`,
+      title: medicine.medicineName,
+      subtitle: `${medicine.dosage} • ${medicine.medicineType}`,
+      time: medicine.frequency.times?.[0] || 'All Day',
+      completed: false, // Will be updated based on history
+      icon: '💊',
+      color: medicine.color || '#84CC16',
+      type: 'medicine',
+    };
+
+    // Check if medicine is active for selected date
+    let isActiveOnSelectedDate = false;
+
+    if (medicine.frequency.type === 'daily') {
+      isActiveOnSelectedDate = medicine.isActive;
+    } else if (medicine.frequency.type === 'specific_days') {
+      const selectedDayOfWeek = selectedDateClean.getDay();
+      isActiveOnSelectedDate = medicine.isActive &&
+        medicine.frequency.specificDays?.includes(selectedDayOfWeek);
+    } else if (medicine.frequency.type === 'as_needed') {
+      isActiveOnSelectedDate = medicine.isActive; // Show as needed if active
+    }
+
+    // Temporarily disable date checks to debug
+    console.log('DEBUG Medicine Details:', {
+      name: medicine.medicineName,
+      isActiveOnSelectedDate,
+      frequency: medicine.frequency,
+      selectedDate: selectedDateStr
+    });
+
+    if (isActiveOnSelectedDate) {
+      if (medicine.frequency.times && medicine.frequency.times.length > 0) {
+        // Time-based medicine
+        medicine.frequency.times.forEach((time: string) => {
+          // Check if overdue (only if selected date is today and time has passed)
+          const [hours, minutes] = time.split(':').map(Number);
+
+          // Create reminder time for comparison in Indonesia timezone
+          const reminderTime = new Date(selectedDateClean);
+          reminderTime.setHours(hours, minutes, 0, 0);
+          const indonesiaReminderTime = getIndonesiaTime(reminderTime);
+
+          // For medicines, we don't have completion status like habits, so we check differently
+          // Medicine is considered "taken" only if it has a history entry for that time
+          // Future dates should NOT be marked as taken
+          const isFutureDate = selectedDateStr > todayStr;
+          const isTakenOnSelectedDate = isFutureDate ? false : false; // TODO: Check from medicine history
+
+          // Only check overdue if it's today AND not taken AND time has passed in WIB
+          const isOverdue = isToday && !isTakenOnSelectedDate && indonesiaReminderTime < now;
+
+          if (isOverdue && !tasks.overdue.some((t: any) => t.id === medicineTask.id)) {
+            // Add to overdue with completed=false (not taken)
+            tasks.overdue.push({
+              ...medicineTask,
+              time: time,
+              completed: false
+            });
+          } else if (!isOverdue) {
+            // Add to time-based with actual completion status
+            if (!tasks.timeBased[time]) {
+              tasks.timeBased[time] = [];
+            }
+            tasks.timeBased[time].push({
+              ...medicineTask,
+              time: time,
+              completed: isTakenOnSelectedDate
+            });
+          }
+        });
+      } else {
+        // All-day medicine or as-needed with correct completion status
+        const isFutureDate = selectedDateStr > todayStr;
+        const isTakenOnSelectedDate = isFutureDate ? false : false; // TODO: Check from medicine history
+
+        tasks.allDay.push({
+          ...medicineTask,
+          completed: isTakenOnSelectedDate
+        });
+      }
+    }
+  });
+
+  return tasks;
+}, [selectedDate, habits, medicines]);
+
+  const tasks = useMemo(() => generateTasksFromData(), [generateTasksFromData]);
 
   // Filter tasks based on search query (for search modal only)
   const filteredTasks = {
@@ -264,17 +404,33 @@ export default function HomeScreen() {
     setCalendarMonth(new Date(calendarMonth.getFullYear(), month));
   };
 
+  // Get current time in Indonesia timezone for calendar comparison
+  const getIndonesiaTimeForCalendar = (date: Date = new Date()) => {
+    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+    const indonesiaTime = new Date(utcTime + (7 * 60 * 60 * 1000));
+    return indonesiaTime;
+  };
+
   // Generate calendar days (3 days backward + today + 3 days forward)
   const generateCalendarDays = () => {
-    const today = new Date();
+    const todayIndonesia = getIndonesiaTimeForCalendar();
     const days = [];
     const startOffset = -3; // 3 days before today
 
     for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + startOffset + i);
-      const isToday = date.toDateString() === today.toDateString();
-      const isSelected = date.toDateString() === selectedDate.toDateString();
+      const date = new Date(todayIndonesia);
+      date.setDate(todayIndonesia.getDate() + startOffset + i);
+      // Reset to midnight to avoid timezone issues
+      date.setHours(0, 0, 0, 0);
+
+      const todayReset = new Date(todayIndonesia);
+      todayReset.setHours(0, 0, 0, 0);
+
+      const selectedReset = new Date(selectedDate);
+      selectedReset.setHours(0, 0, 0, 0);
+
+      const isToday = date.toDateString() === todayReset.toDateString();
+      const isSelected = date.toDateString() === selectedReset.toDateString();
 
       days.push({
         date: date,
@@ -360,12 +516,23 @@ export default function HomeScreen() {
                         </View>
                         {filteredTasks.overdue.map((task) => (
                           <View key={task.id} style={[styles.searchTaskItem, { backgroundColor: colors.card }]}>
-                            <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
-                              <Ionicons name={task.icon as any} size={16} color={task.color} />
+                            <View style={[styles.searchTaskIconContainer, { backgroundColor: task.color + '20' }]}>
+                              <View style={[styles.searchTaskIcon, { backgroundColor: task.color }]}>
+                                <Text style={styles.searchTaskIconText}>
+                                  {task.type === 'habit' ? task.icon : '💊'}
+                                </Text>
+                              </View>
                             </View>
-                            <View style={styles.taskInfo}>
-                              <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
-                              <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                            <View style={styles.searchTaskInfo}>
+                              <View style={styles.searchTaskTitleRow}>
+                                <Text style={[styles.searchTaskTitle, { color: colors.text }]}>{task.title}</Text>
+                                <View style={[styles.searchTaskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
+                                  <Text style={[styles.searchTaskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
+                                    {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={[styles.searchTaskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
                             </View>
                           </View>
                         ))}
@@ -383,12 +550,23 @@ export default function HomeScreen() {
                         </View>
                         {filteredTasks.allDay.map((task) => (
                           <View key={task.id} style={[styles.searchTaskItem, { backgroundColor: colors.card }]}>
-                            <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
-                              <Ionicons name={task.icon as any} size={16} color={task.color} />
+                            <View style={[styles.searchTaskIconContainer, { backgroundColor: task.color + '20' }]}>
+                              <View style={[styles.searchTaskIcon, { backgroundColor: task.color }]}>
+                                <Text style={styles.searchTaskIconText}>
+                                  {task.type === 'habit' ? task.icon : '💊'}
+                                </Text>
+                              </View>
                             </View>
-                            <View style={styles.taskInfo}>
-                              <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
-                              <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                            <View style={styles.searchTaskInfo}>
+                              <View style={styles.searchTaskTitleRow}>
+                                <Text style={[styles.searchTaskTitle, { color: colors.text }]}>{task.title}</Text>
+                                <View style={[styles.searchTaskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
+                                  <Text style={[styles.searchTaskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
+                                    {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={[styles.searchTaskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
                             </View>
                           </View>
                         ))}
@@ -406,12 +584,23 @@ export default function HomeScreen() {
                         </View>
                         {taskList.map((task) => (
                           <View key={task.id} style={[styles.searchTaskItem, { backgroundColor: colors.card }]}>
-                            <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
-                              <Ionicons name={task.icon as any} size={16} color={task.color} />
+                            <View style={[styles.searchTaskIconContainer, { backgroundColor: task.color + '20' }]}>
+                              <View style={[styles.searchTaskIcon, { backgroundColor: task.color }]}>
+                                <Text style={styles.searchTaskIconText}>
+                                  {task.type === 'habit' ? task.icon : '💊'}
+                                </Text>
+                              </View>
                             </View>
-                            <View style={styles.taskInfo}>
-                              <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
-                              <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                            <View style={styles.searchTaskInfo}>
+                              <View style={styles.searchTaskTitleRow}>
+                                <Text style={[styles.searchTaskTitle, { color: colors.text }]}>{task.title}</Text>
+                                <View style={[styles.searchTaskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
+                                  <Text style={[styles.searchTaskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
+                                    {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={[styles.searchTaskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
                             </View>
                           </View>
                         ))}
@@ -531,12 +720,20 @@ export default function HomeScreen() {
               const dayNumber = i - 2; // Adjust for calendar starting position
               const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), dayNumber);
               const isValidDate = dayNumber > 0 && dayNumber <= new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
-              const isToday = isValidDate && date.toDateString() === new Date().toDateString();
               const isSelected = isValidDate && date.toDateString() === selectedDate.toDateString();
 
               if (!isValidDate) {
                 return <View key={i} style={styles.dayCell} />;
               }
+
+              // Check if today in Indonesia timezone
+              const todayIndonesia = getIndonesiaTimeForCalendar();
+              const todayReset = new Date(todayIndonesia);
+              todayReset.setHours(0, 0, 0, 0);
+
+              const dateReset = new Date(date);
+              dateReset.setHours(0, 0, 0, 0);
+              const isTodayIndonesia = dateReset.toDateString() === todayReset.toDateString();
 
               return (
                 <View key={i} style={styles.dayCell}>
@@ -544,7 +741,7 @@ export default function HomeScreen() {
                     style={[
                       styles.dayButton,
                       {
-                        backgroundColor: isSelected ? colors.primary : (isToday ? colors.primary + '20' : 'transparent')
+                        backgroundColor: isSelected ? colors.primary : (isTodayIndonesia ? colors.primary + '20' : 'transparent')
                       }
                     ]}
                     onPress={() => {
@@ -555,7 +752,7 @@ export default function HomeScreen() {
                     <Text style={[
                       styles.dayButtonText,
                       {
-                        color: isSelected ? '#FFFFFF' : (isToday ? colors.primary : colors.text)
+                        color: isSelected ? '#FFFFFF' : (isTodayIndonesia ? colors.primary : colors.text)
                       }
                     ]}>
                       {dayNumber}
@@ -603,7 +800,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
                 <View style={styles.calendarWithDate}>
                   <Text style={[styles.smallDateText, { color: colors.textSecondary }]}>
-                    {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}
+                    {getIndonesiaTimeForCalendar(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}
                   </Text>
                   <TouchableOpacity
                     style={[styles.calendarButton, { backgroundColor: colors.card }]}
@@ -701,11 +898,22 @@ export default function HomeScreen() {
                       }
                     ]}
                   >
-                    <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
-                      <Ionicons name={task.icon as any} size={20} color={task.color} />
+                    <View style={[styles.taskIconContainer, { backgroundColor: task.color + '20' }]}>
+                      <View style={[styles.taskIcon, { backgroundColor: task.color }]}>
+                        <Text style={styles.taskIconText}>
+                          {task.type === 'habit' ? task.icon : '💊'}
+                        </Text>
+                      </View>
                     </View>
                     <View style={styles.taskInfo}>
-                      <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                      <View style={styles.taskTitleRow}>
+                        <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                        <View style={[styles.taskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
+                          <Text style={[styles.taskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
+                            {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                          </Text>
+                        </View>
+                      </View>
                       <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
                     </View>
                     <View style={styles.taskStatus}>
@@ -733,11 +941,22 @@ export default function HomeScreen() {
                     }
                   ]}
                 >
-                  <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
-                    <Ionicons name={task.icon as any} size={20} color={task.color} />
+                  <View style={[styles.taskIconContainer, { backgroundColor: task.color + '20' }]}>
+                    <View style={[styles.taskIcon, { backgroundColor: task.color }]}>
+                      <Text style={styles.taskIconText}>
+                        {task.type === 'habit' ? task.icon : '💊'}
+                      </Text>
+                    </View>
                   </View>
                   <View style={styles.taskInfo}>
-                    <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                    <View style={styles.taskTitleRow}>
+                      <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                      <View style={[styles.taskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
+                        <Text style={[styles.taskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
+                          {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                        </Text>
+                      </View>
+                    </View>
                     <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
                   </View>
                   <View style={styles.taskStatus}>
@@ -769,20 +988,31 @@ export default function HomeScreen() {
                       }
                     ]}
                   >
-                    <View style={[styles.taskIcon, { backgroundColor: task.color + '20' }]}>
-                      <Ionicons name={task.icon as any} size={20} color={task.color} />
+                    <View style={[styles.taskIconContainer, { backgroundColor: task.color + '20' }]}>
+                      <View style={[styles.taskIcon, { backgroundColor: task.color }]}>
+                        <Text style={styles.taskIconText}>
+                          {task.type === 'habit' ? task.icon : '💊'}
+                        </Text>
+                      </View>
                     </View>
                     <View style={styles.taskInfo}>
-                      <Text style={[
-                        styles.taskTitle,
-                        {
-                          color: colors.text,
-                          textDecorationLine: task.completed ? 'line-through' : 'none',
-                          opacity: task.completed ? 0.6 : 1
-                        }
-                      ]}>
-                        {task.title}
-                      </Text>
+                      <View style={styles.taskTitleRow}>
+                        <Text style={[
+                          styles.taskTitle,
+                          {
+                            color: colors.text,
+                            textDecorationLine: task.completed ? 'line-through' : 'none',
+                            opacity: task.completed ? 0.6 : 1
+                          }
+                        ]}>
+                          {task.title}
+                        </Text>
+                        <View style={[styles.taskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
+                          <Text style={[styles.taskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
+                            {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                          </Text>
+                        </View>
+                      </View>
                       <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
                     </View>
                     <View style={styles.taskStatus}>
@@ -1009,21 +1239,48 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#FF5252',
   },
-  taskIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+  taskIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
+  taskIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taskIconText: {
+    fontSize: 18,
+  },
   taskInfo: {
     flex: 1,
+  },
+  taskTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
   taskTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 8,
+  },
+  taskTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  taskTypeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   taskSubtitle: {
     fontSize: 14,
@@ -1124,6 +1381,52 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#F0F0F0',
+  },
+  searchTaskIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  searchTaskIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchTaskIconText: {
+    fontSize: 14,
+  },
+  searchTaskInfo: {
+    flex: 1,
+  },
+  searchTaskTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  searchTaskTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 6,
+  },
+  searchTaskTypeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  searchTaskTypeText: {
+    fontSize: 8,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  searchTaskSubtitle: {
+    fontSize: 12,
   },
   noResultsContainer: {
     alignItems: 'center',

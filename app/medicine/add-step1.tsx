@@ -22,6 +22,8 @@ interface MedicineTemplate {
   instructions?: string;
   stockQuantity?: number;
   stockAlert?: number;
+  reminderId?: string;
+  editMode?: boolean;
 }
 
 export default function AddMedicineStep1Screen() {
@@ -30,14 +32,18 @@ export default function AddMedicineStep1Screen() {
   const colors = Colors[colorScheme ?? 'light'];
   const params = useLocalSearchParams();
 
-  // Get template data from params if exists
-  const templateData = params.template ? JSON.parse(params.template as string) as MedicineTemplate : null;
+  // Check if edit mode
+  const editMode = params.editMode === 'true';
+  const medicineId = params.medicineId as string;
+
+  // Get edit data from params if exists
+  const editData = params.medicineData ? JSON.parse(params.medicineData as string) as MedicineTemplate : null;
 
   const [medicineData, setMedicineData] = useState({
-    medicineName: templateData?.medicineName || '',
-    dosage: templateData?.dosage || '',
-    medicineType: templateData?.medicineType || 'Tablet',
-    instructions: templateData?.instructions || '',
+    medicineName: editData?.medicineName || '',
+    dosage: editData?.dosage || '',
+    medicineType: editData?.medicineType || 'Tablet',
+    instructions: editData?.instructions || '',
   });
 
   const medicineTypes = [
@@ -58,10 +64,13 @@ export default function AddMedicineStep1Screen() {
     // Prepare data for step 2
     const step2Data = {
       ...medicineData,
-      ...(templateData && {
-        stockQuantity: templateData.stockQuantity,
-        stockAlert: templateData.stockAlert,
+      ...(editData && {
+        stockQuantity: editData.stockQuantity,
+        stockAlert: editData.stockAlert,
+        frequency: editData.frequency,
       }),
+      editMode,
+      medicineId,
     };
 
     router.push({
@@ -112,7 +121,7 @@ export default function AddMedicineStep1Screen() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Add Medicine
+          {editMode ? 'Edit Medicine' : 'Add Medicine'}
         </Text>
         <View style={styles.placeholder} />
       </View>
