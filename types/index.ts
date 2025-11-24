@@ -54,6 +54,7 @@ export interface MedicineReminder {
   color: string;
   icon: string;
   notes?: string;
+  notificationIds?: string[]; // Array of notification IDs from expo-notifications
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,6 +95,7 @@ export interface Habit {
   icon: string;
   streak: number;
   bestStreak: number;
+  notificationIds?: string[]; // Array of notification IDs from expo-notifications
   createdAt: Date;
   updatedAt: Date;
   // Additional properties for service compatibility

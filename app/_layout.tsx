@@ -20,9 +20,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <HabitProvider>
-          <MedicineProvider>
-            <NotificationProvider>
+        <NotificationProvider>
+          <HabitProvider>
+            <MedicineProvider>
               <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -33,9 +33,9 @@ export default function RootLayout() {
                   </Stack>
                 <StatusBar style="auto" />
               </ThemeProvider>
-            </NotificationProvider>
-          </MedicineProvider>
-        </HabitProvider>
+            </MedicineProvider>
+          </HabitProvider>
+        </NotificationProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

@@ -2,27 +2,15 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { useAuth } from './AuthContext';
-import {
-  notificationSettingsService,
-  scheduledNotificationsService,
-  notificationTemplates
-} from '@/services';
+import { notificationScheduler } from '@/services/notificationScheduler';
 
 interface NotificationContextType {
   requestPermissions: () => Promise<boolean>;
-  scheduleNotification: (title: string, body: string, trigger: Notifications.NotificationTriggerInput) => Promise<string | null>;
+  scheduleNotification: (title: string, body: string, trigger: any) => Promise<string | null>;
   cancelNotification: (identifier: string) => Promise<void>;
-  getScheduledNotifications: () => Promise<Notifications.NotificationRequest[]>;
-  createMedicationReminder: (medicineName: string, time: string, medicineId: string) => Promise<string | null>;
-  createHabitReminder: (habitName: string, time: string, habitId: string) => Promise<string | null>;
+  cancelNotificationsByIdentifiers: (identifiers: string[]) => Promise<void>;
+  getScheduledNotifications: () => Promise<any[]>;
   showImmediateNotification: (title: string, body: string) => Promise<void>;
-  // Database integration methods
-  getNotificationSettings: () => Promise<any>;
-  updateNotificationSettings: (settings: any) => Promise<{ success: boolean; error?: string }>;
-  saveScheduledNotification: (notification: any) => Promise<string>;
-  getScheduledNotificationsFromDB: () => Promise<any[]>;
-  deleteScheduledNotification: (notificationId: string) => Promise<void>;
-  getNotificationTemplates: () => Promise<any[]>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -42,6 +30,29 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Initialize notifications
   useEffect(() => {
     initializeNotifications();
+  }, []);
+
+  // Start real-time notification scheduler when user is authenticated
+  useEffect(() => {
+    if (user) {
+      console.log('🔔 [SCHEDULER] User authenticated, starting real-time notification checker');
+      notificationScheduler.start();
+
+      return () => {
+        console.log('🔔 [SCHEDULER] User logged out, stopping notification checker');
+        notificationScheduler.stop();
+      };
+    }
+  }, [user]);
+
+  // Log warning about Expo Go limitations
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('⚠️ [INFO] Running in development mode. For full notification functionality:');
+      console.log('   • Use development build instead of Expo Go for production testing');
+      console.log('   • Some notification features may be limited in Expo Go');
+      console.log('   • See: https://docs.expo.dev/develop/development-builds/introduction/');
+    }
   }, []);
 
   const initializeNotifications = async () => {
@@ -95,6 +106,40 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }),
       });
 
+      // Listen for notification responses for rescheduling
+      const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+        const notification = response.notification;
+        const data = notification.request.content.data;
+
+        console.log('🔔 [DEBUG] Notification received:', notification.request.content.title);
+
+        // Check if this is a recurring notification from our scheduler
+        if (data?.recurring && data?.scheduledTime && typeof data.scheduledTime === 'string') {
+          console.log('🔄 [DEBUG] Rescheduling recurring notification for time:', data.scheduledTime);
+
+          // Schedule next occurrence for tomorrow
+          const [hours, minutes] = data.scheduledTime.split(':').map(Number);
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(hours, minutes, 0, 0);
+
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: notification.request.content.title,
+              body: notification.request.content.body,
+              data: data, // Keep the same data including recurring flag
+            },
+            trigger: tomorrow as any,
+          }).then(id => {
+            if (id) {
+              console.log('✅ [DEBUG] Recurring notification rescheduled for:', tomorrow.toLocaleString());
+            } else {
+              console.log('❌ [DEBUG] Failed to reschedule recurring notification');
+            }
+          });
+        }
+      });
+
       setIsInitialized(true);
     } catch (error) {
       console.error('Error initializing notifications:', error);
@@ -114,9 +159,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const scheduleNotification = async (
     title: string,
     body: string,
-    trigger: Notifications.NotificationTriggerInput
+    trigger: any
   ): Promise<string | null> => {
     try {
+      // Check if running in Expo Go (limited notification support)
+      if (__DEV__ && Platform.OS === 'android') {
+        console.log('⚠️ [DEBUG] Scheduling notification in Expo Go may have limitations');
+      }
+
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title,
@@ -127,13 +177,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           sound: 'default',
         },
         trigger,
-        priority: 'high',
-        categoryId: Platform.OS === 'android' ? 'default' : undefined,
       });
 
+      console.log('✅ [DEBUG] Notification scheduled with ID:', id);
       return id;
     } catch (error) {
-      console.error('Error scheduling notification:', error);
+      console.error('❌ [DEBUG] Error scheduling notification:', error);
+
+      // Handle Expo Go limitations
+      if (__DEV__ && error instanceof Error) {
+        console.log('💡 [INFO] This might be due to Expo Go limitations. Try:');
+        console.log('   • Using a development build: npx expo install -D expo-dev-client');
+        console.log('   • Or running on a physical device');
+      }
+
       return null;
     }
   };
@@ -146,7 +203,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const getScheduledNotifications = async (): Promise<Notifications.NotificationRequest[]> => {
+  const cancelNotificationsByIdentifiers = async (identifiers: string[]): Promise<void> => {
+    try {
+      for (const identifier of identifiers) {
+        await Notifications.cancelScheduledNotificationAsync(identifier);
+      }
+    } catch (error) {
+      console.error('Error canceling notifications:', error);
+    }
+  };
+
+  const getScheduledNotifications = async (): Promise<any[]> => {
     try {
       return await Notifications.getAllScheduledNotificationsAsync();
     } catch (error) {
@@ -155,83 +222,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const createMedicationReminder = async (
-    medicineName: string,
-    time: string,
-    medicineId: string
-  ): Promise<string | null> => {
-    try {
-      // Parse time to get hours and minutes
-      const [hours, minutes] = time.split(':').map(Number);
-
-      // Schedule for daily at specific time
-      const trigger = {
-        type: 'daily' as const,
-        hour: hours,
-        minute: minutes,
-      };
-
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '💊 Medicine Reminder',
-          body: `Time to take ${medicineName}`,
-          data: {
-            type: 'medicine',
-            medicineId,
-            medicineName,
-          },
-          sound: 'default',
-        },
-        trigger,
-        priority: 'high',
-        categoryId: Platform.OS === 'android' ? 'medicine-reminders' : undefined,
-      });
-
-      return id;
-    } catch (error) {
-      console.error('Error creating medication reminder:', error);
-      return null;
-    }
-  };
-
-  const createHabitReminder = async (
-    habitName: string,
-    time: string,
-    habitId: string
-  ): Promise<string | null> => {
-    try {
-      // Parse time to get hours and minutes
-      const [hours, minutes] = time.split(':').map(Number);
-
-      // Schedule for daily at specific time
-      const trigger = {
-        type: 'daily' as const,
-        hour: hours,
-        minute: minutes,
-      };
-
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '💪 Habit Reminder',
-          body: `Time for ${habitName}`,
-          data: {
-            type: 'habit',
-            habitId,
-            habitName,
-          },
-          sound: 'default',
-        },
-        trigger,
-        priority: 'high',
-        categoryId: Platform.OS === 'android' ? 'habit-reminders' : undefined,
-      });
-
-      return id;
-    } catch (error) {
-      console.error('Error creating habit reminder:', error);
-      return null;
-    }
-  };
+  // OLD FUNCTIONS DISABLED - Use notificationScheduler instead
+  // const createMedicationReminder = async (...): Promise<string | null> => null;
+  // const createHabitReminder = async (...): Promise<string | null> => null;
 
   const showImmediateNotification = async (title: string, body: string): Promise<void> => {
     try {
@@ -245,60 +238,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           sound: 'default',
         },
         trigger: null, // Show immediately
-        priority: 'high',
       });
     } catch (error) {
       console.error('Error showing immediate notification:', error);
-    }
-  };
-
-  // Database integration methods
-  const getNotificationSettings = async () => {
-    if (!user) return null;
-    try {
-      return await notificationSettingsService.getNotificationSettings(user.userId);
-    } catch (error) {
-      console.error('Error getting notification settings:', error);
-      return null;
-    }
-  };
-
-  const updateNotificationSettings = async (settings: any): Promise<{ success: boolean; error?: string }> => {
-    if (!user) return { success: false, error: 'User not authenticated' };
-    try {
-      await notificationSettingsService.updateNotificationSettings(user.userId, settings);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  };
-
-  const saveScheduledNotification = async (notification: any): Promise<string> => {
-    if (!user) throw new Error('User not authenticated');
-    return await scheduledNotificationsService.createScheduledNotification(user.userId, notification);
-  };
-
-  const getScheduledNotificationsFromDB = async (): Promise<any[]> => {
-    if (!user) return [];
-    try {
-      return await scheduledNotificationsService.getScheduledNotifications(user.userId);
-    } catch (error) {
-      console.error('Error getting scheduled notifications from DB:', error);
-      return [];
-    }
-  };
-
-  const deleteScheduledNotification = async (notificationId: string): Promise<void> => {
-    if (!user) throw new Error('User not authenticated');
-    await scheduledNotificationsService.deleteScheduledNotification(user.userId, notificationId);
-  };
-
-  const getNotificationTemplates = async (): Promise<any[]> => {
-    try {
-      return await notificationTemplates.getNotificationTemplates();
-    } catch (error) {
-      console.error('Error getting notification templates:', error);
-      return [];
     }
   };
 
@@ -306,17 +248,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     requestPermissions,
     scheduleNotification,
     cancelNotification,
+    cancelNotificationsByIdentifiers,
     getScheduledNotifications,
-    createMedicationReminder,
-    createHabitReminder,
     showImmediateNotification,
-    // Database integration methods
-    getNotificationSettings,
-    updateNotificationSettings,
-    saveScheduledNotification,
-    getScheduledNotificationsFromDB,
-    deleteScheduledNotification,
-    getNotificationTemplates,
   };
 
   return (

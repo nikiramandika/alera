@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { habitService, habitHistoryService } from '@/services';
+import { notificationScheduler } from '@/services/notificationScheduler';
 import { Habit, HabitHistory } from '@/types';
 
 interface HabitContextType {
@@ -64,7 +65,41 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
-      await habitService.addHabit(user.userId, habit);
+      console.log('🔍 [DEBUG] Adding habit:', habit.habitName);
+      console.log('🔍 [DEBUG] Habit reminder times:', habit.reminderTimes);
+      console.log('🔍 [DEBUG] Habit target:', habit.target);
+
+      // Add habit to database first
+      const result = await habitService.addHabit(user.userId, habit);
+      console.log('🔍 [DEBUG] Habit added with ID:', result.habitId || result);
+
+      // Schedule real-time notifications for each reminder time
+      const timesToSchedule = habit.reminderTimes || [];
+      console.log('🔍 [DEBUG] Habit - Times to schedule for real-time checking:', timesToSchedule);
+
+      if (timesToSchedule.length > 0 && (result.habitId || result)) {
+        const habitId = result.habitId || (result as any).habitId || result;
+
+        for (const reminderTime of timesToSchedule) {
+          console.log('🔍 [DEBUG] Habit - Adding real-time notification scheduler for time:', reminderTime);
+
+          // Add to notification scheduler for real-time checking
+          await notificationScheduler.addNotification({
+            habitId: habitId as string,
+            time: reminderTime,
+            title: '💪 Habit Reminder',
+            body: `Time for ${habit.habitName}${habit.target?.value ? ` (${habit.target.value} ${habit.target.unit})` : ''}`,
+            type: 'habit',
+          });
+
+          console.log('✅ [DEBUG] Habit - Real-time notification scheduler added for time:', reminderTime);
+        }
+
+        console.log('🔍 [DEBUG] Habit - Total real-time notifications scheduled:', timesToSchedule.length);
+      } else {
+        console.log('⚠️ [DEBUG] Habit - No times to schedule real-time notifications');
+      }
+
       await fetchData(); // Refresh data
       return { success: true };
     } catch (error) {
@@ -78,7 +113,44 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
+      // Get the existing habit before updating
+      const existingHabit = habits.find(h => h.habitId === id);
+
+      // Remove old real-time notifications
+      if (existingHabit) {
+        await notificationScheduler.removeNotifications(undefined, existingHabit.habitId);
+        console.log('🔍 [DEBUG] Habit Update - Removed old real-time notifications');
+      }
+
+      // Apply the updates
       await habitService.updateHabit(user.userId, id, updates);
+
+      // Get the updated habit
+      const updatedHabit = { ...existingHabit, ...updates };
+      const timesToSchedule = updatedHabit.reminderTimes || [];
+      console.log('🔍 [DEBUG] Habit Update - Times to reschedule for real-time:', timesToSchedule);
+
+      // Add new real-time notifications
+      if (timesToSchedule.length > 0) {
+        for (const reminderTime of timesToSchedule) {
+          console.log('🔍 [DEBUG] Habit Update - Adding real-time notification for time:', reminderTime);
+
+          await notificationScheduler.addNotification({
+            habitId: id,
+            time: reminderTime,
+            title: '💪 Habit Reminder',
+            body: `Time for ${updatedHabit.habitName}${updatedHabit.target?.value ? ` (${updatedHabit.target.value} ${updatedHabit.target.unit})` : ''}`,
+            type: 'habit',
+          });
+
+          console.log('✅ [DEBUG] Habit Update - Real-time notification added for time:', reminderTime);
+        }
+
+        console.log('🔍 [DEBUG] Habit Update - Total real-time notifications rescheduled:', timesToSchedule.length);
+      } else {
+        console.log('⚠️ [DEBUG] Habit Update - No times to schedule real-time notifications');
+      }
+
       await fetchData(); // Refresh data
       return { success: true };
     } catch (error) {
@@ -92,7 +164,13 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
+      // Remove real-time notifications before deleting from database
+      await notificationScheduler.removeNotifications(undefined, id);
+      console.log('🔍 [DEBUG] Delete - Removed real-time notifications for habit:', id);
+
+      // Delete from database
       await habitService.deleteHabit(user.userId, id);
+
       await fetchData(); // Refresh data
       return { success: true };
     } catch (error) {

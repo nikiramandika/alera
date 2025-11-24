@@ -40,6 +40,10 @@ export default function TabLayout() {
           <Label>Habits</Label>
           <Icon sf={"heart.fill"} />
         </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="test-notifications">
+          <Label>Test</Label>
+          <Icon sf={"bell.fill"} />
+        </NativeTabs.Trigger>
         <NativeTabs.Trigger name="analytics">
           <Label>Analytics</Label>
           <Icon sf={"chart.bar.fill"} />

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { medicineService, medicineHistoryService } from '@/services';
+import { notificationScheduler } from '@/services/notificationScheduler';
 import { MedicineReminder, MedicineHistory } from '@/types';
 
 interface MedicineContextType {
@@ -68,7 +69,41 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
-      await medicineService.addMedicine(user.userId, medicine);
+      console.log('🔍 [DEBUG] Adding medicine:', medicine.medicineName);
+      console.log('🔍 [DEBUG] Frequency times:', medicine.frequency.times);
+      console.log('🔍 [DEBUG] Frequency type:', medicine.frequency.type);
+
+      // Add medicine to database first
+      const result = await medicineService.addMedicine(user.userId, medicine);
+      console.log('🔍 [DEBUG] Medicine added with ID:', result.reminderId || result);
+
+      // Schedule real-time notifications for each dose time
+      const timesToSchedule = medicine.frequency?.times || [];
+      console.log('🔍 [DEBUG] Times to schedule for real-time checking:', timesToSchedule);
+
+      if (timesToSchedule.length > 0 && (result.reminderId || result)) {
+        const medicineId = result.reminderId || (result as any).reminderId || result;
+
+        for (const time of timesToSchedule) {
+          console.log('🔍 [DEBUG] Adding real-time notification scheduler for time:', time);
+
+          // Add to notification scheduler for real-time checking
+          await notificationScheduler.addNotification({
+            medicineId: medicineId as string,
+            time: time,
+            title: '💊 Medicine Reminder',
+            body: `Time to take ${medicine.medicineName}${medicine.dosage ? ` (${medicine.dosage})` : ''}`,
+            type: 'medicine',
+          });
+
+          console.log('✅ [DEBUG] Real-time notification scheduler added for time:', time);
+        }
+
+        console.log('🔍 [DEBUG] Total real-time notifications scheduled:', timesToSchedule.length);
+      } else {
+        console.log('⚠️ [DEBUG] No times to schedule real-time notifications for');
+      }
+
       await fetchData(); // Refresh data
       return { success: true };
     } catch (error) {
@@ -82,7 +117,44 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
+      // Get the existing medicine before updating
+      const existingMedicine = medicines.find(m => m.reminderId === id);
+
+      // Remove old real-time notifications
+      if (existingMedicine) {
+        await notificationScheduler.removeNotifications(existingMedicine.reminderId);
+        console.log('🔍 [DEBUG] Update - Removed old real-time notifications');
+      }
+
+      // Apply the updates
       await medicineService.updateMedicine(user.userId, id, updates);
+
+      // Get the updated medicine
+      const updatedMedicine = { ...existingMedicine, ...updates };
+      const timesToSchedule = updatedMedicine.frequency?.times || [];
+      console.log('🔍 [DEBUG] Update - Times to reschedule for real-time:', timesToSchedule);
+
+      // Add new real-time notifications
+      if (timesToSchedule.length > 0) {
+        for (const time of timesToSchedule) {
+          console.log('🔍 [DEBUG] Update - Adding real-time notification for time:', time);
+
+          await notificationScheduler.addNotification({
+            medicineId: id,
+            time: time,
+            title: '💊 Medicine Reminder',
+            body: `Time to take ${updatedMedicine.medicineName}${updatedMedicine.dosage ? ` (${updatedMedicine.dosage})` : ''}`,
+            type: 'medicine',
+          });
+
+          console.log('✅ [DEBUG] Update - Real-time notification added for time:', time);
+        }
+
+        console.log('🔍 [DEBUG] Update - Total real-time notifications rescheduled:', timesToSchedule.length);
+      } else {
+        console.log('⚠️ [DEBUG] Update - No times to schedule real-time notifications');
+      }
+
       await fetchData(); // Refresh data
       return { success: true };
     } catch (error) {
@@ -96,7 +168,13 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
+      // Remove real-time notifications before deleting from database
+      await notificationScheduler.removeNotifications(id);
+      console.log('🔍 [DEBUG] Delete - Removed real-time notifications for medicine:', id);
+
+      // Delete from database
       await medicineService.deleteMedicine(user.userId, id);
+
       await fetchData(); // Refresh data
       return { success: true };
     } catch (error) {

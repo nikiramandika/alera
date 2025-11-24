@@ -4,6 +4,7 @@ export * from './medicineService';
 export * from './habitService';
 export * from './analyticsService';
 export * from './notificationService';
+export * from './notificationScheduler';
 
 // Re-export commonly used combinations
 export {
