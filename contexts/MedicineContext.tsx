@@ -217,7 +217,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return medicines.filter(medicine => {
       // Check if medicine should be taken today
       if (medicine.frequency.type === 'daily') return true;
-      if (medicine.frequency.type === 'specific_days') {
+      if (medicine.frequency.type === 'weekly') {
         const today = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
         return medicine.frequency.specificDays?.includes(today);
       }

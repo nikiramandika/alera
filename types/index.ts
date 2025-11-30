@@ -27,33 +27,26 @@ export interface MedicineReminder {
   userId: string;
   medicineName: string;
   dosage: string;
-  medicineType: string; // Tablet, Sirup, dll
+  medicineType: string; // Tablet, Capsule, Liquid, etc
+  takeWithMeal?: 'before' | 'after'; // When to take medicine
+  drugAppearance?: string | null; // URI of medicine photo
+  description?: string; // Special instructions or notes
   frequency: {
-    type: 'daily' | 'interval' | 'specific_days' | 'as_needed';
+    type: 'daily' | 'weekly' | 'interval' | 'as_needed';
     times: string[]; // ["08:00", "14:00"]
-    time?: string; // Single time for compatibility
-    interval?: number; // dalam jam
-    specificDays?: number[]; // [0-6] hari aktif
+    interval?: number; // in days for interval frequency
+    specificDays?: number[]; // [0-6] active days for weekly frequency
   };
   duration: {
     startDate: Date;
     endDate?: Date | null;
     totalDays?: number | null;
   };
-  instructions?: string;
-  stockQuantity: number;
-  stockAlert: number;
-  stock: {
-    current: number;
-    currentStock: number;
-    refillThreshold: number;
-    unit: string;
-    lastUpdated: Date;
-  };
   isActive: boolean;
   color: string;
   icon: string;
-  notes?: string;
+  stockQuantity?: number; // Current stock quantity
+  stockAlert?: number; // Alert threshold for low stock
   notificationIds?: string[]; // Array of notification IDs from expo-notifications
   createdAt: Date;
   updatedAt: Date;

@@ -7,26 +7,44 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
+  Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
-interface MedicineTemplate {
+interface MedicineData {
   medicineName?: string;
   dosage?: string;
   medicineType?: string;
-  instructions?: string;
-  stockQuantity?: number;
-  stockAlert?: number;
-  reminderId?: string;
-  editMode?: boolean;
+  takeWithMeal?: 'before' | 'after';
+  description?: string;
+  drugAppearance?: string | null;
 }
 
-export default function AddMedicineStep1Screen() {
+interface MedicineTypeOption {
+  id: string;
+  label: string;
+  dosageUnit: string;
+}
+
+const medicineTypes: MedicineTypeOption[] = [
+  { id: 'tablet', label: 'Tablet', dosageUnit: 'tablet' },
+  { id: 'capsule', label: 'Capsule', dosageUnit: 'capsule' },
+  { id: 'liquid', label: 'Liquid', dosageUnit: 'ml' },
+  { id: 'injection', label: 'Injection', dosageUnit: 'ml' },
+  { id: 'topical', label: 'Topical', dosageUnit: 'application' },
+  { id: 'inhaler', label: 'Inhaler', dosageUnit: 'puff' },
+  { id: 'drops', label: 'Drops', dosageUnit: 'drops' },
+  { id: 'spray', label: 'Spray', dosageUnit: 'spray' },
+];
+
+export default function AddMedicineStep1NewScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -37,38 +55,31 @@ export default function AddMedicineStep1Screen() {
   const medicineId = params.medicineId as string;
 
   // Get edit data from params if exists
-  const editData = params.medicineData ? JSON.parse(params.medicineData as string) as MedicineTemplate : null;
+  const editData = params.medicineData ? JSON.parse(params.medicineData as string) as MedicineData : null;
 
-  const [medicineData, setMedicineData] = useState({
+  const [medicineData, setMedicineData] = useState<MedicineData>({
     medicineName: editData?.medicineName || '',
     dosage: editData?.dosage || '',
-    medicineType: editData?.medicineType || 'Tablet',
-    instructions: editData?.instructions || '',
+    medicineType: editData?.medicineType || 'tablet',
+    takeWithMeal: editData?.takeWithMeal || 'before',
+    description: editData?.description || '',
+    drugAppearance: editData?.drugAppearance || null,
   });
 
-  const medicineTypes = [
-    'Tablet', 'Capsule', 'Liquid', 'Injection', 'Topical', 'Inhaler', 'Drops', 'Spray'
-  ];
-
   const handleNext = () => {
-    if (!medicineData.medicineName.trim()) {
-      alert('Please enter medicine name');
+    if (!medicineData.medicineName?.trim()) {
+      Alert.alert('Error', 'Please enter medicine name');
       return;
     }
 
-    if (!medicineData.dosage.trim()) {
-      alert('Please enter dosage');
+    if (!medicineData.dosage?.trim()) {
+      Alert.alert('Error', 'Please enter dosage');
       return;
     }
 
     // Prepare data for step 2
     const step2Data = {
       ...medicineData,
-      ...(editData && {
-        stockQuantity: editData.stockQuantity,
-        stockAlert: editData.stockAlert,
-        frequency: editData.frequency,
-      }),
       editMode,
       medicineId,
     };
@@ -81,32 +92,106 @@ export default function AddMedicineStep1Screen() {
     });
   };
 
-  const renderMedicineTypeOption = (type: string) => (
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled) {
+        setMedicineData(prev => ({ ...prev, drugAppearance: result.assets[0].uri }));
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const renderMedicineTypeOption = (type: MedicineTypeOption) => {
+    const selectedType = medicineTypes.find(t => t.id === medicineData.medicineType);
+    return (
+      <TouchableOpacity
+        key={type.id}
+        style={[
+          styles.typeOption,
+          {
+            backgroundColor: medicineData.medicineType === type.id
+              ? colors.primary
+              : colors.backgroundSecondary,
+            borderColor: medicineData.medicineType === type.id
+              ? colors.primary
+              : colors.border,
+          }
+        ]}
+        onPress={() => {
+          setMedicineData(prevData => {
+            const dosageParts = prevData.dosage?.split(' ') || [];
+            if (dosageParts.length > 0) {
+              return {
+                ...prevData,
+                medicineType: type.id,
+                dosage: `${dosageParts[0]} ${type.dosageUnit}`
+              };
+            }
+            return { ...prevData, medicineType: type.id };
+          });
+        }}
+      >
+        <Text style={[
+          styles.typeText,
+          {
+            color: medicineData.medicineType === type.id ? '#FFFFFF' : colors.text
+          }
+        ]}>
+          {type.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderMealOption = (option: 'before' | 'after') => (
     <TouchableOpacity
-      key={type}
+      key={option}
       style={[
-        styles.typeOption,
+        styles.mealOption,
         {
-          backgroundColor: medicineData.medicineType === type
+          backgroundColor: medicineData.takeWithMeal === option
             ? colors.primary
             : colors.backgroundSecondary,
-          borderColor: medicineData.medicineType === type
+          borderColor: medicineData.takeWithMeal === option
             ? colors.primary
             : colors.border,
         }
       ]}
-      onPress={() => setMedicineData(prev => ({ ...prev, medicineType: type }))}
+      onPress={() => setMedicineData(prev => ({ ...prev, takeWithMeal: option }))}
     >
       <Text style={[
-        styles.typeText,
+        styles.mealText,
         {
-          color: medicineData.medicineType === type ? '#FFFFFF' : colors.text
+          color: medicineData.takeWithMeal === option ? '#FFFFFF' : colors.text
         }
       ]}>
-        {type}
+        {option === 'before' ? 'Before Meals' : 'After Meals'}
       </Text>
     </TouchableOpacity>
   );
+
+  const getCurrentDosageUnit = () => {
+    const selectedType = medicineTypes.find(t => t.id === medicineData.medicineType);
+    return selectedType?.dosageUnit || 'tablet';
+  };
+
+  const updateDosage = (value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    if (numericValue) {
+      setMedicineData(prevData => ({
+        ...prevData,
+        dosage: `${numericValue} ${getCurrentDosageUnit()}`
+      }));
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -152,8 +237,40 @@ export default function AddMedicineStep1Screen() {
               Medicine Information
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Enter the basic details of your medicine
+              Enter basic details of your medicine
             </Text>
+          </View>
+
+          {/* Drug Appearance (Photo Upload) */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>Drug Appearance (Optional)</Text>
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Add a photo to help identify your medicine
+            </Text>
+
+            <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
+              {medicineData.drugAppearance ? (
+                <View style={styles.imageContainer}>
+                  <Image
+                    source={{ uri: medicineData.drugAppearance }}
+                    style={styles.uploadedImage}
+                  />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => setMedicineData(prev => ({ ...prev, drugAppearance: null }))}
+                  >
+                    <Ionicons name="close" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Ionicons name="camera" size={32} color={colors.textSecondary} />
+                  <Text style={[styles.imagePlaceholderText, { color: colors.textSecondary }]}>
+                    Tap to add photo
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* Medicine Name Input */}
@@ -172,27 +289,11 @@ export default function AddMedicineStep1Screen() {
             />
           </View>
 
-          {/* Dosage Input */}
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.label, { color: colors.text }]}>Dosage</Text>
-            <TextInput
-              style={[styles.input, {
-                backgroundColor: colors.backgroundSecondary,
-                borderColor: colors.border,
-                color: colors.text
-              }]}
-              placeholder="e.g., 500mg, 1 tablet, 5ml"
-              placeholderTextColor={colors.textSecondary}
-              value={medicineData.dosage}
-              onChangeText={(text) => setMedicineData(prev => ({ ...prev, dosage: text }))}
-            />
-          </View>
-
           {/* Medicine Type Selection */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>Medicine Type</Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Select the form of medicine
+              Select form of medicine (dosage will auto-adjust)
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.typeContainer}>
@@ -201,11 +302,49 @@ export default function AddMedicineStep1Screen() {
             </ScrollView>
           </View>
 
-          {/* Instructions Input */}
+          {/* Dosage Input (Auto-adjust based on type) */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.label, { color: colors.text }]}>Instructions (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Dosage</Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Add special instructions like "Take with food" or "Before meals"
+              Amount per intake (auto-adjusts by medicine type)
+            </Text>
+            <View style={styles.dosageContainer}>
+              <TextInput
+                style={[styles.dosageInput, {
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border,
+                  color: colors.text,
+                }]}
+                placeholder="e.g., 500, 1, 5"
+                placeholderTextColor={colors.textSecondary}
+                value={medicineData.dosage?.split(' ')[0] || ''}
+                onChangeText={updateDosage}
+                keyboardType="numeric"
+                maxLength={4}
+              />
+              <Text style={[styles.dosageUnit, { color: colors.textSecondary }]}>
+                {getCurrentDosageUnit()}
+              </Text>
+            </View>
+          </View>
+
+          {/* Take with Meal Selection */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>Take with Meal</Text>
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              When should this medicine be taken?
+            </Text>
+            <View style={styles.mealContainer}>
+              {renderMealOption('before')}
+              {renderMealOption('after')}
+            </View>
+          </View>
+
+          {/* Description Input */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>Description (Optional)</Text>
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Add special instructions or notes
             </Text>
             <TextInput
               style={[styles.textArea, {
@@ -213,10 +352,10 @@ export default function AddMedicineStep1Screen() {
                 borderColor: colors.border,
                 color: colors.text
               }]}
-              placeholder="Enter any special instructions..."
+              placeholder="Enter any special instructions or notes..."
               placeholderTextColor={colors.textSecondary}
-              value={medicineData.instructions}
-              onChangeText={(text) => setMedicineData(prev => ({ ...prev, instructions: text }))}
+              value={medicineData.description}
+              onChangeText={(text) => setMedicineData(prev => ({ ...prev, description: text }))}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
@@ -370,18 +509,47 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     lineHeight: 20,
   },
+  imageUploadButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E5E7',
+    borderRadius: 12,
+    padding: 20,
+    borderStyle: 'dashed',
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  uploadedImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FF6B6B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePlaceholderText: {
+    fontSize: 14,
+    marginTop: 8,
+  },
   input: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    minHeight: 100,
   },
   typeContainer: {
     flexDirection: 'row',
@@ -397,6 +565,45 @@ const styles = StyleSheet.create({
   typeText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  dosageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dosageInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    marginRight: 12,
+  },
+  dosageUnit: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  mealContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  mealOption: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mealText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  textArea: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    minHeight: 100,
   },
   bottomSpace: {
     height: 100,

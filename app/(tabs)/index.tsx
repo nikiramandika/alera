@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,18 +8,12 @@ import {
   ScrollView,
   Modal,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-  FadeInDown,
-} from 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useHabit } from '@/contexts/HabitContext';
@@ -50,50 +44,26 @@ export default function HomeScreen() {
   const { habits } = useHabit();
   const { medicines } = useMedicine();
 
-  // Animation values
-  const headerScale = useSharedValue(0.9);
-  const cardTranslateY = useSharedValue(50);
-
-  useEffect(() => {
-    headerScale.value = withDelay(200, withSpring(1, {
-      damping: 15,
-      stiffness: 100,
-    }));
-
-    cardTranslateY.value = withDelay(400, withSpring(0, {
-      damping: 15,
-      stiffness: 100,
-    }));
-  }, [headerScale, cardTranslateY]);
-
   
-  // Header animation
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: headerScale.value }]
-  }));
-
-  // Cards animation
-  const cardAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: cardTranslateY.value }]
-  }));
-
 // Generate tasks from real data - defined outside useMemo to avoid dependency issues
 const generateTasksFromData = React.useCallback(() => {
   // Helper function to convert time string to Indonesia time for comparison
   const getIndonesiaTime = (date: Date = new Date()) => {
-    // Get current UTC time
-    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
-    // Convert to WIB (UTC+7)
-    const indonesiaTime = new Date(utcTime + (7 * 60 * 60 * 1000));
+    // Create new date to avoid modifying original
+    const indonesiaTime = new Date(date.getTime());
+    console.log(`getIndonesiaTime: Input=${date.toISOString()}, Output=${indonesiaTime.toISOString()}`);
     return indonesiaTime;
   };
+
+  // Toleransi waktu sebelum task masuk overdue (dalam menit)
+  const OVERDUE_TOLERANCE_MINUTES = 15;
 
   // Helper function to convert date to string format YYYY-MM-DD
   const dateToString = (date: any): string | null => {
     if (!date) return null;
-    
+
     let d: Date;
-    
+
     try {
       // Handle Firestore Timestamp format
       if (date && typeof date === 'object' && 'seconds' in date && 'nanoseconds' in date) {
@@ -107,13 +77,13 @@ const generateTasksFromData = React.useCallback(() => {
         console.warn('Unknown date type:', typeof date, date);
         return null;
       }
-      
+
       // Check if date is valid
       if (!(d instanceof Date) || isNaN(d.getTime())) {
         console.error('Invalid date:', date);
         return null;
       }
-      
+
       return d.getFullYear() + '-' +
         String(d.getMonth() + 1).padStart(2, '0') + '-' +
         String(d.getDate()).padStart(2, '0');
@@ -123,236 +93,329 @@ const generateTasksFromData = React.useCallback(() => {
     }
   };
 
-  // Initialize tasks object first
-  const tasks: {
-    overdue: Task[];
-    allDay: Task[];
-    timeBased: { [time: string]: Task[] };
-  } = {
-    overdue: [],
-    allDay: [],
-    timeBased: {}
-  };
+  // Initialize arrays to collect all tasks first
+  const allTimeBasedTasks: Array<{
+    task: Task;
+    time: string;
+    isOverdue: boolean;
+    isUpcoming: boolean;
+  }> = [];
+  const allDayTasks: Task[] = [];
 
   // Use selected date (clean to midnight) but keep the date for comparison
   const selectedDateClean = new Date(selectedDate);
   selectedDateClean.setHours(0, 0, 0, 0);
   // Format date consistently (YYYY-MM-DD)
   const selectedDateStr = dateToString(selectedDateClean);
-  
+
   // Guard: if selectedDateStr is null, something went wrong
   if (!selectedDateStr) {
     console.error('Failed to parse selected date');
-    return tasks;
+    return { overdue: [], allDay: [], timeBased: {} };
   }
 
   // Get current time in Indonesia timezone
   const now = getIndonesiaTime();
   const todayStr = dateToString(now);
-  
+
   // Guard: if todayStr is null, something went wrong
   if (!todayStr) {
     console.error('Failed to parse today date');
-    return tasks;
+    return { overdue: [], allDay: [], timeBased: {} };
   }
-  
+
   const isToday = selectedDateStr === todayStr;
 
   console.log('DEBUG: Total habits:', habits.length);
   console.log('DEBUG: Total medicines:', medicines.length);
   console.log('DEBUG: Selected date:', selectedDateStr);
 
-  // Process habits
-  habits.forEach((habit: any) => {
-    // Check if habit has started on or before selected date
-    const habitStartDate = dateToString(habit.startDate);
-    const hasStarted = !habitStartDate || habitStartDate <= selectedDateStr;
+  // Function to create habit task
+  const createHabitTask = (habit: any, selectedDateStr: string, todayStr: string): Task => {
+    const isFutureDate = selectedDateStr > todayStr;
+    const isCompletedOnSelectedDate = !isFutureDate && (habit.completedDates?.includes(selectedDateStr) || false);
 
-    console.log(`DEBUG Habit: ${habit.habitName}, StartDate: ${habitStartDate}, Selected: ${selectedDateStr}, HasStarted: ${hasStarted}`);
-
-    if (!hasStarted) {
-      console.log(`SKIP Habit ${habit.habitName}: Belum dimulai`);
-      return; // Skip if habit hasn't started yet
-    }
-
-    const habitTask: Task = {
+    return {
       id: `habit-${habit.habitId}`,
       title: habit.habitName,
       subtitle: `${habit.target.value} ${habit.target.unit} • ${habit.target.frequency}`,
       time: 'All Day',
-      completed: habit.completedDates?.includes(selectedDateStr) || false,
+      completed: isCompletedOnSelectedDate,
       icon: habit.icon || '🎯',
       color: habit.color || '#84CC16',
       type: 'habit',
     };
+  };
 
-    // Check if habit is active for selected date
-    const selectedDayOfWeek = selectedDateClean.getDay();
-    const isActiveOnSelectedDate = habit.reminderDays?.includes(selectedDayOfWeek) || false;
+  // Function to create medicine task
+  const createMedicineTask = (medicine: any, selectedDateStr: string, todayStr: string): Task => {
+    const isFutureDate = selectedDateStr > todayStr;
+    const isTakenOnSelectedDate = isFutureDate ? false : false; // TODO: Check from medicine history
 
-    // Temporarily disable date checks to debug
-    const habitIsActive = habit.isActive !== undefined ? habit.isActive : true;
+    // Create detailed subtitle with medicine information
+    const subtitleParts = [];
 
-    console.log('DEBUG Habit Details:', {
-      name: habit.habitName,
-      isActiveOnSelectedDate,
-      habitIsActive,
-      selectedDate: selectedDateStr,
-      reminderDays: habit.reminderDays,
-      selectedDayOfWeek
-    });
+    // Add dosage and medicine type (avoid duplication)
+    const dosage = medicine.dosage?.trim() || '';
+    const medicineType = medicine.medicineType?.trim() || '';
 
-    if (isActiveOnSelectedDate && habitIsActive) {
-      if (habit.reminderTimes && habit.reminderTimes.length > 0) {
-        // Time-based habit
-        habit.reminderTimes.forEach((time: string) => {
-          // Check if overdue (only if selected date is today and time has passed)
-          const [hours, minutes] = time.split(':').map(Number);
+    // Check if dosage already contains the medicine type (case insensitive)
+    if (dosage && medicineType && dosage.toLowerCase().includes(medicineType.toLowerCase())) {
+      subtitleParts.push(dosage);
+    } else if (dosage && medicineType) {
+      subtitleParts.push(`${dosage} ${medicineType}`);
+    } else if (dosage) {
+      subtitleParts.push(dosage);
+    } else if (medicineType) {
+      subtitleParts.push(medicineType);
+    }
 
-          // Create reminder time for comparison in Indonesia timezone
-          const reminderTime = new Date(selectedDateClean);
-          reminderTime.setHours(hours, minutes, 0, 0);
-          const indonesiaReminderTime = getIndonesiaTime(reminderTime);
+    // Add meal timing information
+    if (medicine.takeWithMeal) {
+      const mealTiming = medicine.takeWithMeal === 'before' ? 'Before meals' : 'After meals';
+      subtitleParts.push(mealTiming);
+    }
 
-          // Check if habit is already completed on selected date
-          // Future dates should NOT be marked as completed
-          const isFutureDate = selectedDateStr > todayStr;
-          const isCompletedOnSelectedDate = !isFutureDate && (habit.completedDates?.includes(selectedDateStr) || false);
-
-          // Only check overdue if it's today AND not completed AND time has passed in WIB
-          const isOverdue = isToday && !isCompletedOnSelectedDate && indonesiaReminderTime < now;
-
-          if (isOverdue && !tasks.overdue.some((t: any) => t.id === habitTask.id)) {
-            // Add to overdue with completed=false (because it's not completed)
-            tasks.overdue.push({
-              ...habitTask,
-              time: time,
-              completed: false
-            });
-          } else if (!isOverdue) {
-            // Add to time-based with actual completion status
-            if (!tasks.timeBased[time]) {
-              tasks.timeBased[time] = [];
-            }
-            tasks.timeBased[time].push({
-              ...habitTask,
-              time: time,
-              completed: isCompletedOnSelectedDate
-            });
-          }
-        });
-      } else {
-        // All-day habit with correct completion status
-        const isFutureDate = selectedDateStr > todayStr;
-        const isCompletedOnSelectedDate = !isFutureDate && (habit.completedDates?.includes(selectedDateStr) || false);
-
-        tasks.allDay.push({
-          ...habitTask,
-          completed: isCompletedOnSelectedDate
-        });
+    // Add frequency information for context
+    if (medicine.frequency) {
+      const freq = medicine.frequency;
+      if (freq.type === 'daily' && freq.times && freq.times.length > 0) {
+        if (freq.times.length === 1) {
+          subtitleParts.push(`daily at ${freq.times[0]}`);
+        } else {
+          subtitleParts.push(`${freq.times.length}x daily`);
+        }
+      } else if (freq.type === 'weekly' && freq.specificDays) {
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const days = freq.specificDays.map((day: number) => dayNames[day]).join(', ');
+        subtitleParts.push(`${days}`);
+      } else if (freq.type === 'as_needed') {
+        subtitleParts.push('as needed');
       }
     }
-  });
 
-  // Process medicines
-  medicines.forEach((medicine: any) => {
-    // Check if medicine has started on or before selected date
-    const medicineStartDate = dateToString(medicine.startDate);
-    const hasStarted = !medicineStartDate || medicineStartDate <= selectedDateStr;
-
-    console.log(`DEBUG Medicine: ${medicine.medicineName}, StartDate: ${medicineStartDate}, Selected: ${selectedDateStr}, HasStarted: ${hasStarted}`);
-
-    if (!hasStarted) {
-      console.log(`SKIP Medicine ${medicine.medicineName}: Belum dimulai`);
-      return; // Skip if medicine hasn't started yet
+    // Add special instructions if available (shortened)
+    if (medicine.description && medicine.description.trim()) {
+      const instruction = medicine.description.trim();
+      if (instruction.length <= 20) {
+        subtitleParts.push(instruction);
+      } else {
+        subtitleParts.push(instruction.substring(0, 20) + '...');
+      }
     }
 
-    const medicineTask: Task = {
+    const subtitle = subtitleParts.join(' • ');
+
+    return {
       id: `medicine-${medicine.reminderId}`,
       title: medicine.medicineName,
-      subtitle: `${medicine.dosage} • ${medicine.medicineType}`,
-      time: medicine.frequency.times?.[0] || 'All Day',
-      completed: false, // Will be updated based on history
-      icon: '💊',
+      subtitle: subtitle,
+      time: 'All Day',
+      completed: isTakenOnSelectedDate,
+      icon: medicine.drugAppearance || '💊',
       color: medicine.color || '#84CC16',
       type: 'medicine',
     };
+  };
 
-    // Check if medicine is active for selected date
-    let isActiveOnSelectedDate = false;
+  // Collect all time-based tasks from both habits and medicines
+  const collectAllTasks = () => {
+    habits.forEach((habit: any) => {
+      const habitStartDate = dateToString(habit.startDate);
+      const hasStarted = !habitStartDate || habitStartDate <= selectedDateStr;
 
-    if (medicine.frequency.type === 'daily') {
-      isActiveOnSelectedDate = medicine.isActive;
-    } else if (medicine.frequency.type === 'specific_days') {
+      if (!hasStarted) {
+        console.log(`SKIP Habit ${habit.habitName}: Belum dimulai`);
+        return;
+      }
+
       const selectedDayOfWeek = selectedDateClean.getDay();
-      isActiveOnSelectedDate = medicine.isActive &&
-        medicine.frequency.specificDays?.includes(selectedDayOfWeek);
-    } else if (medicine.frequency.type === 'as_needed') {
-      isActiveOnSelectedDate = medicine.isActive; // Show as needed if active
-    }
+      const isActiveOnSelectedDate = habit.reminderDays?.includes(selectedDayOfWeek) || false;
+      const habitIsActive = habit.isActive !== undefined ? habit.isActive : true;
 
-    // Temporarily disable date checks to debug
-    console.log('DEBUG Medicine Details:', {
-      name: medicine.medicineName,
-      isActiveOnSelectedDate,
-      frequency: medicine.frequency,
-      selectedDate: selectedDateStr
+      if (isActiveOnSelectedDate && habitIsActive) {
+        const habitTask = createHabitTask(habit, selectedDateStr, todayStr);
+
+        if (habit.reminderTimes && habit.reminderTimes.length > 0) {
+          // Time-based habit
+          habit.reminderTimes.forEach((time: string) => {
+            const [hours, minutes] = time.split(':').map(Number);
+            const reminderTime = new Date(selectedDateClean);
+            reminderTime.setHours(hours, minutes, 0, 0);
+            const indonesiaReminderTime = getIndonesiaTime(reminderTime);
+
+            const isFutureDate = selectedDateStr > todayStr;
+            const isCompletedOnSelectedDate = !isFutureDate && (habit.completedDates?.includes(selectedDateStr) || false);
+            const toleranceTime = new Date(indonesiaReminderTime.getTime() + OVERDUE_TOLERANCE_MINUTES * 60 * 1000);
+            const isOverdue = isToday && !isCompletedOnSelectedDate && now > toleranceTime;
+            const isUpcoming = isToday && !isCompletedOnSelectedDate && now >= indonesiaReminderTime && now <= toleranceTime;
+
+            // Debug logs
+            console.log(`Habit "${habit.habitName}" Debug:`, {
+              taskTime: time,
+              reminderTime: indonesiaReminderTime.toISOString(),
+              currentTime: now.toISOString(),
+              toleranceTime: toleranceTime.toISOString(),
+              isToday,
+              isCompletedOnSelectedDate,
+              isOverdue,
+              isUpcoming
+            });
+
+            allTimeBasedTasks.push({
+              task: {
+                ...habitTask,
+                id: `${habitTask.id}-${time}`, // Add time to make ID unique for each time slot
+                time: time,
+                completed: isCompletedOnSelectedDate
+              },
+              time: time,
+              isOverdue: isOverdue,
+              isUpcoming: isUpcoming
+            });
+          });
+        } else {
+          // All-day habit
+          allDayTasks.push(habitTask);
+        }
+      }
     });
 
-    if (isActiveOnSelectedDate) {
-      if (medicine.frequency.times && medicine.frequency.times.length > 0) {
-        // Time-based medicine
-        medicine.frequency.times.forEach((time: string) => {
-          // Check if overdue (only if selected date is today and time has passed)
-          const [hours, minutes] = time.split(':').map(Number);
+    medicines.forEach((medicine: any) => {
+      const medicineStartDate = dateToString(medicine.startDate);
+      const hasStarted = !medicineStartDate || medicineStartDate <= selectedDateStr;
 
-          // Create reminder time for comparison in Indonesia timezone
-          const reminderTime = new Date(selectedDateClean);
-          reminderTime.setHours(hours, minutes, 0, 0);
-          const indonesiaReminderTime = getIndonesiaTime(reminderTime);
+      if (!hasStarted) {
+        console.log(`SKIP Medicine ${medicine.medicineName}: Belum dimulai`);
+        return;
+      }
 
-          // For medicines, we don't have completion status like habits, so we check differently
-          // Medicine is considered "taken" only if it has a history entry for that time
-          // Future dates should NOT be marked as taken
-          const isFutureDate = selectedDateStr > todayStr;
-          const isTakenOnSelectedDate = isFutureDate ? false : false; // TODO: Check from medicine history
+      let isActiveOnSelectedDate = false;
+      if (medicine.frequency.type === 'daily') {
+        isActiveOnSelectedDate = medicine.isActive;
+      } else if (medicine.frequency.type === 'weekly') {
+        const selectedDayOfWeek = selectedDateClean.getDay();
+        isActiveOnSelectedDate = medicine.isActive &&
+          medicine.frequency.specificDays?.includes(selectedDayOfWeek);
+      } else if (medicine.frequency.type === 'as_needed') {
+        isActiveOnSelectedDate = medicine.isActive;
+      }
 
-          // Only check overdue if it's today AND not taken AND time has passed in WIB
-          const isOverdue = isToday && !isTakenOnSelectedDate && indonesiaReminderTime < now;
+      if (isActiveOnSelectedDate) {
+        const medicineTask = createMedicineTask(medicine, selectedDateStr, todayStr);
 
-          if (isOverdue && !tasks.overdue.some((t: any) => t.id === medicineTask.id)) {
-            // Add to overdue with completed=false (not taken)
-            tasks.overdue.push({
-              ...medicineTask,
-              time: time,
-              completed: false
+        if (medicine.frequency.times && medicine.frequency.times.length > 0) {
+          // Time-based medicine
+          medicine.frequency.times.forEach((time: string) => {
+            const [hours, minutes] = time.split(':').map(Number);
+            const reminderTime = new Date(selectedDateClean);
+            reminderTime.setHours(hours, minutes, 0, 0);
+            const indonesiaReminderTime = getIndonesiaTime(reminderTime);
+
+            const isFutureDate = selectedDateStr > todayStr;
+            const isTakenOnSelectedDate = isFutureDate ? false : false; // TODO: Check from medicine history
+            const toleranceTime = new Date(indonesiaReminderTime.getTime() + OVERDUE_TOLERANCE_MINUTES * 60 * 1000);
+            const isOverdue = isToday && !isTakenOnSelectedDate && now > toleranceTime;
+            const isUpcoming = isToday && !isTakenOnSelectedDate && now >= indonesiaReminderTime && now <= toleranceTime;
+
+            // Debug logs
+            console.log(`Medicine "${medicine.medicineName}" Debug:`, {
+              taskTime: time,
+              reminderTime: indonesiaReminderTime.toISOString(),
+              currentTime: now.toISOString(),
+              toleranceTime: toleranceTime.toISOString(),
+              isToday,
+              isTakenOnSelectedDate,
+              isOverdue,
+              isUpcoming
             });
-          } else if (!isOverdue) {
-            // Add to time-based with actual completion status
-            if (!tasks.timeBased[time]) {
-              tasks.timeBased[time] = [];
-            }
-            tasks.timeBased[time].push({
-              ...medicineTask,
-              time: time,
-              completed: isTakenOnSelectedDate
-            });
-          }
-        });
-      } else {
-        // All-day medicine or as-needed with correct completion status
-        const isFutureDate = selectedDateStr > todayStr;
-        const isTakenOnSelectedDate = isFutureDate ? false : false; // TODO: Check from medicine history
 
-        tasks.allDay.push({
-          ...medicineTask,
-          completed: isTakenOnSelectedDate
+            allTimeBasedTasks.push({
+              task: {
+                ...medicineTask,
+                id: `${medicineTask.id}-${time}`, // Add time to make ID unique for each time slot
+                time: time,
+                completed: isTakenOnSelectedDate
+              },
+              time: time,
+              isOverdue: isOverdue,
+              isUpcoming: isUpcoming
+            });
+          });
+        } else {
+          // All-day medicine
+          allDayTasks.push(medicineTask);
+        }
+      }
+    });
+  };
+
+  // Collect all tasks
+  collectAllTasks();
+
+  // Debug: Log all collected time-based tasks
+  console.log('DEBUG: All time-based tasks:', allTimeBasedTasks.map(t => `${t.task.title} (${t.task.type}) - ${t.time} - Overdue: ${t.isOverdue} - Upcoming: ${t.isUpcoming}`));
+
+  // Now group and sort tasks properly
+  const overdue: Task[] = [];
+  const upcoming: Task[] = [];
+  const timeBased: { [time: string]: Task[] } = {};
+
+  // Process time-based tasks
+  allTimeBasedTasks.forEach(({ task, time, isOverdue, isUpcoming }) => {
+    if (isOverdue) {
+      // Check if this task is already in overdue (to avoid duplicates)
+      if (!overdue.some((t) => t.id === task.id)) {
+        overdue.push({
+          ...task,
+          completed: false // Force completed = false for overdue tasks
         });
       }
+    } else if (isUpcoming) {
+      // Add to upcoming tasks
+      if (!upcoming.some((t) => t.id === task.id)) {
+        upcoming.push({
+          ...task,
+          completed: false // Keep as incomplete for upcoming
+        });
+      }
+    } else {
+      // Group by time for future tasks
+      if (!timeBased[time]) {
+        timeBased[time] = [];
+      }
+      timeBased[time].push(task);
     }
   });
 
-  return tasks;
+  // Sort time-based tasks by time (ascending)
+  const sortedTimeBased: { [time: string]: Task[] } = {};
+  Object.keys(timeBased)
+    .sort() // This sorts times as strings, which works for HH:MM format
+    .forEach(time => {
+      sortedTimeBased[time] = timeBased[time];
+    });
+
+  // Sort overdue tasks by time (descending - most recent first)
+  overdue.sort((a, b) => {
+    const timeA = parseInt(a.time.replace(':', ''));
+    const timeB = parseInt(b.time.replace(':', ''));
+    return timeB - timeA; // Descending order
+  });
+
+  // Sort upcoming tasks by time (ascending - earliest deadline first)
+  upcoming.sort((a, b) => {
+    const timeA = parseInt(a.time.replace(':', ''));
+    const timeB = parseInt(b.time.replace(':', ''));
+    return timeA - timeB; // Ascending order
+  });
+
+  return {
+    overdue,
+    upcoming,
+    allDay: allDayTasks,
+    timeBased: sortedTimeBased
+  };
 }, [selectedDate, habits, medicines]);
 
   const tasks = useMemo(() => generateTasksFromData(), [generateTasksFromData]);
@@ -363,6 +426,10 @@ const generateTasksFromData = React.useCallback(() => {
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
     ),
+    upcoming: tasks.upcoming?.filter(task =>
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
+    ) || [],
     allDay: tasks.allDay.filter(task =>
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
@@ -491,6 +558,7 @@ const generateTasksFromData = React.useCallback(() => {
                 </Text>
 
                 {getTaskCount(filteredTasks.overdue) === 0 &&
+                 getTaskCount(filteredTasks.upcoming) === 0 &&
                  getTaskCount(filteredTasks.allDay) === 0 &&
                  Object.keys(filteredTasks.timeBased).length === 0 ? (
                   <View style={styles.noResultsContainer}>
@@ -515,6 +583,40 @@ const generateTasksFromData = React.useCallback(() => {
                           </Text>
                         </View>
                         {filteredTasks.overdue.map((task) => (
+                          <View key={task.id} style={[styles.searchTaskItem, { backgroundColor: colors.card }]}>
+                            <View style={[styles.searchTaskIconContainer, { backgroundColor: task.color + '20' }]}>
+                              <View style={[styles.searchTaskIcon, { backgroundColor: task.color }]}>
+                                <Text style={styles.searchTaskIconText}>
+                                  {task.type === 'habit' ? task.icon : '💊'}
+                                </Text>
+                              </View>
+                            </View>
+                            <View style={styles.searchTaskInfo}>
+                              <View style={styles.searchTaskTitleRow}>
+                                <Text style={[styles.searchTaskTitle, { color: colors.text }]}>{task.title}</Text>
+                                <View style={[styles.searchTaskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
+                                  <Text style={[styles.searchTaskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
+                                    {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={[styles.searchTaskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Upcoming Tasks (Should Do Soon) */}
+                    {getTaskCount(filteredTasks.upcoming) > 0 && (
+                      <View style={styles.searchTaskSection}>
+                        <View style={styles.searchSectionHeader}>
+                          <Text style={[styles.searchSectionLabel, { color: '#F59E0B' }]}>Should Do Soon</Text>
+                          <Text style={[styles.searchTaskCount, { backgroundColor: '#F59E0B20', color: '#F59E0B' }]}>
+                            {getTaskCount(filteredTasks.upcoming)}
+                          </Text>
+                        </View>
+                        {filteredTasks.upcoming.map((task) => (
                           <View key={task.id} style={[styles.searchTaskItem, { backgroundColor: colors.card }]}>
                             <View style={[styles.searchTaskIconContainer, { backgroundColor: task.color + '20' }]}>
                               <View style={[styles.searchTaskIcon, { backgroundColor: task.color }]}>
@@ -767,7 +869,7 @@ const generateTasksFromData = React.useCallback(() => {
 
       <View style={styles.container}>
         {/* Header Section */}
-        <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
+        <View style={[styles.headerContainer]}>
           <LinearGradient
             colors={[colors.background, colors.backgroundSecondary, colors.gradientStart]}
             start={{ x: 0.5, y: 0 }}
@@ -812,13 +914,12 @@ const generateTasksFromData = React.useCallback(() => {
               </View>
             </View>
           </LinearGradient>
-        </Animated.View>
+        </View>
 
         {/* Date Selector */}
-        <Animated.View
+        <View
           style={[
             styles.dateSelectorContainer,
-            cardAnimatedStyle,
             {
               backgroundColor: colors.background,
               shadowColor: colors.shadow,
@@ -869,10 +970,10 @@ const generateTasksFromData = React.useCallback(() => {
               <View style={styles.datePaddingRight} />
             </ScrollView>
           </View>
-        </Animated.View>
+        </View>
 
       {/* Tasks Section */}
-      <Animated.View style={[styles.tasksContainer, cardAnimatedStyle]}>
+      <View style={[styles.tasksContainer, { backgroundColor: colors.background }]}>
         <ScrollView
           style={styles.tasksScrollView}
           showsVerticalScrollIndicator={false}
@@ -885,9 +986,8 @@ const generateTasksFromData = React.useCallback(() => {
                   <Text style={[styles.sectionLabel, { color: '#F43F5E' }]}>Overdue</Text>
                   <Text style={[styles.taskCount, { backgroundColor: '#F43F5E20', color: '#F43F5E' }]}>{getTaskCount(tasks.overdue)}</Text>
                 </View>
-                {tasks.overdue.map((task, index) => (
-                  <Animated.View
-                    entering={FadeInDown.delay(index * 100)}
+                {tasks.overdue.map((task) => (
+                  <View
                     key={task.id}
                     style={[
                       styles.taskItem,
@@ -914,12 +1014,62 @@ const generateTasksFromData = React.useCallback(() => {
                           </Text>
                         </View>
                       </View>
-                      <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                      <View style={styles.taskTimeRow}>
+                        <Text style={[styles.taskTime, { color: colors.textSecondary }]}>🕐 {task.time}</Text>
+                        <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                      </View>
                     </View>
                     <View style={styles.taskStatus}>
                       <Ionicons name="radio-button-off" size={20} color={task.color} />
                     </View>
-                  </Animated.View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Upcoming Tasks (Should Do Soon) */}
+            {getTaskCount(tasks.upcoming || []) > 0 && (
+              <View style={styles.taskSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionLabel, { color: '#F59E0B' }]}>Should Do Soon</Text>
+                  <Text style={[styles.taskCount, { backgroundColor: '#F59E0B20', color: '#F59E0B' }]}>{getTaskCount(tasks.upcoming || [])}</Text>
+                </View>
+                {(tasks.upcoming || []).map((task) => (
+                  <View
+                    key={task.id}
+                    style={[
+                      styles.taskItem,
+                      {
+                        backgroundColor: colors.card,
+                        borderLeftColor: '#F59E0B'
+                      }
+                    ]}
+                  >
+                    <View style={[styles.taskIconContainer, { backgroundColor: task.color + '20' }]}>
+                      <View style={[styles.taskIcon, { backgroundColor: task.color }]}>
+                        <Text style={styles.taskIconText}>
+                          {task.type === 'habit' ? task.icon : '💊'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.taskInfo}>
+                      <View style={styles.taskTitleRow}>
+                        <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                        <View style={[styles.taskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
+                          <Text style={[styles.taskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
+                            {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.taskTimeRow}>
+                        <Text style={[styles.taskTime, { color: colors.textSecondary }]}>🕐 {task.time}</Text>
+                        <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.taskStatus}>
+                      <Ionicons name="time" size={20} color="#F59E0B" />
+                    </View>
+                  </View>
                 ))}
               </View>
             )}
@@ -930,9 +1080,8 @@ const generateTasksFromData = React.useCallback(() => {
                 <Text style={[styles.sectionLabel, { color: '#60A5FA' }]}>All Day</Text>
                 <Text style={[styles.taskCount, { backgroundColor: '#60A5FA20', color: '#60A5FA' }]}>{getTaskCount(tasks.allDay)}</Text>
               </View>
-              {tasks.allDay.map((task, index) => (
-                <Animated.View
-                  entering={FadeInDown.delay(index * 100 + 200)}
+              {tasks.allDay.map((task) => (
+                <View
                   key={task.id}
                   style={[
                     styles.taskItem,
@@ -966,20 +1115,19 @@ const generateTasksFromData = React.useCallback(() => {
                       <Ionicons name="radio-button-off" size={20} color={colors.border} />
                     )}
                   </View>
-                </Animated.View>
+                </View>
               ))}
             </View>
 
             {/* Time-based Tasks */}
-            {Object.entries(tasks.timeBased).map(([time, taskList], sectionIndex) => (
+            {Object.entries(tasks.timeBased).map(([time, taskList]) => (
               <View key={time} style={styles.taskSection}>
                 <View style={styles.sectionHeader}>
                   <Text style={[styles.sectionLabel, { color: '#84CC16' }]}>{time}</Text>
                   <Text style={[styles.taskCount, { backgroundColor: '#84CC1620', color: '#84CC16' }]}>{getTaskCount(taskList)}</Text>
                 </View>
-                {taskList.map((task, taskIndex) => (
-                  <Animated.View
-                    entering={FadeInDown.delay(sectionIndex * 100 + taskIndex * 50 + 400)}
+                {taskList.map((task) => (
+                  <View
                     key={task.id}
                     style={[
                       styles.taskItem,
@@ -1022,7 +1170,7 @@ const generateTasksFromData = React.useCallback(() => {
                         <Ionicons name="radio-button-off" size={20} color={colors.border} />
                       )}
                     </View>
-                  </Animated.View>
+                  </View>
                 ))}
               </View>
             ))}
@@ -1039,7 +1187,7 @@ const generateTasksFromData = React.useCallback(() => {
             )}
           </View>
         </ScrollView>
-      </Animated.View>
+      </View>
       </View>
     </SafeAreaView>
   );
@@ -1282,8 +1430,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
   },
+  taskTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  taskTime: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
   taskSubtitle: {
     fontSize: 14,
+    flex: 1,
   },
   taskStatus: {
     alignItems: 'center',

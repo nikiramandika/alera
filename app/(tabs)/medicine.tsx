@@ -358,7 +358,22 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
               </View>
 
               <Text style={[styles.dosage, { color: colors.textSecondary }]}>
-                {item.dosage} • {item.medicineType}
+                {(() => {
+                  const dosage = item.dosage?.trim() || '';
+                  const medicineType = item.medicineType?.trim() || '';
+
+                  // Check if dosage already contains the medicine type (case insensitive)
+                  if (dosage && medicineType && dosage.toLowerCase().includes(medicineType.toLowerCase())) {
+                    return dosage;
+                  } else if (dosage && medicineType) {
+                    return `${dosage} • ${medicineType}`;
+                  } else if (dosage) {
+                    return dosage;
+                  } else if (medicineType) {
+                    return medicineType;
+                  }
+                  return '';
+                })()}
               </Text>
 
               <View style={styles.timeRow}>
@@ -472,8 +487,22 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                         { color: colors.textSecondary },
                       ]}
                     >
-                      {selectedMedication?.dosage} •{" "}
-                      {selectedMedication?.medicineType}
+                      {(() => {
+                        const dosage = selectedMedication?.dosage?.trim() || '';
+                        const medicineType = selectedMedication?.medicineType?.trim() || '';
+
+                        // Check if dosage already contains the medicine type (case insensitive)
+                        if (dosage && medicineType && dosage.toLowerCase().includes(medicineType.toLowerCase())) {
+                          return dosage;
+                        } else if (dosage && medicineType) {
+                          return `${dosage} • ${medicineType}`;
+                        } else if (dosage) {
+                          return dosage;
+                        } else if (medicineType) {
+                          return medicineType;
+                        }
+                        return '';
+                      })()}
                     </Text>
                   </View>
                 </View>
@@ -492,7 +521,19 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       color={colors.primary}
                     />
                     <Text style={[styles.statText, { color: colors.text }]}>
-                      {selectedMedication?.frequency.times.length}x daily
+                      {(() => {
+                        const freq = selectedMedication?.frequency;
+                        if (freq?.type === 'daily' && freq?.times) {
+                          return `${freq.times.length}x daily`;
+                        } else if (freq?.type === 'weekly' && freq?.specificDays) {
+                          return `${freq.specificDays.length}x weekly`;
+                        } else if (freq?.type === 'interval' && freq?.interval) {
+                          return `Every ${freq.interval} days`;
+                        } else if (freq?.type === 'as_needed') {
+                          return 'As needed';
+                        }
+                        return 'No schedule';
+                      })()}
                     </Text>
                   </View>
                   <View
@@ -529,7 +570,20 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                 </View>
                 <View>
                   <Text style={[styles.scheduleText, { color: colors.text }]}>
-                    {selectedMedication?.frequency.times.join(", ")}
+                    {(() => {
+                      const freq = selectedMedication?.frequency;
+                      if (freq?.type === 'daily' && freq?.times) {
+                        return freq.times.join(", ");
+                      } else if (freq?.type === 'weekly' && freq?.specificDays) {
+                        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        return freq.specificDays.map(day => dayNames[day]).join(", ");
+                      } else if (freq?.type === 'as_needed') {
+                        return "As needed";
+                      } else if (freq?.type === 'interval') {
+                        return `Every ${freq.interval} days`;
+                      }
+                      return "No schedule";
+                    })()}
                   </Text>
                   <Text
                     style={[
@@ -537,15 +591,28 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       { color: colors.textSecondary },
                     ]}
                   >
-                    {selectedMedication?.frequency.type
-                      .replace("_", " ")
-                      .toUpperCase()}
+                    {(() => {
+                      const freq = selectedMedication?.frequency;
+                      if (!freq?.type) return '';
+                      switch (freq.type) {
+                        case 'daily':
+                          return 'Daily';
+                        case 'weekly':
+                          return 'Weekly';
+                        case 'interval':
+                          return `Every ${freq.interval} days`;
+                        case 'as_needed':
+                          return 'As Needed';
+                        default:
+                          return freq.type.replace('_', ' ').toUpperCase();
+                      }
+                    })()}
                   </Text>
                 </View>
               </View>
 
-              {/* Instructions Section */}
-              {selectedMedication?.instructions && (
+              {/* Description Section */}
+              {selectedMedication?.description && (
                 <View
                   style={[
                     styles.detailSection,
@@ -559,7 +626,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Instructions
+                      Description
                     </Text>
                   </View>
                   <Text
@@ -568,8 +635,66 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       { color: colors.textSecondary },
                     ]}
                   >
-                    {selectedMedication.instructions}
+                    {selectedMedication.description}
                   </Text>
+                </View>
+              )}
+
+              {/* Take With Meal Section */}
+              {selectedMedication?.takeWithMeal && (
+                <View
+                  style={[
+                    styles.detailSection,
+                    { backgroundColor: colors.card },
+                  ]}
+                >
+                  <View style={styles.sectionHeader}>
+                    <Ionicons
+                      name="restaurant-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      Take With Meal
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.sectionContent,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {selectedMedication.takeWithMeal === 'before' ? 'Before meals' : 'After meals'}
+                  </Text>
+                </View>
+              )}
+
+              {/* Medicine Photo Section */}
+              {selectedMedication?.drugAppearance && (
+                <View
+                  style={[
+                    styles.detailSection,
+                    { backgroundColor: colors.card },
+                  ]}
+                >
+                  <View style={styles.sectionHeader}>
+                    <Ionicons
+                      name="image-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      Medicine Photo
+                    </Text>
+                  </View>
+                  <Image
+                    source={{ uri: selectedMedication.drugAppearance }}
+                    style={[
+                      styles.medicinePhoto,
+                      { backgroundColor: colors.backgroundSecondary }
+                    ]}
+                    resizeMode="cover"
+                  />
                 </View>
               )}
 
@@ -662,35 +787,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                 </View>
               </View>
 
-              {/* Notes Section */}
-              {selectedMedication?.notes && (
-                <View
-                  style={[
-                    styles.detailSection,
-                    { backgroundColor: colors.card },
-                  ]}
-                >
-                  <View style={styles.sectionHeader}>
-                    <Ionicons
-                      name="create-outline"
-                      size={20}
-                      color={colors.primary}
-                    />
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Notes
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.sectionContent,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {selectedMedication.notes}
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
+              </ScrollView>
           </>
         )}
       </SafeAreaView>
@@ -1251,5 +1348,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 12,
     overflow: "hidden",
+  },
+  medicinePhoto: {
+    width: "100%",
+    height: 200,
+    borderRadius: 12,
+    marginTop: 8,
   },
 });
