@@ -32,10 +32,9 @@ export interface MedicineReminder {
   drugAppearance?: string | null; // URI of medicine photo
   description?: string; // Special instructions or notes
   frequency: {
-    type: 'daily' | 'weekly' | 'interval' | 'as_needed';
+    type: 'daily' | 'interval' | 'as_needed';
     times: string[]; // ["08:00", "14:00"]
-    interval?: number; // in days for interval frequency
-    specificDays?: number[]; // [0-6] active days for weekly frequency
+    specificDays?: number[]; // [0-6] active days for interval frequency
   };
   duration: {
     startDate: Date;
@@ -45,8 +44,6 @@ export interface MedicineReminder {
   isActive: boolean;
   color: string;
   icon: string;
-  stockQuantity?: number; // Current stock quantity
-  stockAlert?: number; // Alert threshold for low stock
   notificationIds?: string[]; // Array of notification IDs from expo-notifications
   createdAt: Date;
   updatedAt: Date;
@@ -72,20 +69,29 @@ export interface Habit {
   habitId: string;
   userId: string;
   habitName: string;
-  habitType: 'water' | 'exercise' | 'sleep' | 'meditation' | 'custom';
+  habitType: string; // Changed from preset types to free text with category selection
   description?: string;
   target: {
     value: number;
-    unit: string; // gelas, menit, kali
-    frequency: 'daily' | 'weekly' | 'monthly';
+    unit: string; // gelas, menit, kali, dll
   };
-  reminderTimes: string[]; // ["08:00"]
-  reminderDays: number[]; // [0-6] hari aktif
+  frequency: {
+    type: 'daily' | 'interval';
+    times: string[]; // ["08:00", "14:00"]
+    specificDays?: number[]; // [0-6] active days for interval frequency
+  };
+  reminderDays: number[]; // [0-6] hari aktif - kept for compatibility
+  reminderTimes: string[]; // ["08:00"] - kept for compatibility
   startDate: Date;
   endDate?: Date | null;
+  duration: {
+    startDate: Date;
+    endDate?: Date | null;
+    totalDays?: number | null;
+  };
   isActive: boolean;
   color: string;
-  icon: string;
+  icon: string; // Icon emoji instead of image
   streak: number;
   bestStreak: number;
   notificationIds?: string[]; // Array of notification IDs from expo-notifications
@@ -94,9 +100,9 @@ export interface Habit {
   // Additional properties for service compatibility
   completedDates: string[]; // Array of date strings for completed days
   schedule: {
-    type: 'daily' | 'weekly' | 'monthly';
-    frequency: 'daily' | 'weekly' | 'monthly';
-    days?: number[]; // for weekly habits
+    type: 'daily' | 'interval';
+    frequency: 'daily' | 'interval';
+    days?: number[]; // for interval frequency
     endDate?: Date;
   };
 }
