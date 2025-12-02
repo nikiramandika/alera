@@ -3,15 +3,15 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Firebase configuration - replace with your actual config from Firebase Console
+// Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyBPqTqejOou8m2EG1skbkvENDcB7AhU8rg",
-  authDomain: "alera-b60ac.firebaseapp.com",
-  projectId: "alera-b60ac",
-  storageBucket: "alera-b60ac.firebasestorage.app",
-  messagingSenderId: "411616898655",
-  appId: "1:411616898655:web:0307e9c127f1916d4ff5ea",
-  measurementId: "G-MBPBSEQXHQ"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
