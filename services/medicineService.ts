@@ -1,23 +1,32 @@
 import {
   collection,
   doc,
-  setDoc,
   getDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   query,
   where,
-  orderBy,
   serverTimestamp,
-  addDoc,
-  Timestamp
+  addDoc
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { MedicineReminder, MedicineHistory } from '@/types';
 
 // MEDICINES COLLECTION (subcollection under users)
 export const medicineService = {
+  // Helper method to normalize date to start of day (00:00:00)
+  normalizeDateToStart(date: Date): Date {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  },
+
+  // Helper method to normalize date to end of day (23:59:59)
+  normalizeDateToEnd(date: Date): Date {
+    const normalized = new Date(date);
+    normalized.setHours(23, 59, 59, 999);
+    return normalized;
+  },
   // Add new medicine
   async addMedicine(userId: string, medicine: Omit<MedicineReminder, 'reminderId' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
@@ -45,6 +54,9 @@ export const medicineService = {
       const querySnapshot = await getDocs(q);
       console.log('🔍 [DEBUG] Query executed, docs found:', querySnapshot.docs.length);
 
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
       return querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
@@ -52,20 +64,47 @@ export const medicineService = {
           reminderId: doc.id,
           duration: {
             ...data.duration,
-            startDate: data.duration?.startDate?.toDate?.() || new Date(),
-            endDate: data.duration?.endDate?.toDate?.() || null,
-          },
-          stock: {
-            current: data.stock?.current || 0,
-            currentStock: data.stock?.currentStock || data.stockQuantity || 0,
-            refillThreshold: data.stock?.refillThreshold || data.stockAlert || 5,
-            unit: data.stock?.unit || 'units',
-            lastUpdated: data.stock?.lastUpdated?.toDate?.() || new Date()
+            startDate: this.normalizeDateToStart(data.duration?.startDate?.toDate?.() || new Date()),
+            endDate: data.duration?.endDate?.toDate?.() ? this.normalizeDateToEnd(data.duration.endDate.toDate()) : null,
           },
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date()
         };
-      }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()) as MedicineReminder[];
+      })
+      .filter((medicine: any) => {
+        // Include only active medicines that haven't expired
+        if (!medicine.isActive) return false;
+
+        // Check if medicine has expired (has end date and it's in the past)
+        if (medicine.endDate) {
+          let endDate: Date;
+          if (typeof medicine.endDate === 'object' && 'toDate' in medicine.endDate && typeof medicine.endDate.toDate === 'function') {
+            endDate = this.normalizeDateToEnd(medicine.endDate.toDate());
+          } else {
+            endDate = this.normalizeDateToEnd(new Date(medicine.endDate));
+          }
+
+          if (endDate <= today) {
+            console.log(`Medicine ${medicine.medicineName} has expired on ${endDate.toISOString()}, today is ${today.toISOString()}`);
+            return false;
+          }
+        } else if (medicine.duration?.endDate) {
+          let durationEndDate: Date;
+          if (typeof medicine.duration.endDate === 'object' && 'toDate' in medicine.duration.endDate && typeof medicine.duration.endDate.toDate === 'function') {
+            durationEndDate = this.normalizeDateToEnd(medicine.duration.endDate.toDate());
+          } else {
+            durationEndDate = this.normalizeDateToEnd(new Date(medicine.duration.endDate));
+          }
+
+          if (durationEndDate <= today) {
+            console.log(`Medicine ${medicine.medicineName} has expired on ${durationEndDate.toISOString()}, today is ${today.toISOString()}`);
+            return false;
+          }
+        }
+
+        return true;
+      })
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()) as MedicineReminder[];
     } catch (error) {
       console.error('Error getting medicines:', error);
       throw error;
@@ -85,15 +124,8 @@ export const medicineService = {
           reminderId: medicineDoc.id,
           duration: {
             ...data.duration,
-            startDate: data.duration?.startDate?.toDate?.() || new Date(),
-            endDate: data.duration?.endDate?.toDate?.() || null,
-          },
-          stock: {
-            current: data.stock?.current || 0,
-            currentStock: data.stock?.currentStock || data.stockQuantity || 0,
-            refillThreshold: data.stock?.refillThreshold || data.stockAlert || 5,
-            unit: data.stock?.unit || 'units',
-            lastUpdated: data.stock?.lastUpdated?.toDate?.() || new Date()
+            startDate: this.normalizeDateToStart(data.duration?.startDate?.toDate?.() || new Date()),
+            endDate: data.duration?.endDate?.toDate?.() ? this.normalizeDateToEnd(data.duration.endDate.toDate()) : null,
           },
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date()
@@ -139,18 +171,12 @@ export const medicineService = {
     try {
       const medicines = await this.getMedicines(userId);
       const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
       return medicines.filter(medicine => {
         // Check if medicine should be taken today
         if (medicine.frequency.type === 'daily') return true;
-        if (medicine.frequency.type === 'specific_days') {
-          return medicine.frequency.specificDays?.includes(dayNames[today]);
-        }
         if (medicine.frequency.type === 'interval') {
-          // Logic for interval-based frequency
-          const daysSinceStart = Math.floor((Date.now() - medicine.createdAt.getTime()) / (1000 * 60 * 60 * 24));
-          return daysSinceStart % medicine.frequency.interval === 0;
+          return medicine.frequency.specificDays?.includes(today);
         }
         return false;
       });
@@ -160,46 +186,26 @@ export const medicineService = {
     }
   },
 
-  // Update stock
-  async updateStock(userId: string, medicineId: string, newStock: number): Promise<void> {
-    try {
-      await this.updateMedicine(userId, medicineId, {
-        stock: {
-          current: newStock,
-          currentStock: newStock,
-          refillThreshold: 5,
-          unit: 'units',
-          lastUpdated: new Date()
-        }
-      });
-    } catch (error) {
-      console.error('Error updating stock:', error);
-      throw error;
-    }
-  },
-
-  // Check for low stock
-  async getLowStockMedicines(userId: string): Promise<MedicineReminder[]> {
-    try {
-      const medicines = await this.getMedicines(userId);
-      return medicines.filter(medicine =>
-        medicine.stock.currentStock <= medicine.stock.refillThreshold
-      );
-    } catch (error) {
-      console.error('Error getting low stock medicines:', error);
-      throw error;
-    }
-  }
-};
+  };
 
 // MEDICINE HISTORY COLLECTION (subcollection under medicines)
 export const medicineHistoryService = {
   // Add medicine intake record
-  async addMedicineHistory(userId: string, medicineId: string, history: Omit<MedicineHistory, 'historyId' | 'createdAt'>): Promise<string> {
+  async addMedicineHistory(userId: string, medicineId: string, history: Omit<MedicineHistory, 'historyId' | 'createdAt' | 'reminderId' | 'userId' | 'medicineName'>): Promise<string> {
     try {
+      // Get medicine details to include name and reminderId
+      const medicineDoc = await getDoc(doc(db, 'users', userId, 'medicines', medicineId));
+      if (!medicineDoc.exists()) {
+        throw new Error('Medicine not found');
+      }
+
+      const medicineData = medicineDoc.data();
       const historyRef = collection(db, 'users', userId, 'medicines', medicineId, 'history');
       const docRef = await addDoc(historyRef, {
         ...history,
+        userId,
+        reminderId: medicineId,
+        medicineName: medicineData.medicineName || 'Unknown Medicine',
         createdAt: serverTimestamp()
       });
       return docRef.id;
@@ -210,7 +216,7 @@ export const medicineHistoryService = {
   },
 
   // Get medicine history
-  async getMedicineHistory(userId: string, medicineId: string, limit = 30): Promise<MedicineHistory[]> {
+  async getMedicineHistory(userId: string, medicineId: string): Promise<MedicineHistory[]> {
     try {
       const historyRef = collection(db, 'users', userId, 'medicines', medicineId, 'history');
       const q = query(historyRef, where('scheduledTime', '>=',
@@ -238,7 +244,7 @@ export const medicineHistoryService = {
       const allHistory: MedicineHistory[] = [];
 
       for (const medicine of medicines) {
-        const history = await this.getMedicineHistory(userId, medicine.reminderId, 10);
+        const history = await this.getMedicineHistory(userId, medicine.reminderId);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
@@ -264,15 +270,8 @@ export const medicineHistoryService = {
         medicineId,
         scheduledTime,
         actualTime: new Date(),
-        status: 'taken',
-        notes: ''
+        status: 'taken'
       });
-
-      // Update stock if medicine was taken
-      const medicine = await medicineService.getMedicineById(userId, medicineId);
-      if (medicine && medicine.stock.currentStock > 0) {
-        await medicineService.updateStock(userId, medicineId, medicine.stock.currentStock - 1);
-      }
     } catch (error) {
       console.error('Error marking medicine as taken:', error);
       throw error;
@@ -280,13 +279,12 @@ export const medicineHistoryService = {
   },
 
   // Mark medicine as missed
-  async markMedicineMissed(userId: string, medicineId: string, scheduledTime: Date, notes?: string): Promise<void> {
+  async markMedicineMissed(userId: string, medicineId: string, scheduledTime: Date): Promise<void> {
     try {
       await this.addMedicineHistory(userId, medicineId, {
         medicineId,
         scheduledTime,
-        status: 'missed',
-        notes: notes || ''
+        status: 'missed'
       });
     } catch (error) {
       console.error('Error marking medicine as missed:', error);
@@ -309,7 +307,7 @@ export const medicineHistoryService = {
       startDate.setDate(startDate.getDate() - days);
 
       for (const medicine of medicines) {
-        const history = await this.getMedicineHistory(userId, medicine.reminderId, 100);
+        const history = await this.getMedicineHistory(userId, medicine.reminderId);
         const filteredHistory = history.filter(h => h.scheduledTime >= startDate);
 
         total += filteredHistory.length;

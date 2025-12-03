@@ -22,8 +22,18 @@ export const habitService = {
   async addHabit(userId: string, habit: Omit<Habit, 'habitId' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const habitsRef = collection(db, 'users', userId, 'habits');
+
+      // Filter out undefined values to avoid Firebase errors
+      const filteredHabit = { ...habit };
+      if (filteredHabit.endDate === undefined) {
+        delete filteredHabit.endDate;
+      }
+      if (filteredHabit.duration?.endDate === undefined) {
+        delete filteredHabit.duration.endDate;
+      }
+
       const docRef = await addDoc(habitsRef, {
-        ...habit,
+        ...filteredHabit,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         streak: 0,
@@ -43,14 +53,90 @@ export const habitService = {
       const q = query(habitsRef, where('isActive', '==', true));
       const querySnapshot = await getDocs(q);
 
-      return querySnapshot.docs.map(doc => ({
-        ...doc.data(),
-        habitId: doc.id,
-        createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate?.() || new Date(),
-        streak: doc.data().streak || 0,
-        completedDates: doc.data().completedDates || []
-      })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()) as Habit[];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Set to start of day
+
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        let habitStartDate: Date;
+
+        // Handle start date from multiple sources with priority order
+        if (data.startDate) {
+          if (typeof data.startDate === 'object' && 'toDate' in data.startDate && typeof data.startDate.toDate === 'function') {
+            habitStartDate = data.startDate.toDate();
+          } else {
+            habitStartDate = new Date(data.startDate);
+          }
+        } else if (data.duration?.startDate) {
+          if (typeof data.duration.startDate === 'object' && 'toDate' in data.duration.startDate && typeof data.duration.startDate.toDate === 'function') {
+            habitStartDate = data.duration.startDate.toDate();
+          } else {
+            habitStartDate = new Date(data.duration.startDate);
+          }
+        } else if (data.createdAt?.toDate) {
+          habitStartDate = data.createdAt.toDate();
+        } else {
+          habitStartDate = new Date();
+        }
+
+        // Set to start of day to avoid timezone issues
+        habitStartDate.setHours(0, 0, 0, 0);
+
+        return {
+          ...data,
+          habitId: doc.id,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date(),
+          streak: data.streak || 0,
+          completedDates: data.completedDates || []
+        };
+      })
+      .filter((habit: any) => {
+        // Include only active habits that haven't expired
+        if (!habit.isActive) return false;
+
+        // Check if habit has expired (has end date and it's in the past)
+        if (habit.endDate) {
+          let endDate: Date;
+          if (typeof habit.endDate === 'object' && 'toDate' in habit.endDate && typeof habit.endDate.toDate === 'function') {
+            endDate = habit.endDate.toDate();
+          } else {
+            endDate = new Date(habit.endDate);
+          }
+
+          // Set to end of day for accurate comparison
+          endDate.setHours(23, 59, 59, 999);
+
+          const today = new Date();
+          today.setHours(23, 59, 59, 999);
+
+          if (endDate <= today) {
+            console.log(`Habit ${habit.habitName} has expired on ${endDate.toISOString()}, today is ${today.toISOString()}`);
+            return false;
+          }
+        } else if (habit.duration?.endDate) {
+          let durationEndDate: Date;
+          if (typeof habit.duration.endDate === 'object' && 'toDate' in habit.duration.endDate && typeof habit.duration.endDate.toDate === 'function') {
+            durationEndDate = habit.duration.endDate.toDate();
+          } else {
+            durationEndDate = new Date(habit.duration.endDate);
+          }
+
+          // Set to end of day for accurate comparison
+          durationEndDate.setHours(23, 59, 59, 999);
+
+          const today = new Date();
+          today.setHours(23, 59, 59, 999);
+
+          if (durationEndDate < today) {
+            console.log(`Habit ${habit.habitName} has expired on ${durationEndDate.toISOString()}`);
+            return false;
+          }
+        }
+
+        return true;
+      })
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()) as Habit[];
     } catch (error) {
       console.error('Error getting habits:', error);
       throw error;
@@ -85,8 +171,18 @@ export const habitService = {
   async updateHabit(userId: string, habitId: string, updates: Partial<Habit>): Promise<void> {
     try {
       const habitRef = doc(db, 'users', userId, 'habits', habitId);
+
+      // Filter out undefined values to avoid Firebase errors
+      const filteredUpdates = { ...updates };
+      if (filteredUpdates.endDate === undefined) {
+        delete filteredUpdates.endDate;
+      }
+      if (filteredUpdates.duration?.endDate === undefined) {
+        delete filteredUpdates.duration.endDate;
+      }
+
       await updateDoc(habitRef, {
-        ...updates,
+        ...filteredUpdates,
         updatedAt: serverTimestamp()
       });
     } catch (error) {
@@ -95,14 +191,11 @@ export const habitService = {
     }
   },
 
-  // Delete habit (soft delete)
+  // Delete habit (hard delete for better UX - matches medicine service)
   async deleteHabit(userId: string, habitId: string): Promise<void> {
     try {
       const habitRef = doc(db, 'users', userId, 'habits', habitId);
-      await updateDoc(habitRef, {
-        isActive: false,
-        updatedAt: serverTimestamp()
-      });
+      await deleteDoc(habitRef);
     } catch (error) {
       console.error('Error deleting habit:', error);
       throw error;
@@ -115,13 +208,72 @@ export const habitService = {
       const habits = await this.getHabits(userId);
       const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const todayDate = new Date();
+      todayDate.setHours(0, 0, 0, 0);
 
       return habits.filter(habit => {
-        if (habit.schedule.type === 'daily') return true;
-        if (habit.schedule.type === 'specific_days') {
-          return habit.schedule.days?.includes(dayNames[today]);
+        // Get habit start date with proper priority
+        let habitStartDate: Date;
+
+        // Priority: startDate > duration.startDate > createdAt
+        if (habit.startDate) {
+          if (typeof habit.startDate === 'object' && 'toDate' in habit.startDate && typeof habit.startDate.toDate === 'function') {
+            habitStartDate = habit.startDate.toDate();
+          } else {
+            habitStartDate = new Date(habit.startDate);
+          }
+        } else if (habit.duration?.startDate) {
+          if (typeof habit.duration.startDate === 'object' && 'toDate' in habit.duration.startDate && typeof habit.duration.startDate.toDate === 'function') {
+            habitStartDate = habit.duration.startDate.toDate();
+          } else {
+            habitStartDate = new Date(habit.duration.startDate);
+          }
+        } else if (habit.createdAt) {
+          habitStartDate = habit.createdAt instanceof Date ? habit.createdAt :
+                        (typeof habit.createdAt?.toDate === 'function' ? habit.createdAt.toDate() : new Date());
+        } else {
+          habitStartDate = new Date();
         }
-        return false;
+
+        // Check if habit has expired first
+      if (habit.endDate) {
+        let endDate: Date;
+        if (typeof habit.endDate === 'object' && 'toDate' in habit.endDate && typeof habit.endDate.toDate === 'function') {
+          endDate = habit.endDate.toDate();
+        } else {
+          endDate = new Date(habit.endDate);
+        }
+        endDate.setHours(23, 59, 59, 999);
+
+        if (endDate < todayDate) {
+          console.log(`Habit ${habit.habitName} has expired on ${endDate.toISOString()}`);
+          return false;
+        }
+      } else if (habit.duration?.endDate) {
+        let durationEndDate: Date;
+        if (typeof habit.duration.endDate === 'object' && 'toDate' in habit.duration.endDate && typeof habit.duration.endDate.toDate === 'function') {
+          durationEndDate = habit.duration.endDate.toDate();
+        } else {
+          durationEndDate = new Date(habit.duration.endDate);
+        }
+        durationEndDate.setHours(23, 59, 59, 999);
+
+        if (durationEndDate < todayDate) {
+          console.log(`Habit ${habit.habitName} has expired on ${durationEndDate.toISOString()}`);
+          return false;
+        }
+      }
+
+      // Check if habit is scheduled for today (regardless of start date)
+      // Use frequency field first (from new create flow), fallback to schedule field
+      const frequencyType = habit.frequency?.type || habit.schedule?.type;
+      const frequencyDays = habit.frequency?.specificDays || habit.schedule?.days;
+
+      if (frequencyType === 'daily') return true;
+      if (frequencyType === 'interval') {
+        return frequencyDays?.includes(today);
+      }
+      return false;
       });
     } catch (error) {
       console.error('Error getting today habits:', error);
