@@ -74,22 +74,21 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.log('🔍 [DEBUG] Frequency type:', medicine.frequency.type);
 
       // Add medicine to database first
-      const result = await medicineService.addMedicine(user.userId, medicine);
-      console.log('🔍 [DEBUG] Medicine added with ID:', result.reminderId || result);
+      const medicineId = await medicineService.addMedicine(user.userId, medicine);
+      console.log('🔍 [DEBUG] Medicine added with ID:', medicineId);
 
       // Schedule real-time notifications for each dose time
       const timesToSchedule = medicine.frequency?.times || [];
       console.log('🔍 [DEBUG] Times to schedule for real-time checking:', timesToSchedule);
 
-      if (timesToSchedule.length > 0 && (result.reminderId || result)) {
-        const medicineId = result.reminderId || (result as any).reminderId || result;
+      if (timesToSchedule.length > 0 && medicineId) {
 
         for (const time of timesToSchedule) {
           console.log('🔍 [DEBUG] Adding real-time notification scheduler for time:', time);
 
           // Add to notification scheduler for real-time checking
           await notificationScheduler.addNotification({
-            medicineId: medicineId as string,
+            medicineId: medicineId,
             time: time,
             title: '💊 Medicine Reminder',
             body: `Time to take ${medicine.medicineName}${medicine.dosage ? ` (${medicine.dosage})` : ''}`,
@@ -217,13 +216,9 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return medicines.filter(medicine => {
       // Check if medicine should be taken today
       if (medicine.frequency.type === 'daily') return true;
-      if (medicine.frequency.type === 'weekly') {
+      if (medicine.frequency.type === 'interval') {
         const today = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
         return medicine.frequency.specificDays?.includes(today);
-      }
-      if (medicine.frequency.type === 'interval') {
-        const daysSinceStart = Math.floor((now.getTime() - medicine.createdAt.getTime()) / (1000 * 60 * 60 * 24));
-        return daysSinceStart % medicine.frequency.interval === 0;
       }
       return false;
     });
@@ -235,7 +230,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const todaySchedule = getTodaySchedule();
 
     return todaySchedule.filter(medicine => {
-      return medicine.times.some(time => {
+      return medicine.frequency.times.some(time => {
         const [hours, minutes] = time.split(':').map(Number);
         const scheduledTime = new Date();
         scheduledTime.setHours(hours, minutes, 0, 0);

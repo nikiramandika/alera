@@ -70,22 +70,21 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log('🔍 [DEBUG] Habit target:', habit.target);
 
       // Add habit to database first
-      const result = await habitService.addHabit(user.userId, habit);
-      console.log('🔍 [DEBUG] Habit added with ID:', result.habitId || result);
+      const habitId = await habitService.addHabit(user.userId, habit);
+      console.log('🔍 [DEBUG] Habit added with ID:', habitId);
 
       // Schedule real-time notifications for each reminder time
-      const timesToSchedule = habit.reminderTimes || [];
+      const timesToSchedule = habit.frequency?.times || habit.reminderTimes || [];
       console.log('🔍 [DEBUG] Habit - Times to schedule for real-time checking:', timesToSchedule);
 
-      if (timesToSchedule.length > 0 && (result.habitId || result)) {
-        const habitId = result.habitId || (result as any).habitId || result;
+      if (timesToSchedule.length > 0 && habitId) {
 
         for (const reminderTime of timesToSchedule) {
           console.log('🔍 [DEBUG] Habit - Adding real-time notification scheduler for time:', reminderTime);
 
           // Add to notification scheduler for real-time checking
           await notificationScheduler.addNotification({
-            habitId: habitId as string,
+            habitId: habitId,
             time: reminderTime,
             title: '💪 Habit Reminder',
             body: `Time for ${habit.habitName}${habit.target?.value ? ` (${habit.target.value} ${habit.target.unit})` : ''}`,
@@ -125,14 +124,18 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Apply the updates
       await habitService.updateHabit(user.userId, id, updates);
 
-      // Get the updated habit
-      const updatedHabit = { ...existingHabit, ...updates };
-      const timesToSchedule = updatedHabit.reminderTimes || [];
+      // Apply the updates to existing habit
+      const updatedHabit = { ...existingHabit, habitId: id, ...updates };
+
+      // Use the new frequency structure first, fallback to reminderTimes for compatibility
+      const timesToSchedule = updatedHabit.frequency?.times || updatedHabit.reminderTimes || [];
       console.log('🔍 [DEBUG] Habit Update - Times to reschedule for real-time:', timesToSchedule);
 
       // Add new real-time notifications
-      if (timesToSchedule.length > 0) {
-        for (const reminderTime of timesToSchedule) {
+      const notificationTimes = timesToSchedule;
+
+      if (notificationTimes.length > 0) {
+        for (const reminderTime of notificationTimes) {
           console.log('🔍 [DEBUG] Habit Update - Adding real-time notification for time:', reminderTime);
 
           await notificationScheduler.addNotification({
@@ -211,11 +214,49 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const getTodayHabits = () => {
     const now = new Date();
     return habits.filter(habit => {
-      if (habit.schedule.type === 'daily') return true;
-      if (habit.schedule.type === 'specific_days') {
+      // Check if habit has expired first
+      if (habit.endDate) {
+        let endDate: Date;
+        if (typeof habit.endDate === 'object' && 'toDate' in habit.endDate && typeof habit.endDate.toDate === 'function') {
+          endDate = habit.endDate.toDate();
+        } else {
+          endDate = new Date(habit.endDate);
+        }
+        endDate.setHours(23, 59, 59, 999);
+
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+
+        if (endDate <= today) {
+          console.log(`Habit ${habit.habitName} has expired on ${endDate.toISOString()}, today is ${today.toISOString()}`);
+          return false;
+        }
+      } else if (habit.duration?.endDate) {
+        let durationEndDate: Date;
+        if (typeof habit.duration.endDate === 'object' && 'toDate' in habit.duration.endDate && typeof habit.duration.endDate.toDate === 'function') {
+          durationEndDate = habit.duration.endDate.toDate();
+        } else {
+          durationEndDate = new Date(habit.duration.endDate);
+        }
+        durationEndDate.setHours(23, 59, 59, 999);
+
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+
+        if (durationEndDate < today) {
+          console.log(`Habit ${habit.habitName} has expired on ${durationEndDate.toISOString()}`);
+          return false;
+        }
+      }
+
+      // Use frequency field first, fallback to schedule field
+      const frequencyType = habit.frequency?.type || habit.schedule?.type;
+      const frequencyDays = habit.frequency?.specificDays || habit.schedule?.days;
+
+      if (frequencyType === 'daily') return true;
+      if (frequencyType === 'interval') {
         const today = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        return habit.schedule.days?.includes(dayNames[today]);
+        return frequencyDays?.includes(today);
       }
       return false;
     });
