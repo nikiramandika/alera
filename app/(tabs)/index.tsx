@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useHabit } from '@/contexts/HabitContext';
@@ -45,6 +45,24 @@ export default function HomeScreen() {
   // Import contexts for real data
   const { habits, refreshHabits } = useHabit();
   const { medicines, refreshMedicines } = useMedicine();
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const refreshData = async () => {
+        try {
+          await Promise.all([
+            refreshHabits(),
+            refreshMedicines()
+          ]);
+        } catch (error) {
+          console.error('Error refreshing data on focus:', error);
+        }
+      };
+
+      refreshData();
+    }, [refreshHabits, refreshMedicines])
+  );
 
   
 // Generate tasks from real data - defined outside useMemo to avoid dependency issues

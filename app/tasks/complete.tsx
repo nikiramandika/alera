@@ -2,10 +2,11 @@
 // NOTE: This is a rewritten layout to follow the clean, centered style from your screenshot
 
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, Alert, Platform, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useMedicine } from '@/contexts/MedicineContext';
 import { useHabit } from '@/contexts/HabitContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -16,8 +17,9 @@ export default function TaskCompleteScreen() {
   const params = useLocalSearchParams();
   const [task, setTask] = useState<any>(null);
   const [isCompleting, setIsCompleting] = useState(false);
-  const { markMedicineTaken } = useMedicine();
-  const { markHabitCompleted } = useHabit();
+  const taskDataProcessed = useRef(false);
+  const { markMedicineTaken, refreshMedicines } = useMedicine();
+  const { markHabitCompleted, refreshHabits } = useHabit();
 
   // Color scheme and dynamic colors
   const colorScheme = useColorScheme();
@@ -53,6 +55,9 @@ export default function TaskCompleteScreen() {
 
   // Parse task data from params
   React.useEffect(() => {
+    // Prevent processing the same task data multiple times
+    if (taskDataProcessed.current) return;
+
     console.log('Params received:', params); // Debug log
     if (params.taskData) {
       console.log('Task data received:', params.taskData); // Debug log
@@ -60,6 +65,7 @@ export default function TaskCompleteScreen() {
         const parsedTask = JSON.parse(params.taskData as string);
         console.log('Parsed task:', parsedTask); // Debug log
         setTask(parsedTask);
+        taskDataProcessed.current = true; // Mark as processed
       } catch (error) {
         console.error('Error parsing task data:', error);
         console.log('Raw task data:', params.taskData); // Debug log
@@ -88,68 +94,95 @@ export default function TaskCompleteScreen() {
         ]
       );
     }
-  }, [params.taskData, router, task]);
+  }, [params.taskData, router]);
 
   const slideX = useRef(new Animated.Value(0)).current;
   const [isCompleted, setIsCompleted] = useState(false);
 
+  // Calculate maximum slide distance based on actual screen dimensions
+  const { width: screenWidth } = Dimensions.get('window');
+  const sliderWidth = screenWidth * 0.85; // 85% of screen width
+  const buttonWidth = 55; // Button width from styles
+  const buttonPadding = 6; // Left padding from styles (3px on each side)
+  const maxSlideDistance = sliderWidth - buttonWidth - buttonPadding;
+
+  console.log('Slider calculations:', {
+    screenWidth,
+    sliderWidth,
+    maxSlideDistance,
+    completionThreshold: maxSlideDistance * 0.8
+  });
+
   // Animated values for emoji scale and transition
   const emojiScale = slideX.interpolate({
-    inputRange: [0, 200, 260],
-    outputRange: [1, 1.5, 1.8],
+    inputRange: [0, maxSlideDistance * 0.4, maxSlideDistance * 0.6, maxSlideDistance],
+    outputRange: [1, 1.3, 1.6, 1.8],
     extrapolate: 'clamp',
   });
 
   // Animated values for background circle scale
   const circleScale = slideX.interpolate({
-    inputRange: [0, 200, 260],
-    outputRange: [1, 1.2, 1.4],
+    inputRange: [0, maxSlideDistance * 0.4, maxSlideDistance * 0.6, maxSlideDistance],
+    outputRange: [1, 1.1, 1.3, 1.4],
     extrapolate: 'clamp',
   });
 
   const emojiOpacity = slideX.interpolate({
-    inputRange: [0, 180, 260],
-    outputRange: [1, 0.3, 0],
+    inputRange: [0, maxSlideDistance * 0.5, maxSlideDistance * 0.7, maxSlideDistance],
+    outputRange: [1, 0.7, 0.3, 0],
     extrapolate: 'clamp',
   });
 
   const checkmarkOpacity = slideX.interpolate({
-    inputRange: [180, 260],
-    outputRange: [0, 1],
+    inputRange: [maxSlideDistance * 0.5, maxSlideDistance * 0.7, maxSlideDistance],
+    outputRange: [0, 0.5, 1],
     extrapolate: 'clamp',
   });
 
   const checkmarkScale = slideX.interpolate({
-    inputRange: [180, 260],
-    outputRange: [0.5, 1.2],
+    inputRange: [maxSlideDistance * 0.5, maxSlideDistance * 0.7, maxSlideDistance],
+    outputRange: [0.3, 0.8, 1.2],
     extrapolate: 'clamp',
   });
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !isCompleting,
       onMoveShouldSetPanResponder: (_, gesture) =>
-        !isCompleting && Math.abs(gesture.dx) > 5,
+        !isCompleting && Math.abs(gesture.dx) > 3, // Reduced threshold for easier activation
 
       onPanResponderGrant: () => {
-        // Optional: Add haptic feedback here
+        // Add haptic feedback when user starts sliding
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {
+          // Fallback if haptics not available
+        });
       },
 
       onPanResponderMove: (_, gesture) => {
-        console.log('PanResponder move:', gesture.dx); // Debug log
-        if (gesture.dx > 0 && gesture.dx < 260) {
-          slideX.setValue(gesture.dx);
+        // Allow full sliding range based on actual slider width
+        if (gesture.dx > 0) {
+          // Limit to maxSlideDistance to prevent overshooting
+          const clampedValue = Math.min(gesture.dx, maxSlideDistance);
+          slideX.setValue(clampedValue);
+
+          // Add haptic feedback when approaching completion
+          const completionPoint = maxSlideDistance * 0.8;
+          if (gesture.dx > completionPoint && gesture.dx < completionPoint + 5) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          }
         }
       },
 
       onPanResponderRelease: (_, gesture) => {
-        console.log('PanResponder release:', gesture.dx); // Debug log
-        if (gesture.dx > 200) {
+        // Completion threshold at 80% of max distance
+        const completionThreshold = maxSlideDistance * 0.8;
+        if (gesture.dx > completionThreshold) {
           handleComplete();
         } else {
+          // Smooth spring back animation
           Animated.spring(slideX, {
             toValue: 0,
-            tension: 100,
-            friction: 8,
+            tension: 80, // Lower tension for smoother spring
+            friction: 6, // Lower friction for bouncier feel
             useNativeDriver: false,
           }).start();
         }
@@ -162,6 +195,13 @@ export default function TaskCompleteScreen() {
     if (isCompleting || !task) return;
 
     setIsCompleting(true);
+
+    // First animate to full completion position
+    Animated.timing(slideX, {
+      toValue: maxSlideDistance,
+      duration: 400, // Longer duration for smoother animation
+      useNativeDriver: false,
+    }).start();
 
     try {
       let result = { success: false };
@@ -184,20 +224,35 @@ export default function TaskCompleteScreen() {
 
       if (result.success) {
         setIsCompleted(true);
-        Animated.timing(slideX, {
-          toValue: 260,
-          duration: 250,
-          useNativeDriver: false,
-        }).start(() => {
-          // Navigate back to home after completion
+
+        // Success haptic feedback
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
+        // Add a delay to show the completed state with checkmark
+        setTimeout(async () => {
+          // Refresh data to update the home screen
+          try {
+            if (task.type === 'medicine') {
+              await refreshMedicines();
+            } else if (task.type === 'habit') {
+              await refreshHabits();
+            }
+          } catch (error) {
+            console.error('Error refreshing data after completion:', error);
+          }
+
+          // Add another delay before navigation for better UX
           setTimeout(() => {
             router.replace('/(tabs)');
-          }, 1000); // Extended time to show checkmark
-        });
+          }, 500);
+        }, 1500); // Show completion state for 1.5 seconds
       } else {
         Alert.alert('Error', 'Failed to complete task');
+        // Smooth spring back animation
         Animated.spring(slideX, {
           toValue: 0,
+          tension: 80,
+          friction: 6,
           useNativeDriver: false,
         }).start();
         setIsCompleting(false);
@@ -205,8 +260,11 @@ export default function TaskCompleteScreen() {
     } catch (error) {
       console.error('Task completion error:', error);
       Alert.alert('Error', 'An unexpected error occurred');
+      // Smooth spring back animation
       Animated.spring(slideX, {
         toValue: 0,
+        tension: 80,
+        friction: 6,
         useNativeDriver: false,
       }).start();
       setIsCompleting(false);
