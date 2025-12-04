@@ -72,36 +72,10 @@ export const medicineService = {
         };
       })
       .filter((medicine: any) => {
-        // Include only active medicines that haven't expired
+        // Include only active medicines (don't filter by expiry date)
         if (!medicine.isActive) return false;
 
-        // Check if medicine has expired (has end date and it's in the past)
-        if (medicine.endDate) {
-          let endDate: Date;
-          if (typeof medicine.endDate === 'object' && 'toDate' in medicine.endDate && typeof medicine.endDate.toDate === 'function') {
-            endDate = this.normalizeDateToEnd(medicine.endDate.toDate());
-          } else {
-            endDate = this.normalizeDateToEnd(new Date(medicine.endDate));
-          }
-
-          if (endDate <= today) {
-            console.log(`Medicine ${medicine.medicineName} has expired on ${endDate.toISOString()}, today is ${today.toISOString()}`);
-            return false;
-          }
-        } else if (medicine.duration?.endDate) {
-          let durationEndDate: Date;
-          if (typeof medicine.duration.endDate === 'object' && 'toDate' in medicine.duration.endDate && typeof medicine.duration.endDate.toDate === 'function') {
-            durationEndDate = this.normalizeDateToEnd(medicine.duration.endDate.toDate());
-          } else {
-            durationEndDate = this.normalizeDateToEnd(new Date(medicine.duration.endDate));
-          }
-
-          if (durationEndDate <= today) {
-            console.log(`Medicine ${medicine.medicineName} has expired on ${durationEndDate.toISOString()}, today is ${today.toISOString()}`);
-            return false;
-          }
-        }
-
+        // Don't filter by expiry date - let expired medicines still appear
         return true;
       })
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()) as MedicineReminder[];

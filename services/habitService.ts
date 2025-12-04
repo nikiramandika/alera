@@ -1,17 +1,14 @@
 import {
   collection,
   doc,
-  setDoc,
   getDoc,
   getDocs,
   updateDoc,
   deleteDoc,
   query,
   where,
-  orderBy,
   serverTimestamp,
-  addDoc,
-  Timestamp
+  addDoc
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { Habit, HabitHistory } from '@/types';
@@ -91,51 +88,6 @@ export const habitService = {
           completedDates: data.completedDates || []
         };
       })
-      .filter((habit: any) => {
-        // Include only active habits that haven't expired
-        if (!habit.isActive) return false;
-
-        // Check if habit has expired (has end date and it's in the past)
-        if (habit.endDate) {
-          let endDate: Date;
-          if (typeof habit.endDate === 'object' && 'toDate' in habit.endDate && typeof habit.endDate.toDate === 'function') {
-            endDate = habit.endDate.toDate();
-          } else {
-            endDate = new Date(habit.endDate);
-          }
-
-          // Set to end of day for accurate comparison
-          endDate.setHours(23, 59, 59, 999);
-
-          const today = new Date();
-          today.setHours(23, 59, 59, 999);
-
-          if (endDate <= today) {
-            console.log(`Habit ${habit.habitName} has expired on ${endDate.toISOString()}, today is ${today.toISOString()}`);
-            return false;
-          }
-        } else if (habit.duration?.endDate) {
-          let durationEndDate: Date;
-          if (typeof habit.duration.endDate === 'object' && 'toDate' in habit.duration.endDate && typeof habit.duration.endDate.toDate === 'function') {
-            durationEndDate = habit.duration.endDate.toDate();
-          } else {
-            durationEndDate = new Date(habit.duration.endDate);
-          }
-
-          // Set to end of day for accurate comparison
-          durationEndDate.setHours(23, 59, 59, 999);
-
-          const today = new Date();
-          today.setHours(23, 59, 59, 999);
-
-          if (durationEndDate < today) {
-            console.log(`Habit ${habit.habitName} has expired on ${durationEndDate.toISOString()}`);
-            return false;
-          }
-        }
-
-        return true;
-      })
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()) as Habit[];
     } catch (error) {
       console.error('Error getting habits:', error);
@@ -150,7 +102,7 @@ export const habitService = {
       const habitDoc = await getDoc(habitRef);
 
       if (habitDoc.exists()) {
-        const data = habitDoc.data() as Habit;
+        const data = habitDoc.data();
         return {
           ...data,
           habitId: habitDoc.id,
@@ -158,7 +110,7 @@ export const habitService = {
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
           streak: data.streak || 0,
           completedDates: data.completedDates || []
-        };
+        } as Habit;
       }
       return null;
     } catch (error) {
@@ -177,7 +129,7 @@ export const habitService = {
       if (filteredUpdates.endDate === undefined) {
         delete filteredUpdates.endDate;
       }
-      if (filteredUpdates.duration?.endDate === undefined) {
+      if (filteredUpdates.duration && filteredUpdates.duration.endDate === undefined) {
         delete filteredUpdates.duration.endDate;
       }
 
@@ -206,35 +158,10 @@ export const habitService = {
   async getTodayHabits(userId: string): Promise<Habit[]> {
     try {
       const habits = await this.getHabits(userId);
-      const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const todayDate = new Date();
       todayDate.setHours(0, 0, 0, 0);
 
       return habits.filter(habit => {
-        // Get habit start date with proper priority
-        let habitStartDate: Date;
-
-        // Priority: startDate > duration.startDate > createdAt
-        if (habit.startDate) {
-          if (typeof habit.startDate === 'object' && 'toDate' in habit.startDate && typeof habit.startDate.toDate === 'function') {
-            habitStartDate = habit.startDate.toDate();
-          } else {
-            habitStartDate = new Date(habit.startDate);
-          }
-        } else if (habit.duration?.startDate) {
-          if (typeof habit.duration.startDate === 'object' && 'toDate' in habit.duration.startDate && typeof habit.duration.startDate.toDate === 'function') {
-            habitStartDate = habit.duration.startDate.toDate();
-          } else {
-            habitStartDate = new Date(habit.duration.startDate);
-          }
-        } else if (habit.createdAt) {
-          habitStartDate = habit.createdAt instanceof Date ? habit.createdAt :
-                        (typeof habit.createdAt?.toDate === 'function' ? habit.createdAt.toDate() : new Date());
-        } else {
-          habitStartDate = new Date();
-        }
-
         // Check if habit has expired first
       if (habit.endDate) {
         let endDate: Date;
@@ -271,6 +198,7 @@ export const habitService = {
 
       if (frequencyType === 'daily') return true;
       if (frequencyType === 'interval') {
+        const today = new Date().getDay();
         return frequencyDays?.includes(today);
       }
       return false;
@@ -352,7 +280,7 @@ export const habitHistoryService = {
   },
 
   // Get habit history
-  async getHabitHistory(userId: string, habitId: string, limit = 30): Promise<HabitHistory[]> {
+  async getHabitHistory(userId: string, habitId: string): Promise<HabitHistory[]> {
     try {
       const historyRef = collection(db, 'users', userId, 'habits', habitId, 'history');
       const q = query(historyRef, where('date', '>=',
@@ -360,12 +288,23 @@ export const habitHistoryService = {
       ));
       const querySnapshot = await getDocs(q);
 
-      return querySnapshot.docs.map(doc => ({
-        ...doc.data(),
-        historyId: doc.id,
-        date: doc.data().date?.toDate?.() || new Date(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date()
-      })).sort((a, b) => b.date.getTime() - a.date.getTime()) as HabitHistory[];
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          logId: doc.id,
+          historyId: doc.id, // Keep for compatibility
+          userId: userId,
+          habitId: habitId,
+          habitName: data.habitName || '',
+          date: data.date?.toDate?.() || new Date(),
+          completed: data.completed || false,
+          progress: data.progress || { value: data.value || 1 },
+          value: data.value || 1,
+          completedAt: data.completedAt?.toDate?.() || null,
+          createdAt: data.createdAt?.toDate?.() || new Date()
+        } as HabitHistory;
+      }).sort((a, b) => b.date.getTime() - a.date.getTime());
     } catch (error) {
       console.error('Error getting habit history:', error);
       throw error;
@@ -379,7 +318,7 @@ export const habitHistoryService = {
       const allHistory: HabitHistory[] = [];
 
       for (const habit of habits) {
-        const history = await this.getHabitHistory(userId, habit.habitId, 10);
+        const history = await this.getHabitHistory(userId, habit.habitId);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
@@ -399,14 +338,21 @@ export const habitHistoryService = {
   },
 
   // Mark habit as completed
-  async markHabitCompleted(userId: string, habitId: string, value?: number, notes?: string): Promise<void> {
+  async markHabitCompleted(userId: string, habitId: string, value?: number): Promise<void> {
     try {
+      // Get habit details to include habitName
+      const habit = await habitService.getHabitById(userId, habitId);
+
       await this.addHabitHistory(userId, habitId, {
+        logId: '', // Will be generated by the service
+        userId,
         habitId,
         date: new Date(),
         completed: true,
         value: value || 1,
-        notes: notes || ''
+        progress: { value: value || 1 },
+        habitName: habit?.habitName || '',
+        completedAt: new Date()
       });
 
       // Update streak and completed dates
@@ -465,7 +411,7 @@ export const habitHistoryService = {
       }));
 
       for (const habit of habits) {
-        const history = await this.getHabitHistory(userId, habit.habitId, 100);
+        const history = await this.getHabitHistory(userId, habit.habitId);
         const filteredHistory = history.filter(h => h.completed);
         totalCompletions += filteredHistory.length;
         bestStreak = Math.max(bestStreak, habit.streak);
@@ -497,7 +443,7 @@ export const habitHistoryService = {
     try {
       const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       const today = new Date();
-      const weekData = days.map((day, index) => {
+      const weekData = days.map((_, index) => {
         const date = new Date(today);
         date.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1) + index);
         return date;
@@ -514,7 +460,7 @@ export const habitHistoryService = {
         let dayCompletions = 0;
 
         for (const habit of habits) {
-          const history = await this.getHabitHistory(userId, habit.habitId, 100);
+          const history = await this.getHabitHistory(userId, habit.habitId);
           const dayHistory = history.filter(h =>
             h.date >= dayStart && h.date <= dayEnd && h.completed
           );

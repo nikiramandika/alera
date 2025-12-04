@@ -259,6 +259,25 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
     return dateObj.toLocaleDateString();
   };
 
+  // Helper function to check if medication is expired
+  const isMedicationExpired = (medicine: any) => {
+    if (!medicine?.duration?.endDate) return false;
+
+    let endDate = medicine.duration.endDate;
+
+    // Handle Firebase Timestamp
+    if (typeof endDate?.toDate === 'function') {
+      endDate = endDate.toDate();
+    } else if (typeof endDate === 'string' || typeof endDate === 'number') {
+      endDate = new Date(endDate);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+
+    return endDate < today;
+  };
+
   // Handle edit medication
   const handleEditMedication = () => {
     if (!selectedMedication) return;
@@ -328,9 +347,16 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
 
             <View style={styles.medicationInfo}>
               <View style={styles.headerRow}>
-                <Text style={[styles.medicationName, { color: colors.text }]}>
-                  {item.medicineName}
-                </Text>
+                <View style={styles.nameContainer}>
+                  <Text style={[styles.medicationName, { color: colors.text }]}>
+                    {item.medicineName}
+                  </Text>
+                  {isMedicationExpired(item) && (
+                    <View style={styles.expiredBadge}>
+                      <Text style={styles.expiredBadgeText}>Ended</Text>
+                    </View>
+                  )}
+                </View>
                 <TouchableOpacity
                   style={[
                     styles.checkButton,
@@ -1011,6 +1037,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 4,
+  },
+  nameContainer: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  expiredBadge: {
+    backgroundColor: "#FF3B30",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  expiredBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   checkButton: {
     width: 32,

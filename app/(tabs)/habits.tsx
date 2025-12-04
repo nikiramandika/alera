@@ -134,6 +134,27 @@ export default function HabitsScreen() {
     }
   };
 
+  // Helper function to check if habit is expired
+  const isHabitExpired = (habit: any) => {
+    if (!habit?.endDate && !habit?.duration?.endDate) return false;
+
+    let endDate = habit.endDate || habit.duration?.endDate;
+
+    if (!endDate) return false;
+
+    // Handle Firebase Timestamp
+    if (typeof endDate?.toDate === 'function') {
+      endDate = endDate.toDate();
+    } else if (typeof endDate === 'string' || typeof endDate === 'number') {
+      endDate = new Date(endDate);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+
+    return endDate < today;
+  };
+
   const handleDeleteHabit = (habit: any) => {
     console.log("Deleting habit:", habit);
     Alert.alert(
@@ -278,9 +299,16 @@ export default function HabitsScreen() {
                       <Text style={styles.habitIcon}>{item.icon}</Text>
                     </View>
                   )}
-                  <Text style={[styles.habitName, { color: colors.text }]}>
-                    {item.habitName}
-                  </Text>
+                  <View style={styles.nameContainer}>
+                    <Text style={[styles.habitName, { color: colors.text }]}>
+                      {item.habitName}
+                    </Text>
+                    {isHabitExpired(item) && (
+                      <View style={styles.expiredBadge}>
+                        <Text style={styles.expiredBadgeText}>Ended</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
                 <TouchableOpacity
                   style={[
@@ -903,6 +931,25 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 4,
     flex: 1,
+  },
+  nameContainer: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  expiredBadge: {
+    backgroundColor: "#FF3B30",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  expiredBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   checkButton: {
     width: 32,

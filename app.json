@@ -4,13 +4,14 @@
     "slug": "alera-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/Alera-ios.icon",
+    "icon": "./assets/images/icon.png",
     "scheme": "aleraapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
+      "icon": "./assets/images/Alera-ios.icon",
       "bundleIdentifier": "com.alera.app"
     },
     "android": {
