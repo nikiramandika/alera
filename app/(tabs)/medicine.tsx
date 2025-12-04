@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -280,8 +281,6 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
           dosage: selectedMedication.dosage,
           medicineType: selectedMedication.medicineType,
           instructions: selectedMedication.instructions,
-          stockQuantity: selectedMedication.stockQuantity,
-          stockAlert: selectedMedication.stockAlert,
           frequency: selectedMedication.frequency,
           reminderId: selectedMedication.reminderId,
         }),
@@ -391,34 +390,6 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                     : "As needed"}
                 </Text>
               </View>
-
-              <View style={styles.progressRow}>
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: `${
-                            (item.stockQuantity /
-                              Math.max(item.stockQuantity, item.stockAlert)) *
-                            100
-                          }%`,
-                          backgroundColor: item.color,
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.progressText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {item.stockQuantity} left
-                  </Text>
-                </View>
-              </View>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -466,7 +437,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
             >
               {/* Medicine Overview Card */}
               <View
-                style={[styles.detailCard, { backgroundColor: colors.card }]}
+                style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary }]}
               >
                 <View style={styles.medicineHeader}>
                   <View
@@ -477,6 +448,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       },
                     ]}
                   />
+                  
                   <View style={styles.medicineInfo}>
                     <Text style={[styles.detailName, { color: colors.text }]}>
                       {selectedMedication?.medicineName}
@@ -505,6 +477,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       })()}
                     </Text>
                   </View>
+                  
                 </View>
 
                 {/* Quick Stats */}
@@ -525,10 +498,9 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                         const freq = selectedMedication?.frequency;
                         if (freq?.type === 'daily' && freq?.times) {
                           return `${freq.times.length}x daily`;
-                        } else if (freq?.type === 'weekly' && freq?.specificDays) {
-                          return `${freq.specificDays.length}x weekly`;
-                        } else if (freq?.type === 'interval' && freq?.interval) {
-                          return `Every ${freq.interval} days`;
+                        } else if (freq?.type === 'interval' && freq?.specificDays) {
+                          const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                          return freq.specificDays.map((day: number) => dayNames[day]).join(', ');
                         } else if (freq?.type === 'as_needed') {
                           return 'As needed';
                         }
@@ -536,28 +508,16 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       })()}
                     </Text>
                   </View>
-                  <View
-                    style={[
-                      styles.statItem,
-                      { backgroundColor: colors.backgroundSecondary },
-                    ]}
-                  >
-                    <Ionicons
-                      name="medical-outline"
-                      size={20}
-                      color={colors.primary}
-                    />
-                    <Text style={[styles.statText, { color: colors.text }]}>
-                      {selectedMedication?.stockQuantity} left
-                    </Text>
+                  
                   </View>
-                </View>
+                  
               </View>
 
               {/* Schedule Section */}
               <View
-                style={[styles.detailSection, { backgroundColor: colors.card }]}
+                style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}
               >
+                
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="time-outline"
@@ -576,11 +536,12 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                         return freq.times.join(", ");
                       } else if (freq?.type === 'weekly' && freq?.specificDays) {
                         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                        return freq.specificDays.map(day => dayNames[day]).join(", ");
+                        return freq.specificDays.map((day: number) => dayNames[day]).join(", ");
                       } else if (freq?.type === 'as_needed') {
                         return "As needed";
-                      } else if (freq?.type === 'interval') {
-                        return `Every ${freq.interval} days`;
+                      } else if (freq?.type === 'interval' && freq?.specificDays) {
+                        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        return `On ${freq.specificDays.map((day: number) => dayNames[day]).join(', ')}`;
                       }
                       return "No schedule";
                     })()}
@@ -597,10 +558,13 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       switch (freq.type) {
                         case 'daily':
                           return 'Daily';
-                        case 'weekly':
-                          return 'Weekly';
                         case 'interval':
-                          return `Every ${freq.interval} days`;
+                          if (freq.specificDays && freq.specificDays.length > 0) {
+                            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                            return freq.specificDays.map((day: number) => dayNames[day]).join(', ');
+                          } else {
+                            return 'No days selected';
+                          }
                         case 'as_needed':
                           return 'As Needed';
                         default:
@@ -609,6 +573,40 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                     })()}
                   </Text>
                 </View>
+                <View style={styles.durationContent}>
+                  <View style={styles.durationItem}>
+                    <Text
+                      style={[
+                        styles.durationLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Started
+                    </Text>
+                    <Text
+                      style={[styles.durationValue, { color: colors.text }]}
+                    >
+                      {formatDate(selectedMedication?.duration.startDate)}
+                    </Text>
+                  </View>
+                  {selectedMedication?.duration.endDate && (
+                    <View style={styles.durationItem}>
+                      <Text
+                        style={[
+                          styles.durationLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Ends
+                      </Text>
+                      <Text
+                        style={[styles.durationValue, { color: colors.text }]}
+                      >
+                        {formatDate(selectedMedication.duration.endDate)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
 
               {/* Description Section */}
@@ -616,7 +614,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                 <View
                   style={[
                     styles.detailSection,
-                    { backgroundColor: colors.card },
+                    { backgroundColor: colors.backgroundSecondary },
                   ]}
                 >
                   <View style={styles.sectionHeader}>
@@ -645,7 +643,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                 <View
                   style={[
                     styles.detailSection,
-                    { backgroundColor: colors.card },
+                    { backgroundColor: colors.backgroundSecondary },
                   ]}
                 >
                   <View style={styles.sectionHeader}>
@@ -674,7 +672,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                 <View
                   style={[
                     styles.detailSection,
-                    { backgroundColor: colors.card },
+                    { backgroundColor: colors.backgroundSecondary },
                   ]}
                 >
                   <View style={styles.sectionHeader}>
@@ -699,7 +697,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
               )}
 
               {/* Duration Section */}
-              <View
+              {/* <View
                 style={[styles.detailSection, { backgroundColor: colors.card }]}
               >
                 <View style={styles.sectionHeader}>
@@ -746,47 +744,9 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                     </View>
                   )}
                 </View>
-              </View>
+              </View> */}
 
-              {/* Stock Section */}
-              <View
-                style={[styles.detailSection, { backgroundColor: colors.card }]}
-              >
-                <View style={styles.sectionHeader}>
-                  <Ionicons
-                    name="storefront-outline"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Stock
-                  </Text>
-                </View>
-                <View style={styles.stockContent}>
-                  <View style={styles.stockInfo}>
-                    <Text style={[styles.stockAmount, { color: colors.text }]}>
-                      {selectedMedication?.stockQuantity}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.stockLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      remaining
-                    </Text>
-                  </View>
-                  <View
-                    style={[styles.stockAlert, { backgroundColor: "#FEF3C7" }]}
-                  >
-                    <Ionicons name="alert-outline" size={16} color="#D97706" />
-                    <Text style={[styles.stockAlertText, { color: "#92400E" }]}>
-                      Alert at {selectedMedication?.stockAlert}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
+              
               </ScrollView>
           </>
         )}
@@ -1078,30 +1038,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: "auto",
   },
-  progressRow: {
-    marginTop: 8,
-  },
-  progressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  progressBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: "#E5E5E7",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 12,
-    minWidth: 50,
-  },
-  emptyStateContainer: {
+    emptyStateContainer: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 60,
@@ -1160,6 +1097,17 @@ const styles = StyleSheet.create({
     padding: 32,
     borderRadius: 16,
     marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   colorIndicatorLarge: {
     width: 80,
@@ -1179,6 +1127,17 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   sectionTitle: {
     fontSize: 16,
@@ -1261,6 +1220,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   durationContent: {
+    marginTop: 24,
     flexDirection: "row",
     justifyContent: "space-between",
   },
@@ -1275,35 +1235,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  stockContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  stockInfo: {
-    alignItems: "center",
-  },
-  stockAmount: {
-    fontSize: 32,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  stockLabel: {
-    fontSize: 14,
-  },
-  stockAlert: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 6,
-  },
-  stockAlertText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  deleteContainer: {
+    deleteContainer: {
     width: 100,
     height: "100%",
     justifyContent: "center",

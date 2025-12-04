@@ -8,7 +8,6 @@ import {
   ScrollView,
   Modal,
   Platform,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -94,13 +93,12 @@ const generateTasksFromData = React.useCallback(() => {
   };
 
   // Initialize arrays to collect all tasks first
-  const allTimeBasedTasks: Array<{
+  const allTimeBasedTasks: {
     task: Task;
     time: string;
     isOverdue: boolean;
     isUpcoming: boolean;
-  }> = [];
-  const allDayTasks: Task[] = [];
+  }[] = [];
 
   // Use selected date (clean to midnight) but keep the date for comparison
   const selectedDateClean = new Date(selectedDate);
@@ -135,10 +133,52 @@ const generateTasksFromData = React.useCallback(() => {
     const isFutureDate = selectedDateStr > todayStr;
     const isCompletedOnSelectedDate = !isFutureDate && (habit.completedDates?.includes(selectedDateStr) || false);
 
+    // Build subtitle with proper fallbacks for missing data
+    const subtitleParts = [];
+
+    // Add target information if available
+    if (habit.target) {
+      if (habit.target.value && habit.target.unit) {
+        subtitleParts.push(`${habit.target.value} ${habit.target.unit}`);
+      } else if (habit.target.value) {
+        subtitleParts.push(`${habit.target.value} unit`);
+      }
+    }
+
+    // Add frequency information with fallbacks
+    const freq = habit.frequency || habit.target?.frequency;
+    if (freq) {
+      if (typeof freq === 'string') {
+        subtitleParts.push(freq);
+      } else if (freq.type === 'daily' && habit.reminderTimes?.length > 0) {
+        if (habit.reminderTimes.length === 1) {
+          subtitleParts.push(`daily at ${habit.reminderTimes[0]}`);
+        } else {
+          subtitleParts.push(`${habit.reminderTimes.length}x daily`);
+        }
+      } else if (freq.type === 'interval' && freq.specificDays) {
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const days = freq.specificDays.map((day: number) => dayNames[day]).join(', ');
+        subtitleParts.push(days);
+      } else if (freq.type === 'daily') {
+        subtitleParts.push('daily');
+      }
+    }
+
+    // Fallback to old reminderDays logic if no frequency found
+    if (subtitleParts.length === 0 && habit.reminderDays?.length > 0) {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const days = habit.reminderDays.map((day: number) => dayNames[day]).join(', ');
+      subtitleParts.push(days);
+    }
+
+    // If still no subtitle, provide a default
+    const subtitle = subtitleParts.length > 0 ? subtitleParts.join(' • ') : 'Daily habit';
+
     return {
       id: `habit-${habit.habitId}`,
       title: habit.habitName,
-      subtitle: `${habit.target.value} ${habit.target.unit} • ${habit.target.frequency}`,
+      subtitle: subtitle,
       time: 'All Day',
       completed: isCompletedOnSelectedDate,
       icon: habit.icon || '🎯',
@@ -185,7 +225,7 @@ const generateTasksFromData = React.useCallback(() => {
         } else {
           subtitleParts.push(`${freq.times.length}x daily`);
         }
-      } else if (freq.type === 'weekly' && freq.specificDays) {
+      } else if (freq.type === 'interval' && freq.specificDays) {
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const days = freq.specificDays.map((day: number) => dayNames[day]).join(', ');
         subtitleParts.push(`${days}`);
@@ -221,16 +261,98 @@ const generateTasksFromData = React.useCallback(() => {
   // Collect all time-based tasks from both habits and medicines
   const collectAllTasks = () => {
     habits.forEach((habit: any) => {
-      const habitStartDate = dateToString(habit.startDate);
-      const hasStarted = !habitStartDate || habitStartDate <= selectedDateStr;
+      // Check if habit has started first
+      let habitHasStarted = true;
+      let habitStartDate: Date | null = null;
 
-      if (!hasStarted) {
-        console.log(`SKIP Habit ${habit.habitName}: Belum dimulai`);
-        return;
+      // Get start date from duration.startDate first, then fallback to createdAt
+      if (habit.duration?.startDate) {
+        if (typeof habit.duration.startDate === 'object' && 'toDate' in habit.duration.startDate && typeof habit.duration.startDate.toDate === 'function') {
+          habitStartDate = habit.duration.startDate.toDate();
+        } else {
+          habitStartDate = new Date(habit.duration.startDate);
+        }
+      } else if (habit.startDate) {
+        if (typeof habit.startDate === 'object' && 'toDate' in habit.startDate && typeof habit.startDate.toDate === 'function') {
+          habitStartDate = habit.startDate.toDate();
+        } else {
+          habitStartDate = new Date(habit.startDate);
+        }
+      } else if (habit.createdAt) {
+        habitStartDate = habit.createdAt instanceof Date ? habit.createdAt :
+                      (typeof habit.createdAt?.toDate === 'function' ? habit.createdAt.toDate() : new Date());
       }
 
+      if (habitStartDate) {
+        habitStartDate.setHours(0, 0, 0, 0);
+        const selectedDateCopy = new Date(selectedDateClean);
+        selectedDateCopy.setHours(0, 0, 0, 0);
+
+        if (habitStartDate > selectedDateCopy) {
+          console.log(`SKIP Habit ${habit.habitName}: Starts on ${habitStartDate.toISOString()}, selected date is ${selectedDateCopy.toISOString()}`);
+          habitHasStarted = false;
+        }
+      }
+
+      if (!habitHasStarted) return;
+
+      // Check if habit has expired next
+      let habitHasExpired = false;
+      if (habit.endDate) {
+        let endDate: Date;
+        if (typeof habit.endDate === 'object' && 'toDate' in habit.endDate && typeof habit.endDate.toDate === 'function') {
+          endDate = habit.endDate.toDate();
+        } else {
+          endDate = new Date(habit.endDate);
+        }
+        endDate.setHours(23, 59, 59, 999);
+
+        const selectedDateEnd = new Date(selectedDateClean);
+        selectedDateEnd.setHours(23, 59, 59, 999);
+
+        if (endDate < selectedDateEnd) {
+          console.log(`SKIP Habit ${habit.habitName}: Expired on ${endDate.toISOString()}, selected date is ${selectedDateEnd.toISOString()}`);
+          habitHasExpired = true;
+          return;
+        }
+      } else if (habit.duration?.endDate) {
+        let durationEndDate: Date;
+        if (typeof habit.duration.endDate === 'object' && 'toDate' in habit.duration.endDate && typeof habit.duration.endDate.toDate === 'function') {
+          durationEndDate = habit.duration.endDate.toDate();
+        } else {
+          durationEndDate = new Date(habit.duration.endDate);
+        }
+        durationEndDate.setHours(23, 59, 59, 999);
+
+        const selectedDateEnd = new Date(selectedDateClean);
+        selectedDateEnd.setHours(23, 59, 59, 999);
+
+        if (durationEndDate < selectedDateEnd) {
+          console.log(`SKIP Habit ${habit.habitName}: Expired on ${durationEndDate.toISOString()}, selected date is ${selectedDateEnd.toISOString()}`);
+          habitHasExpired = true;
+          return;
+        }
+      }
+
+      if (habitHasExpired) return;
+
       const selectedDayOfWeek = selectedDateClean.getDay();
-      const isActiveOnSelectedDate = habit.reminderDays?.includes(selectedDayOfWeek) || false;
+      let isActiveOnSelectedDate = false;
+
+      // Check if habit is active on selected date based on frequency type
+      if (habit.frequency?.type === 'daily') {
+        isActiveOnSelectedDate = true; // Daily habits are active every day
+      } else if (habit.frequency?.type === 'interval') {
+        isActiveOnSelectedDate = habit.frequency?.specificDays?.includes(selectedDayOfWeek) || false;
+      } else if (habit.schedule?.type === 'daily') {
+        isActiveOnSelectedDate = true; // Daily habits are active every day
+      } else if (habit.schedule?.type === 'specific_days') {
+        isActiveOnSelectedDate = habit.schedule?.days?.includes(selectedDayOfWeek) || false;
+      } else {
+        // Fallback to old reminderDays logic for backward compatibility
+        isActiveOnSelectedDate = habit.reminderDays?.includes(selectedDayOfWeek) || false;
+      }
+
       const habitIsActive = habit.isActive !== undefined ? habit.isActive : true;
 
       if (isActiveOnSelectedDate && habitIsActive) {
@@ -274,26 +396,82 @@ const generateTasksFromData = React.useCallback(() => {
               isUpcoming: isUpcoming
             });
           });
-        } else {
-          // All-day habit
-          allDayTasks.push(habitTask);
         }
       }
     });
 
     medicines.forEach((medicine: any) => {
-      const medicineStartDate = dateToString(medicine.startDate);
-      const hasStarted = !medicineStartDate || medicineStartDate <= selectedDateStr;
+      // Get start date and normalize to start of day (00:00:00)
+      let medicineStartDate: Date | null = null;
+      if (medicine.duration?.startDate) {
+        if (typeof medicine.duration.startDate === 'object' && 'toDate' in medicine.duration.startDate && typeof medicine.duration.startDate.toDate === 'function') {
+          medicineStartDate = medicine.duration.startDate.toDate();
+        } else {
+          medicineStartDate = new Date(medicine.duration.startDate);
+        }
+        if (medicineStartDate) {
+          medicineStartDate.setHours(0, 0, 0, 0); // Reset to start of day
+        }
+      } else if (medicine.startDate) {
+        if (typeof medicine.startDate === 'object' && 'toDate' in medicine.startDate && typeof medicine.startDate.toDate === 'function') {
+          medicineStartDate = medicine.startDate.toDate();
+        } else {
+          medicineStartDate = new Date(medicine.startDate);
+        }
+        if (medicineStartDate) {
+          medicineStartDate.setHours(0, 0, 0, 0); // Reset to start of day
+        }
+      }
 
-      if (!hasStarted) {
-        console.log(`SKIP Medicine ${medicine.medicineName}: Belum dimulai`);
+      if (medicineStartDate && medicineStartDate > selectedDateClean) {
+        console.log(`SKIP Medicine ${medicine.medicineName}: Starts on ${medicineStartDate.toISOString()}, selected date is ${selectedDateClean.toISOString()}`);
         return;
       }
+
+      // Check if medicine has expired first
+      let medicineHasExpired = false;
+      if (medicine.endDate) {
+        let endDate: Date;
+        if (typeof medicine.endDate === 'object' && 'toDate' in medicine.endDate && typeof medicine.endDate.toDate === 'function') {
+          endDate = medicine.endDate.toDate();
+        } else {
+          endDate = new Date(medicine.endDate);
+        }
+        // Normalize to end of day (23:59:59)
+        endDate.setHours(23, 59, 59, 999);
+
+        const selectedDateEnd = new Date(selectedDateClean);
+        selectedDateEnd.setHours(23, 59, 59, 999);
+
+        if (endDate < selectedDateEnd) {
+          console.log(`SKIP Medicine ${medicine.medicineName}: Expired on ${endDate.toISOString()}, selected date is ${selectedDateEnd.toISOString()}`);
+          medicineHasExpired = true;
+        }
+      } else if (medicine.duration?.endDate) {
+        let durationEndDate: Date;
+        if (typeof medicine.duration.endDate === 'object' && 'toDate' in medicine.duration.endDate && typeof medicine.duration.endDate.toDate === 'function') {
+          durationEndDate = medicine.duration.endDate.toDate();
+        } else {
+          durationEndDate = new Date(medicine.duration.endDate);
+        }
+        // Normalize to end of day (23:59:59)
+        durationEndDate.setHours(23, 59, 59, 999);
+
+        const selectedDateEnd = new Date(selectedDateClean);
+        selectedDateEnd.setHours(23, 59, 59, 999);
+
+        if (durationEndDate < selectedDateEnd) {
+          console.log(`SKIP Medicine ${medicine.medicineName}: Expired on ${durationEndDate.toISOString()}, selected date is ${selectedDateEnd.toISOString()}`);
+          medicineHasExpired = true;
+        }
+      }
+
+      if (medicineHasExpired) return;
 
       let isActiveOnSelectedDate = false;
       if (medicine.frequency.type === 'daily') {
         isActiveOnSelectedDate = medicine.isActive;
-      } else if (medicine.frequency.type === 'weekly') {
+      } else if (medicine.frequency.type === 'interval') {
         const selectedDayOfWeek = selectedDateClean.getDay();
         isActiveOnSelectedDate = medicine.isActive &&
           medicine.frequency.specificDays?.includes(selectedDayOfWeek);
@@ -342,9 +520,6 @@ const generateTasksFromData = React.useCallback(() => {
               isUpcoming: isUpcoming
             });
           });
-        } else {
-          // All-day medicine
-          allDayTasks.push(medicineTask);
         }
       }
     });
@@ -413,7 +588,6 @@ const generateTasksFromData = React.useCallback(() => {
   return {
     overdue,
     upcoming,
-    allDay: allDayTasks,
     timeBased: sortedTimeBased
   };
 }, [selectedDate, habits, medicines]);
@@ -430,10 +604,6 @@ const generateTasksFromData = React.useCallback(() => {
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [],
-    allDay: tasks.allDay.filter(task =>
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
     timeBased: Object.fromEntries(
       Object.entries(tasks.timeBased).map(([time, taskList]) => [
         time,
@@ -559,7 +729,6 @@ const generateTasksFromData = React.useCallback(() => {
 
                 {getTaskCount(filteredTasks.overdue) === 0 &&
                  getTaskCount(filteredTasks.upcoming) === 0 &&
-                 getTaskCount(filteredTasks.allDay) === 0 &&
                  Object.keys(filteredTasks.timeBased).length === 0 ? (
                   <View style={styles.noResultsContainer}>
                     <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
@@ -641,40 +810,7 @@ const generateTasksFromData = React.useCallback(() => {
                       </View>
                     )}
 
-                    {/* All Day Tasks */}
-                    {getTaskCount(filteredTasks.allDay) > 0 && (
-                      <View style={styles.searchTaskSection}>
-                        <View style={styles.searchSectionHeader}>
-                          <Text style={[styles.searchSectionLabel, { color: '#60A5FA' }]}>All Day</Text>
-                          <Text style={[styles.searchTaskCount, { backgroundColor: '#60A5FA20', color: '#60A5FA' }]}>
-                            {getTaskCount(filteredTasks.allDay)}
-                          </Text>
-                        </View>
-                        {filteredTasks.allDay.map((task) => (
-                          <View key={task.id} style={[styles.searchTaskItem, { backgroundColor: colors.card }]}>
-                            <View style={[styles.searchTaskIconContainer, { backgroundColor: task.color + '20' }]}>
-                              <View style={[styles.searchTaskIcon, { backgroundColor: task.color }]}>
-                                <Text style={styles.searchTaskIconText}>
-                                  {task.type === 'habit' ? task.icon : '💊'}
-                                </Text>
-                              </View>
-                            </View>
-                            <View style={styles.searchTaskInfo}>
-                              <View style={styles.searchTaskTitleRow}>
-                                <Text style={[styles.searchTaskTitle, { color: colors.text }]}>{task.title}</Text>
-                                <View style={[styles.searchTaskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
-                                  <Text style={[styles.searchTaskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
-                                    {task.type === 'habit' ? 'Habit' : 'Medicine'}
-                                  </Text>
-                                </View>
-                              </View>
-                              <Text style={[styles.searchTaskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-
+                    
                     {/* Time-based Tasks */}
                     {Object.entries(filteredTasks.timeBased).map(([time, taskList]) => (
                       <View key={time} style={styles.searchTaskSection}>
@@ -1074,51 +1210,7 @@ const generateTasksFromData = React.useCallback(() => {
               </View>
             )}
 
-            {/* All Day Tasks */}
-            <View style={styles.taskSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionLabel, { color: '#60A5FA' }]}>All Day</Text>
-                <Text style={[styles.taskCount, { backgroundColor: '#60A5FA20', color: '#60A5FA' }]}>{getTaskCount(tasks.allDay)}</Text>
-              </View>
-              {tasks.allDay.map((task) => (
-                <View
-                  key={task.id}
-                  style={[
-                    styles.taskItem,
-                    {
-                      backgroundColor: colors.card
-                    }
-                  ]}
-                >
-                  <View style={[styles.taskIconContainer, { backgroundColor: task.color + '20' }]}>
-                    <View style={[styles.taskIcon, { backgroundColor: task.color }]}>
-                      <Text style={styles.taskIconText}>
-                        {task.type === 'habit' ? task.icon : '💊'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.taskInfo}>
-                    <View style={styles.taskTitleRow}>
-                      <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
-                      <View style={[styles.taskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
-                        <Text style={[styles.taskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
-                          {task.type === 'habit' ? 'Habit' : 'Medicine'}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.taskSubtitle, { color: colors.textSecondary }]}>{task.subtitle}</Text>
-                  </View>
-                  <View style={styles.taskStatus}>
-                    {task.completed ? (
-                      <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                    ) : (
-                      <Ionicons name="radio-button-off" size={20} color={colors.border} />
-                    )}
-                  </View>
-                </View>
-              ))}
-            </View>
-
+            
             {/* Time-based Tasks */}
             {Object.entries(tasks.timeBased).map(([time, taskList]) => (
               <View key={time} style={styles.taskSection}>
@@ -1177,7 +1269,6 @@ const generateTasksFromData = React.useCallback(() => {
 
             {/* Empty State */}
             {getTaskCount(tasks.overdue) === 0 &&
-             getTaskCount(tasks.allDay) === 0 &&
              Object.keys(tasks.timeBased).length === 0 && (
               <View style={styles.emptyState}>
                 <Ionicons name="search-outline" size={48} color={colors.textSecondary} />

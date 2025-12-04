@@ -37,7 +37,6 @@ export default function HabitsScreen() {
     habits,
     refreshHabits,
     markHabitCompleted,
-    markHabitIncomplete,
     deleteHabit,
   } = useHabit();
 
@@ -102,20 +101,23 @@ export default function HabitsScreen() {
     }
   };
 
-  const getHabitIcon = (habitType: string) => {
-    switch (habitType) {
-      case "water":
-        return "water-outline";
-      case "exercise":
-        return "fitness-outline";
-      case "sleep":
-        return "moon-outline";
-      case "meditation":
-        return "leaf-outline";
-      default:
-        return "checkmark-circle-outline";
+  const handleEditHabit = () => {
+    if (selectedHabit) {
+      // Close the modal first
+      setShowDetailModal(false);
+
+      // Navigate to create-step1 screen with edit mode (like medicine)
+      router.push({
+        pathname: "/habits/create-step1",
+        params: {
+          editMode: 'true',
+          habitId: selectedHabit.habitId,
+          habitData: JSON.stringify(selectedHabit)
+        }
+      } as any);
     }
   };
+
 
   const getHabitTypeLabel = (habitType: string) => {
     switch (habitType) {
@@ -272,7 +274,9 @@ export default function HabitsScreen() {
               <View style={styles.headerRow}>
                 <View style={styles.habitTitleRow}>
                   {item.icon && (
-                    <Text style={styles.habitIcon}>{item.icon}</Text>
+                    <View style={[styles.habitIconContainer, { backgroundColor: item.color + '20' }]}>
+                      <Text style={styles.habitIcon}>{item.icon}</Text>
+                    </View>
                   )}
                   <Text style={[styles.habitName, { color: colors.text }]}>
                     {item.habitName}
@@ -298,28 +302,39 @@ export default function HabitsScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Text style={[styles.habitType, { color: colors.textSecondary }]}>
-                {getHabitTypeLabel(item.habitType)}
+              <Text style={[styles.habitDescription, { color: colors.textSecondary }]}>
+                {item.target.value} {item.target.unit} • {item.habitType}
               </Text>
 
-              <View style={styles.targetRow}>
-                <Ionicons
-                  name="at-outline"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-                <Text style={[styles.target, { color: colors.textSecondary }]}>
-                  {item.target.value} {item.target.unit} • {item.target.frequency}
-                </Text>
+              <View style={styles.timeRow}>
                 <Ionicons
                   name="time-outline"
                   size={16}
                   color={colors.textSecondary}
                 />
-                <Text style={[styles.times, { color: colors.textSecondary }]}>
-                  {item.reminderTimes.join(", ")}
+                <Text style={[styles.time, { color: colors.textSecondary }]}>
+                  {item.frequency?.times ? item.frequency.times.join(", ") : "No reminders"}
+                </Text>
+                <Text style={[styles.nextReminder, { color: colors.primary }]}>
+                  {item.frequency?.type === 'interval' ? 'Interval' : 'Daily'}
                 </Text>
               </View>
+
+              {item.frequency?.type === 'interval' && item.frequency?.specificDays && (
+                <View style={styles.intervalDaysRow}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={[styles.intervalDays, { color: colors.textSecondary }]}>
+                    {item.frequency.specificDays?.map((day: number) => {
+                      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                      return days[day] || day;
+                    }).join(", ")}
+                  </Text>
+                </View>
+              )}
 
               <View style={styles.streakRow}>
                 <View style={styles.streakContainer}>
@@ -329,17 +344,7 @@ export default function HabitsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.streakText, { color: colors.text }]}>
-                    Current: {item.streak}
-                  </Text>
-                </View>
-                <View style={styles.streakContainer}>
-                  <Ionicons
-                    name="trophy-outline"
-                    size={16}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.streakText, { color: colors.text }]}>
-                    Best: {item.bestStreak}
+                    {item.streak} day streak
                   </Text>
                 </View>
               </View>
@@ -377,6 +382,7 @@ export default function HabitsScreen() {
               </Text>
               <TouchableOpacity
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
+                onPress={handleEditHabit}
               >
                 <Ionicons name="create" size={16} color="#FFFFFF" />
                 <Text style={styles.editButtonText}>Edit</Text>
@@ -385,7 +391,7 @@ export default function HabitsScreen() {
 
             <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
               {/* Habit Overview Card */}
-              <View style={[styles.detailCard, { backgroundColor: colors.card }]}>
+              <View style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary }]}>
                 <View style={styles.habitHeader}>
                   <View
                     style={[
@@ -445,7 +451,7 @@ export default function HabitsScreen() {
               </View>
 
               {/* Target Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.card }]}>
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="at-outline"
@@ -463,7 +469,7 @@ export default function HabitsScreen() {
               </View>
 
               {/* Schedule Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.card }]}>
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="time-outline"
@@ -474,13 +480,125 @@ export default function HabitsScreen() {
                     Schedule
                   </Text>
                 </View>
-                <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
-                  {selectedHabit?.reminderTimes.join(", ")}
-                </Text>
+                <View style={styles.scheduleContent}>
+                  <Text style={[styles.scheduleType, { color: colors.text }]}>
+                    {selectedHabit?.frequency?.type === 'interval' ? 'Interval' : 'Daily'}
+                  </Text>
+                  <Text style={[styles.scheduleTimes, { color: colors.textSecondary }]}>
+                    {selectedHabit?.frequency?.times ? selectedHabit.frequency.times.join(", ") : "No reminders"}
+                  </Text>
+                  {selectedHabit?.frequency?.type === 'interval' && selectedHabit?.frequency?.specificDays && (
+                    <Text style={[styles.scheduleDays, { color: colors.textSecondary }]}>
+                      Days: {selectedHabit.frequency?.specificDays?.map((day: number) => {
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        return days[day] || day;
+                      }).join(", ")}
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              {/* Duration Section */}
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Duration
+                  </Text>
+                </View>
+                <View style={styles.durationContent}>
+                  <View style={styles.durationItem}>
+                    <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                      Start Date
+                    </Text>
+                    <Text style={[styles.durationValue, { color: colors.text }]}>
+                      {(() => {
+                        // Try to get the start date from multiple sources
+                        let startDate = selectedHabit?.startDate ||
+                                       selectedHabit?.duration?.startDate ||
+                                       selectedHabit?.createdAt;
+
+                        if (!startDate) return 'Not set';
+
+                        // Handle Firebase Timestamp
+                        if (typeof startDate?.toDate === 'function') {
+                          startDate = startDate.toDate();
+                        }
+
+                        const date = new Date(startDate);
+
+                        // Check if date is valid
+                        if (isNaN(date.getTime())) {
+                          console.log('Invalid start date:', startDate);
+                          return 'Invalid Date';
+                        }
+
+                        return date.toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        });
+                      })()}
+                    </Text>
+                  </View>
+                  {selectedHabit?.endDate || selectedHabit?.duration?.endDate ? (
+                    <View style={styles.durationItem}>
+                      <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                        End Date
+                      </Text>
+                      <Text style={[styles.durationValue, { color: colors.text }]}>
+                        {(() => {
+                          const endDate = selectedHabit?.endDate || selectedHabit?.duration?.endDate;
+                          if (!endDate) return 'No end date';
+
+                          // Handle Firebase Timestamp
+                          let date = endDate;
+                          if (typeof endDate?.toDate === 'function') {
+                            date = endDate.toDate();
+                          }
+
+                          const parsedDate = new Date(date);
+
+                          // Check if date is valid
+                          if (isNaN(parsedDate.getTime())) {
+                            console.log('Invalid end date:', endDate);
+                            return 'Invalid Date';
+                          }
+
+                          return parsedDate.toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          });
+                        })()}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.durationItem}>
+                      <Text style={[styles.durationValue, { color: colors.primary, fontStyle: 'italic' }]}>
+                        Ongoing • No end date set
+                      </Text>
+                    </View>
+                  )}
+                  {selectedHabit?.duration?.totalDays && (
+                    <View style={styles.durationItem}>
+                      <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                        Duration
+                      </Text>
+                      <Text style={[styles.durationValue, { color: colors.text }]}>
+                        {selectedHabit.duration.totalDays} days
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
 
               {/* Progress Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.card }]}>
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="stats-chart-outline"
@@ -598,7 +716,7 @@ export default function HabitsScreen() {
                     styles.addHabitButton,
                     { backgroundColor: colors.primary },
                   ]}
-                  onPress={() => router.push("/habits/category")}
+                  onPress={() => router.push("/habits/create-step1")}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
                   <Text style={styles.addHabitButtonText}>Add Habit</Text>
@@ -623,7 +741,7 @@ export default function HabitsScreen() {
       {filteredHabits.length > 0 && (
         <TouchableOpacity
           style={[styles.floatingActionButton, { backgroundColor: "#4ECDC4" }]}
-          onPress={() => router.push("/habits/category")}
+          onPress={() => router.push("/habits/create-step1")}
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={28} color="#FFFFFF" />
@@ -769,9 +887,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
+  habitIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
   habitIcon: {
-    fontSize: 20,
-    marginRight: 8,
+    fontSize: 18,
   },
   habitName: {
     fontSize: 16,
@@ -787,7 +912,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  habitType: {
+  habitDescription: {
     fontSize: 14,
     marginBottom: 8,
   },
@@ -877,6 +1002,17 @@ const styles = StyleSheet.create({
     padding: 32,
     borderRadius: 16,
     marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   colorIndicatorLarge: {
     width: 80,
@@ -902,6 +1038,17 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   sectionTitle: {
     fontSize: 16,
@@ -984,6 +1131,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  scheduleContent: {
+    gap: 4,
+  },
+  scheduleType: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  scheduleTimes: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  scheduleDays: {
+    fontSize: 14,
+    fontStyle: "italic",
+    marginTop: 4,
+  },
+  durationContent: {
+    gap: 16,
+  },
+  durationItem: {
+    gap: 4,
+  },
+  durationLabel: {
+    fontSize: 14,
+  },
+  durationValue: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
   deleteContainer: {
     width: 100,
     height: "100%",
@@ -1029,5 +1206,30 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 12,
     overflow: "hidden",
+  },
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 8,
+  },
+  time: {
+    fontSize: 12,
+  },
+  nextReminder: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: "auto",
+  },
+  intervalDaysRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    marginBottom: 8,
+    gap: 8,
+  },
+  intervalDays: {
+    fontSize: 12,
+    fontStyle: "italic",
   },
 });
