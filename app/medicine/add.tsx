@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,63 +9,64 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
-import { useMedicine } from '@/contexts/MedicineContext';
-import { MedicineReminder } from '@/types';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors } from "@/constants/theme";
+import { useMedicine } from "@/contexts/MedicineContext";
+import { MedicineReminder } from "@/types";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 
 export default function AddMedicineScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = Colors[colorScheme ?? "light"];
   const { addMedicine, updateMedicine } = useMedicine();
   const params = useLocalSearchParams();
 
   // Check if we're in edit mode
-  const isEditMode = params.editMode === 'true';
+  const isEditMode = params.editMode === "true";
   const editingMedicineId = params.medicineId as string;
 
-  console.log('Screen params:', params);
-  console.log('Is edit mode:', isEditMode);
-  console.log('Editing medicine ID:', editingMedicineId);
+  console.log("Screen params:", params);
+  console.log("Is edit mode:", isEditMode);
+  console.log("Editing medicine ID:", editingMedicineId);
 
   const [medicineData, setMedicineData] = useState({
-    medicineName: '',
-    dosage: '',
-    medicineType: 'Tablet',
-    instructions: '',
+    medicineName: "",
+    dosage: "",
+    medicineType: "Tablet",
+    instructions: "",
     stockQuantity: 30,
     stockAlert: 5,
     stock: {
       current: 30,
       currentStock: 30,
       refillThreshold: 5,
-      unit: 'tablets',
+      unit: "tablets",
       lastUpdated: new Date(),
     },
-    notes: '',
-    color: '#F47B9F',
-    icon: 'pill',
+    notes: "",
+    color: "#F47B9F",
+    icon: "pill",
     isActive: true,
   });
 
   const [frequency, setFrequency] = useState<{
-    type: 'daily' | 'interval' | 'specific_days' | 'as_needed';
+    type: "daily" | "interval" | "as_needed";
     times: string[];
-    interval: number;
     specificDays: number[];
+    interval?: number;
   }>({
-    type: 'daily',
-    times: ['08:00'],
-    interval: 8,
+    type: "daily",
+    times: ["08:00"],
     specificDays: [0, 1, 2, 3, 4, 5, 6],
+    interval: 8,
   });
 
   const [duration, setDuration] = useState({
@@ -79,58 +80,82 @@ export default function AddMedicineScreen() {
   // Date picker states
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
-  
-  const medicineTypes = ['Tablet', 'Capsule', 'Liquid', 'Injection', 'Cream', 'Inhaler', 'Other'];
-  const medicineColors = ['#F47B9F', '#4ECDC4', '#FFD93D', '#A8E6CF', '#FF8B94', '#C9B1FF', '#FFB347'];
+  const medicineTypes = [
+    "Tablet",
+    "Capsule",
+    "Liquid",
+    "Injection",
+    "Cream",
+    "Inhaler",
+    "Other",
+  ];
+  const medicineColors = [
+    "#F47B9F",
+    "#4ECDC4",
+    "#FFD93D",
+    "#A8E6CF",
+    "#FF8B94",
+    "#C9B1FF",
+    "#FFB347",
+  ];
   const frequencyTypes = [
-    { value: 'daily', label: 'Daily' },
-    { value: 'interval', label: 'Every X hours' },
-    { value: 'specific_days', label: 'Specific days' },
-    { value: 'as_needed', label: 'As needed' },
+    { value: "daily", label: "Daily" },
+    { value: "interval", label: "Specific days" },
+    { value: "as_needed", label: "As needed" },
   ];
 
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   // Date picker handlers
-  
-  const handleStartDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (event.type === 'set' && selectedDate) {
-      setDuration(prev => ({
+
+  const handleStartDateChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date
+  ) => {
+    if (event.type === "set" && selectedDate) {
+      setDuration((prev) => ({
         ...prev,
-        startDate: selectedDate
+        startDate: selectedDate,
       }));
     }
   };
 
-  const handleEndDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (event.type === 'set' && selectedDate) {
-      setDuration(prev => ({
+  const handleEndDateChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date
+  ) => {
+    if (event.type === "set" && selectedDate) {
+      setDuration((prev) => ({
         ...prev,
-        endDate: selectedDate
+        endDate: selectedDate,
       }));
     }
   };
 
   // Time picker handlers
-  
+
   // Helper function to convert time string to Date object
   const convertTimeToDate = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':').map(Number);
+    const [hours, minutes] = timeString.split(":").map(Number);
     const date = new Date();
     date.setHours(hours, minutes, 0, 0);
     return date;
   };
 
   // Handle time change for specific index
-  const handleTimeChangeForIndex = (event: DateTimePickerEvent, selectedTime?: Date, index?: number) => {
-    if (event.type === 'set' && selectedTime && index !== undefined) {
-      const hours = selectedTime.getHours().toString().padStart(2, '0');
-      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
+  const handleTimeChangeForIndex = (
+    event: DateTimePickerEvent,
+    selectedTime?: Date,
+    index?: number
+  ) => {
+    if (event.type === "set" && selectedTime && index !== undefined) {
+      const hours = selectedTime.getHours().toString().padStart(2, "0");
+      const minutes = selectedTime.getMinutes().toString().padStart(2, "0");
       const formattedTime = `${hours}:${minutes}`;
 
       const newTimes = [...frequency.times];
       newTimes[index] = formattedTime;
-      setFrequency(prev => ({ ...prev, times: newTimes }));
+      setFrequency((prev) => ({ ...prev, times: newTimes }));
     }
   };
 
@@ -139,53 +164,65 @@ export default function AddMedicineScreen() {
     if (isEditMode && params.medicineData) {
       try {
         const medicineData = JSON.parse(params.medicineData as string);
-        console.log('Loading medicine data for edit:', medicineData);
+        console.log("Loading medicine data for edit:", medicineData);
 
         // Populate form with existing data
         setMedicineData({
-          medicineName: medicineData.medicineName || '',
-          dosage: medicineData.dosage || '',
-          medicineType: medicineData.medicineType || 'Tablet',
-          instructions: medicineData.instructions || '',
+          medicineName: medicineData.medicineName || "",
+          dosage: medicineData.dosage || "",
+          medicineType: medicineData.medicineType || "Tablet",
+          instructions: medicineData.instructions || "",
           stockQuantity: medicineData.stockQuantity || 30,
           stockAlert: medicineData.stockAlert || 5,
           stock: {
-            current: medicineData.stock?.current || medicineData.stockQuantity || 30,
-            currentStock: medicineData.stock?.currentStock || medicineData.stockQuantity || 30,
-            refillThreshold: medicineData.stock?.refillThreshold || medicineData.stockAlert || 5,
-            unit: medicineData.stock?.unit || 'tablets',
+            current:
+              medicineData.stock?.current || medicineData.stockQuantity || 30,
+            currentStock:
+              medicineData.stock?.currentStock ||
+              medicineData.stockQuantity ||
+              30,
+            refillThreshold:
+              medicineData.stock?.refillThreshold ||
+              medicineData.stockAlert ||
+              5,
+            unit: medicineData.stock?.unit || "tablets",
             lastUpdated: new Date(),
           },
-          notes: medicineData.notes || '',
-          color: medicineData.color || '#F47B9F',
-          icon: medicineData.icon || 'pill',
+          notes: medicineData.notes || "",
+          color: medicineData.color || "#F47B9F",
+          icon: medicineData.icon || "pill",
           isActive: medicineData.isActive !== false, // default to true
         });
 
         setFrequency({
-          type: medicineData.frequency?.type || 'daily',
-          times: medicineData.frequency?.times || ['08:00'],
-          interval: medicineData.frequency?.interval || 8,
-          specificDays: medicineData.frequency?.specificDays || [0, 1, 2, 3, 4, 5, 6],
+          type: medicineData.frequency?.type || "daily",
+          times: medicineData.frequency?.times || ["08:00"],
+          specificDays: medicineData.frequency?.specificDays || [
+            0, 1, 2, 3, 4, 5, 6,
+          ],
         });
 
         setDuration({
-          startDate: medicineData.duration?.startDate ? new Date(medicineData.duration.startDate) : new Date(),
-          endDate: medicineData.duration?.endDate ? new Date(medicineData.duration.endDate) : null,
+          startDate: medicineData.duration?.startDate
+            ? new Date(medicineData.duration.startDate)
+            : new Date(),
+          endDate: medicineData.duration?.endDate
+            ? new Date(medicineData.duration.endDate)
+            : null,
           totalDays: medicineData.duration?.totalDays || null,
         });
       } catch (error) {
-        console.error('Error parsing medicine data:', error);
-        Alert.alert('Error', 'Failed to load medicine data for editing');
+        console.error("Error parsing medicine data:", error);
+        Alert.alert("Error", "Failed to load medicine data for editing");
       }
     }
   }, [isEditMode, params.medicineData]);
 
   const handleAddTime = () => {
-    const nextTime = '12:00'; // Simple default time
-    setFrequency(prev => ({
+    const nextTime = "12:00"; // Simple default time
+    setFrequency((prev) => ({
       ...prev,
-      times: [...prev.times, nextTime]
+      times: [...prev.times, nextTime],
     }));
   };
 
@@ -200,46 +237,45 @@ export default function AddMedicineScreen() {
             text: "Remove",
             style: "destructive",
             onPress: () => {
-              setFrequency(prev => ({
+              setFrequency((prev) => ({
                 ...prev,
-                times: prev.times.filter((_, i) => i !== index)
+                times: prev.times.filter((_, i) => i !== index),
               }));
-            }
-          }
+            },
+          },
         ]
       );
     }
   };
 
-  
   const handleToggleDay = (dayIndex: number) => {
-    setFrequency(prev => ({
+    setFrequency((prev) => ({
       ...prev,
       specificDays: prev.specificDays.includes(dayIndex)
-        ? prev.specificDays.filter(d => d !== dayIndex)
-        : [...prev.specificDays, dayIndex]
+        ? prev.specificDays.filter((d) => d !== dayIndex)
+        : [...prev.specificDays, dayIndex],
     }));
   };
 
   const handleSave = async () => {
     // Validation
     if (!medicineData.medicineName.trim()) {
-      Alert.alert('Error', 'Please enter medicine name');
+      Alert.alert("Error", "Please enter medicine name");
       return;
     }
 
     if (!medicineData.dosage.trim()) {
-      Alert.alert('Error', 'Please enter dosage');
+      Alert.alert("Error", "Please enter dosage");
       return;
     }
 
-    if (frequency.type !== 'as_needed' && frequency.times.length === 0) {
-      Alert.alert('Error', 'Please add at least one reminder time');
+    if (frequency.type !== "as_needed" && frequency.times.length === 0) {
+      Alert.alert("Error", "Please add at least one reminder time");
       return;
     }
 
-    if (frequency.type === 'specific_days' && frequency.specificDays.length === 0) {
-      Alert.alert('Error', 'Please select at least one day');
+    if (frequency.type === "interval" && frequency.specificDays.length === 0) {
+      Alert.alert("Error", "Please select at least one day");
       return;
     }
 
@@ -253,20 +289,23 @@ export default function AddMedicineScreen() {
           duration,
         };
 
-        console.log('Updating medicine with ID:', editingMedicineId);
-        console.log('Update data:', updateData);
+        console.log("Updating medicine with ID:", editingMedicineId);
+        console.log("Update data:", updateData);
 
         const result = await updateMedicine(editingMedicineId, updateData);
 
         if (result.success) {
-          Alert.alert('Success', 'Medicine updated successfully');
+          Alert.alert("Success", "Medicine updated successfully");
           router.back();
         } else {
-          Alert.alert('Error', result.error || 'Failed to update medicine');
+          Alert.alert("Error", result.error || "Failed to update medicine");
         }
       } else {
         // Add new medicine
-        const newMedicine: Omit<MedicineReminder, 'reminderId' | 'userId' | 'createdAt' | 'updatedAt'> = {
+        const newMedicine: Omit<
+          MedicineReminder,
+          "reminderId" | "userId" | "createdAt" | "updatedAt"
+        > = {
           ...medicineData,
           frequency,
           duration,
@@ -275,15 +314,15 @@ export default function AddMedicineScreen() {
         const result = await addMedicine(newMedicine);
 
         if (result.success) {
-          Alert.alert('Success', 'Medicine added successfully');
+          Alert.alert("Success", "Medicine added successfully");
           router.back();
         } else {
-          Alert.alert('Error', result.error || 'Failed to add medicine');
+          Alert.alert("Error", result.error || "Failed to add medicine");
         }
       }
     } catch (error) {
-      console.error('Save error:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      console.error("Save error:", error);
+      Alert.alert("Error", "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -293,15 +332,28 @@ export default function AddMedicineScreen() {
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.cardHeader}>
         <Ionicons name="medical-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Basic Information</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>
+          Basic Information
+        </Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Medicine Name *</Text>
+        <Text style={[styles.label, { color: colors.text }]}>
+          Medicine Name *
+        </Text>
         <TextInput
-          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           value={medicineData.medicineName}
-          onChangeText={(text) => setMedicineData(prev => ({ ...prev, medicineName: text }))}
+          onChangeText={(text) =>
+            setMedicineData((prev) => ({ ...prev, medicineName: text }))
+          }
           placeholder="e.g., Paracetamol"
           placeholderTextColor={colors.textSecondary}
         />
@@ -310,33 +362,63 @@ export default function AddMedicineScreen() {
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Dosage *</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           value={medicineData.dosage}
-          onChangeText={(text) => setMedicineData(prev => ({ ...prev, dosage: text }))}
+          onChangeText={(text) =>
+            setMedicineData((prev) => ({ ...prev, dosage: text }))
+          }
           placeholder="e.g., 500mg"
           placeholderTextColor={colors.textSecondary}
         />
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Medicine Type</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
+        <Text style={[styles.label, { color: colors.text }]}>
+          Medicine Type
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.typeScroll}
+        >
           {medicineTypes.map((type) => (
             <TouchableOpacity
               key={type}
               style={[
                 styles.typePill,
                 {
-                  backgroundColor: medicineData.medicineType === type ? colors.primary : colors.backgroundSecondary,
-                  borderColor: medicineData.medicineType === type ? colors.primary : colors.border,
-                }
+                  backgroundColor:
+                    medicineData.medicineType === type
+                      ? colors.primary
+                      : colors.backgroundSecondary,
+                  borderColor:
+                    medicineData.medicineType === type
+                      ? colors.primary
+                      : colors.border,
+                },
               ]}
-              onPress={() => setMedicineData(prev => ({ ...prev, medicineType: type }))}
+              onPress={() =>
+                setMedicineData((prev) => ({ ...prev, medicineType: type }))
+              }
             >
-              <Text style={[
-                styles.typeText,
-                { color: medicineData.medicineType === type ? '#FFFFFF' : colors.text }
-              ]}>
+              <Text
+                style={[
+                  styles.typeText,
+                  {
+                    color:
+                      medicineData.medicineType === type
+                        ? "#FFFFFF"
+                        : colors.text,
+                  },
+                ]}
+              >
                 {type}
               </Text>
             </TouchableOpacity>
@@ -347,9 +429,18 @@ export default function AddMedicineScreen() {
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Instructions</Text>
         <TextInput
-          style={[styles.textArea, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+          style={[
+            styles.textArea,
+            {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           value={medicineData.instructions}
-          onChangeText={(text) => setMedicineData(prev => ({ ...prev, instructions: text }))}
+          onChangeText={(text) =>
+            setMedicineData((prev) => ({ ...prev, instructions: text }))
+          }
           placeholder="e.g., Take with food"
           placeholderTextColor={colors.textSecondary}
           multiline
@@ -363,11 +454,15 @@ export default function AddMedicineScreen() {
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.cardHeader}>
         <Ionicons name="time-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Frequency Settings</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>
+          Frequency Settings
+        </Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Schedule Type</Text>
+        <Text style={[styles.label, { color: colors.text }]}>
+          Schedule Type
+        </Text>
         <View style={styles.frequencyGrid}>
           {frequencyTypes.map((type) => (
             <TouchableOpacity
@@ -375,16 +470,29 @@ export default function AddMedicineScreen() {
               style={[
                 styles.frequencyOption,
                 {
-                  backgroundColor: frequency.type === type.value ? colors.primary : colors.backgroundSecondary,
-                  borderColor: frequency.type === type.value ? colors.primary : colors.border,
-                }
+                  backgroundColor:
+                    frequency.type === type.value
+                      ? colors.primary
+                      : colors.backgroundSecondary,
+                  borderColor:
+                    frequency.type === type.value
+                      ? colors.primary
+                      : colors.border,
+                },
               ]}
-              onPress={() => setFrequency(prev => ({ ...prev, type: type.value as any }))}
+              onPress={() =>
+                setFrequency((prev) => ({ ...prev, type: type.value as any }))
+              }
             >
-              <Text style={[
-                styles.frequencyText,
-                { color: frequency.type === type.value ? '#FFFFFF' : colors.text }
-              ]}>
+              <Text
+                style={[
+                  styles.frequencyText,
+                  {
+                    color:
+                      frequency.type === type.value ? "#FFFFFF" : colors.text,
+                  },
+                ]}
+              >
                 {type.label}
               </Text>
             </TouchableOpacity>
@@ -392,13 +500,27 @@ export default function AddMedicineScreen() {
         </View>
       </View>
 
-      {frequency.type === 'interval' && (
+      {frequency.type === "interval" && (
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>Interval (hours)</Text>
+          <Text style={[styles.label, { color: colors.text }]}>
+            Interval (hours)
+          </Text>
           <TextInput
-            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-            value={frequency.interval.toString()}
-            onChangeText={(text) => setFrequency(prev => ({ ...prev, interval: parseInt(text) || 8 }))}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.backgroundSecondary,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
+            value={frequency.interval?.toString() || "8"}
+            onChangeText={(text) =>
+              setFrequency((prev) => ({
+                ...prev,
+                interval: parseInt(text) || 8,
+              }))
+            }
             keyboardType="numeric"
             placeholder="8"
             placeholderTextColor={colors.textSecondary}
@@ -406,9 +528,11 @@ export default function AddMedicineScreen() {
         </View>
       )}
 
-      {frequency.type === 'specific_days' && (
+      {frequency.type === "interval" && (
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>Select Days</Text>
+          <Text style={[styles.label, { color: colors.text }]}>
+            Select Days
+          </Text>
           <View style={styles.daysGrid}>
             {daysOfWeek.map((day, index) => (
               <TouchableOpacity
@@ -416,16 +540,26 @@ export default function AddMedicineScreen() {
                 style={[
                   styles.dayPill,
                   {
-                    backgroundColor: frequency.specificDays.includes(index) ? colors.primary : colors.backgroundSecondary,
-                    borderColor: frequency.specificDays.includes(index) ? colors.primary : colors.border,
-                  }
+                    backgroundColor: frequency.specificDays.includes(index)
+                      ? colors.primary
+                      : colors.backgroundSecondary,
+                    borderColor: frequency.specificDays.includes(index)
+                      ? colors.primary
+                      : colors.border,
+                  },
                 ]}
                 onPress={() => handleToggleDay(index)}
               >
-                <Text style={[
-                  styles.dayText,
-                  { color: frequency.specificDays.includes(index) ? '#FFFFFF' : colors.text }
-                ]}>
+                <Text
+                  style={[
+                    styles.dayText,
+                    {
+                      color: frequency.specificDays.includes(index)
+                        ? "#FFFFFF"
+                        : colors.text,
+                    },
+                  ]}
+                >
                   {day}
                 </Text>
               </TouchableOpacity>
@@ -434,10 +568,12 @@ export default function AddMedicineScreen() {
         </View>
       )}
 
-      {frequency.type !== 'as_needed' && (
+      {frequency.type !== "as_needed" && (
         <View style={styles.inputGroup}>
           <View style={styles.timeHeader}>
-            <Text style={[styles.label, { color: colors.text }]}>Reminder Times</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Reminder Times
+            </Text>
             <TouchableOpacity onPress={handleAddTime} style={styles.addButton}>
               <Ionicons name="add" size={20} color="#FFFFFF" />
             </TouchableOpacity>
@@ -445,22 +581,29 @@ export default function AddMedicineScreen() {
           {frequency.times.map((time, index) => (
             <View key={index} style={styles.timeRow}>
               <View style={styles.timeInputContainer}>
-                <View style={Platform.OS === 'ios' ? styles.inlineDatePickerContainer : {}}>
+                <View
+                  style={
+                    Platform.OS === "ios"
+                      ? styles.inlineDatePickerContainer
+                      : {}
+                  }
+                >
                   <DateTimePicker
                     testID={`timePicker${index}`}
                     value={convertTimeToDate(time)}
                     mode="time"
-                    onChange={(event, selectedTime) => handleTimeChangeForIndex(event, selectedTime, index)}
+                    onChange={(event, selectedTime) =>
+                      handleTimeChangeForIndex(event, selectedTime, index)
+                    }
                     textColor={colors.text}
                     accentColor={colors.primary}
                     style={{ flex: 1 }}
                   />
-
                 </View>
               </View>
               {frequency.times.length > 1 && (
                 <TouchableOpacity
-                  style={[styles.removeButton, { backgroundColor: '#FF6B6B' }]}
+                  style={[styles.removeButton, { backgroundColor: "#FF6B6B" }]}
                   onPress={() => handleRemoveTime(index)}
                   activeOpacity={0.8}
                 >
@@ -483,7 +626,9 @@ export default function AddMedicineScreen() {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Start Date</Text>
-        <View style={Platform.OS === 'ios' ? styles.inlineDatePickerContainer : {}}>
+        <View
+          style={Platform.OS === "ios" ? styles.inlineDatePickerContainer : {}}
+        >
           <DateTimePicker
             testID="startDatePicker"
             value={duration.startDate}
@@ -492,10 +637,17 @@ export default function AddMedicineScreen() {
             textColor={colors.text}
             accentColor={colors.primary}
           />
-          {Platform.OS === 'ios' && (
+          {Platform.OS === "ios" && (
             <View style={styles.pickerActions}>
-              <Text style={[styles.pickerInfo, { color: colors.textSecondary }]}>
-                {duration.startDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              <Text
+                style={[styles.pickerInfo, { color: colors.textSecondary }]}
+              >
+                {duration.startDate.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
               </Text>
             </View>
           )}
@@ -506,25 +658,34 @@ export default function AddMedicineScreen() {
         <View style={styles.toggleRow}>
           <Text style={[styles.label, { color: colors.text }]}>End Date</Text>
           <TouchableOpacity
-            style={[styles.toggleButton, { backgroundColor: duration.endDate ? '#FF6B6B' : colors.primary }]}
+            style={[
+              styles.toggleButton,
+              {
+                backgroundColor: duration.endDate ? "#FF6B6B" : colors.primary,
+              },
+            ]}
             onPress={() => {
               if (duration.endDate) {
-                setDuration(prev => ({ ...prev, endDate: null }));
+                setDuration((prev) => ({ ...prev, endDate: null }));
               } else {
                 // Set default end date to 30 days from start date
                 const endDate = new Date(duration.startDate);
                 endDate.setDate(endDate.getDate() + 30);
-                setDuration(prev => ({ ...prev, endDate }));
+                setDuration((prev) => ({ ...prev, endDate }));
               }
             }}
           >
             <Text style={styles.toggleText}>
-              {duration.endDate ? 'Remove' : 'Add'}
+              {duration.endDate ? "Remove" : "Add"}
             </Text>
           </TouchableOpacity>
         </View>
         {duration.endDate && (
-          <View style={Platform.OS === 'ios' ? styles.inlineDatePickerContainer : {}}>
+          <View
+            style={
+              Platform.OS === "ios" ? styles.inlineDatePickerContainer : {}
+            }
+          >
             <DateTimePicker
               testID="endDatePicker"
               value={duration.endDate}
@@ -534,10 +695,17 @@ export default function AddMedicineScreen() {
               textColor={colors.text}
               accentColor={colors.primary}
             />
-            {Platform.OS === 'ios' && (
+            {Platform.OS === "ios" && (
               <View style={styles.pickerActions}>
-                <Text style={[styles.pickerInfo, { color: colors.textSecondary }]}>
-                  {duration.endDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <Text
+                  style={[styles.pickerInfo, { color: colors.textSecondary }]}
+                >
+                  {duration.endDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </Text>
               </View>
             )}
@@ -551,19 +719,37 @@ export default function AddMedicineScreen() {
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.cardHeader}>
         <Ionicons name="storefront-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Stock Management</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>
+          Stock Management
+        </Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Current Stock</Text>
+        <Text style={[styles.label, { color: colors.text }]}>
+          Current Stock
+        </Text>
         <TextInput
-          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           value={medicineData.stock.current.toString()}
-          onChangeText={(text) => setMedicineData(prev => ({
-            ...prev,
-            stock: { ...prev.stock, current: parseInt(text) || 0, currentStock: parseInt(text) || 0, lastUpdated: new Date() },
-            stockQuantity: parseInt(text) || 0
-          }))}
+          onChangeText={(text) =>
+            setMedicineData((prev) => ({
+              ...prev,
+              stock: {
+                ...prev.stock,
+                current: parseInt(text) || 0,
+                currentStock: parseInt(text) || 0,
+                lastUpdated: new Date(),
+              },
+              stockQuantity: parseInt(text) || 0,
+            }))
+          }
           keyboardType="numeric"
           placeholder="30"
           placeholderTextColor={colors.textSecondary}
@@ -571,15 +757,26 @@ export default function AddMedicineScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Alert When Below</Text>
+        <Text style={[styles.label, { color: colors.text }]}>
+          Alert When Below
+        </Text>
         <TextInput
-          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           value={medicineData.stock.refillThreshold.toString()}
-          onChangeText={(text) => setMedicineData(prev => ({
-            ...prev,
-            stock: { ...prev.stock, refillThreshold: parseInt(text) || 5 },
-            stockAlert: parseInt(text) || 5
-          }))}
+          onChangeText={(text) =>
+            setMedicineData((prev) => ({
+              ...prev,
+              stock: { ...prev.stock, refillThreshold: parseInt(text) || 5 },
+              stockAlert: parseInt(text) || 5,
+            }))
+          }
           keyboardType="numeric"
           placeholder="5"
           placeholderTextColor={colors.textSecondary}
@@ -591,8 +788,14 @@ export default function AddMedicineScreen() {
   const renderColorSelection = () => (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.cardHeader}>
-        <Ionicons name="color-palette-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Color & Appearance</Text>
+        <Ionicons
+          name="color-palette-outline"
+          size={24}
+          color={colors.primary}
+        />
+        <Text style={[styles.cardTitle, { color: colors.text }]}>
+          Color & Appearance
+        </Text>
       </View>
 
       <View style={styles.colorContainer}>
@@ -602,9 +805,9 @@ export default function AddMedicineScreen() {
             style={[
               styles.colorOption,
               { backgroundColor: color },
-              medicineData.color === color && styles.selectedColor
+              medicineData.color === color && styles.selectedColor,
             ]}
-            onPress={() => setMedicineData(prev => ({ ...prev, color }))}
+            onPress={() => setMedicineData((prev) => ({ ...prev, color }))}
           >
             {medicineData.color === color && (
               <Ionicons name="checkmark" size={20} color="#FFFFFF" />
@@ -616,8 +819,10 @@ export default function AddMedicineScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
 
       {/* Header actions - inline with custom header */}
       <View style={styles.headerActions}>
@@ -626,13 +831,23 @@ export default function AddMedicineScreen() {
             onPress={() => router.back()}
             style={[
               styles.iconButton,
-              { borderColor: colors.border, backgroundColor: colors.backgroundSecondary }
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.backgroundSecondary,
+              },
             ]}
           >
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </TouchableOpacity>
-          <View style={[styles.badge, { backgroundColor: isEditMode ? '#FF8B94' : '#84CC16' }]}>
-            <Text style={styles.badgeText}>{isEditMode ? 'Edit Medicine' : 'New Medicine'}</Text>
+          <View
+            style={[
+              styles.badge,
+              { backgroundColor: isEditMode ? "#FF8B94" : "#84CC16" },
+            ]}
+          >
+            <Text style={styles.badgeText}>
+              {isEditMode ? "Edit Medicine" : "New Medicine"}
+            </Text>
           </View>
         </View>
         <TouchableOpacity
@@ -643,7 +858,7 @@ export default function AddMedicineScreen() {
             {
               backgroundColor: loading ? colors.border : colors.primary,
               opacity: loading ? 0.7 : 1,
-            }
+            },
           ]}
         >
           {loading ? (
@@ -655,7 +870,10 @@ export default function AddMedicineScreen() {
       </View>
 
       {/* Content Section */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.contentContainer}>
           {renderBasicInfo()}
           {renderFrequencySettings()}
@@ -668,31 +886,35 @@ export default function AddMedicineScreen() {
       {/* Native Date Pickers */}
 
       {showEndDatePicker && (
-        <View style={Platform.OS === 'ios' ? { height: 200 } : {}}>
+        <View style={Platform.OS === "ios" ? { height: 200 } : {}}>
           <DateTimePicker
             testID="endDatePicker"
             value={duration.endDate || new Date()}
             mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            display={Platform.OS === "ios" ? "spinner" : "default"}
             onChange={handleEndDateChange}
             minimumDate={duration.startDate}
             textColor={colors.text}
             accentColor={colors.primary}
           />
-          {Platform.OS === 'ios' && (
+          {Platform.OS === "ios" && (
             <View style={styles.pickerActions}>
               <TouchableOpacity
                 onPress={() => setShowEndDatePicker(false)}
-                style={[styles.pickerButton, { backgroundColor: colors.border }]}
+                style={[
+                  styles.pickerButton,
+                  { backgroundColor: colors.border },
+                ]}
               >
-                <Text style={[styles.pickerButtonText, { color: colors.text }]}>Done</Text>
+                <Text style={[styles.pickerButtonText, { color: colors.text }]}>
+                  Done
+                </Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
       )}
-
-      </SafeAreaView>
+    </SafeAreaView>
   );
 }
 
@@ -701,15 +923,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     flex: 1,
   },
@@ -718,8 +940,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   badge: {
     paddingHorizontal: 12,
@@ -728,21 +950,21 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   saveButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     minWidth: 96,
   },
   saveButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
@@ -758,32 +980,32 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
       },
       android: {
         elevation: 8,
-      }
-    })
+      },
+    }),
   },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
     gap: 12,
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   inputGroup: {
     marginBottom: 20,
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
   },
   input: {
@@ -798,10 +1020,10 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     height: 80,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   typeScroll: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   typePill: {
     paddingVertical: 10,
@@ -812,30 +1034,30 @@ const styles = StyleSheet.create({
   },
   typeText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   daysGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
     gap: 8,
   },
   dayPill: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     marginBottom: 8,
   },
   dayText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   frequencyGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   frequencyOption: {
@@ -847,17 +1069,17 @@ const styles = StyleSheet.create({
   },
   frequencyText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   timeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   timeInputContainer: {
@@ -866,33 +1088,33 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
   },
   timeText: {
     fontSize: 18,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   timeIcon: {
     marginLeft: 12,
   },
   inlineDatePickerContainer: {
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   pickerActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
   pickerInfo: {
     fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
+    fontWeight: "500",
+    textAlign: "center",
   },
   pickerButton: {
     paddingHorizontal: 20,
@@ -901,50 +1123,50 @@ const styles = StyleSheet.create({
   },
   pickerButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   removeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FF6B6B',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#FF6B6B",
+    alignItems: "center",
+    justifyContent: "center",
   },
   addButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#84CC16',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#84CC16",
+    alignItems: "center",
+    justifyContent: "center",
   },
   toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   toggleButton: {
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   toggleText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   dateInput: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
     // Add visual feedback for TouchableOpacity
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -954,32 +1176,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   colorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    flexWrap: "wrap",
     gap: 15,
   },
   colorOption: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 10,
   },
   selectedColor: {
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.3,
         shadowRadius: 6,
       },
       android: {
         elevation: 6,
-      }
-    })
+      },
+    }),
   },
 });
