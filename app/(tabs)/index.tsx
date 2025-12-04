@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useHabit } from '@/contexts/HabitContext';
@@ -30,18 +31,20 @@ interface Task {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   // Initialize with current date (no timezone offset for date comparison)
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   // Import contexts for real data
-  const { habits } = useHabit();
-  const { medicines } = useMedicine();
+  const { habits, refreshHabits } = useHabit();
+  const { medicines, refreshMedicines } = useMedicine();
 
   
 // Generate tasks from real data - defined outside useMemo to avoid dependency issues
@@ -682,6 +685,26 @@ const generateTasksFromData = React.useCallback(() => {
 
   const calendarDays = generateCalendarDays();
 
+  // Task detail handler - navigate to task completion screen
+  const handleTaskClick = (task: Task) => {
+    console.log('Task clicked:', task); // Debug log
+    if (task) {
+      const taskData = JSON.stringify(task);
+      console.log('Task data string length:', taskData.length); // Debug log
+      console.log('Task data preview:', taskData.substring(0, 100) + '...'); // Debug log
+
+      // Navigate to task completion screen with task data as modal
+      router.push({
+        pathname: '/tasks/complete',
+        params: {
+          taskData: taskData
+        }
+      } as any);
+    } else {
+      console.log('No task provided to handleTaskClick');
+    }
+  };
+
   
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -1123,7 +1146,7 @@ const generateTasksFromData = React.useCallback(() => {
                   <Text style={[styles.taskCount, { backgroundColor: '#F43F5E20', color: '#F43F5E' }]}>{getTaskCount(tasks.overdue)}</Text>
                 </View>
                 {tasks.overdue.map((task) => (
-                  <View
+                  <TouchableOpacity
                     key={task.id}
                     style={[
                       styles.taskItem,
@@ -1133,6 +1156,8 @@ const generateTasksFromData = React.useCallback(() => {
                         borderLeftColor: task.color
                       }
                     ]}
+                    onPress={() => handleTaskClick(task)}
+                    activeOpacity={0.7}
                   >
                     <View style={[styles.taskIconContainer, { backgroundColor: task.color + '20' }]}>
                       <View style={[styles.taskIcon, { backgroundColor: task.color }]}>
@@ -1158,7 +1183,7 @@ const generateTasksFromData = React.useCallback(() => {
                     <View style={styles.taskStatus}>
                       <Ionicons name="radio-button-off" size={20} color={task.color} />
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
@@ -1171,7 +1196,7 @@ const generateTasksFromData = React.useCallback(() => {
                   <Text style={[styles.taskCount, { backgroundColor: '#F59E0B20', color: '#F59E0B' }]}>{getTaskCount(tasks.upcoming || [])}</Text>
                 </View>
                 {(tasks.upcoming || []).map((task) => (
-                  <View
+                  <TouchableOpacity
                     key={task.id}
                     style={[
                       styles.taskItem,
@@ -1180,6 +1205,8 @@ const generateTasksFromData = React.useCallback(() => {
                         borderLeftColor: '#F59E0B'
                       }
                     ]}
+                    onPress={() => handleTaskClick(task)}
+                    activeOpacity={0.7}
                   >
                     <View style={[styles.taskIconContainer, { backgroundColor: task.color + '20' }]}>
                       <View style={[styles.taskIcon, { backgroundColor: task.color }]}>
@@ -1205,7 +1232,7 @@ const generateTasksFromData = React.useCallback(() => {
                     <View style={styles.taskStatus}>
                       <Ionicons name="time" size={20} color="#F59E0B" />
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
@@ -1219,7 +1246,7 @@ const generateTasksFromData = React.useCallback(() => {
                   <Text style={[styles.taskCount, { backgroundColor: '#84CC1620', color: '#84CC16' }]}>{getTaskCount(taskList)}</Text>
                 </View>
                 {taskList.map((task) => (
-                  <View
+                  <TouchableOpacity
                     key={task.id}
                     style={[
                       styles.taskItem,
@@ -1227,6 +1254,8 @@ const generateTasksFromData = React.useCallback(() => {
                         backgroundColor: colors.card
                       }
                     ]}
+                    onPress={() => handleTaskClick(task)}
+                    activeOpacity={0.7}
                   >
                     <View style={[styles.taskIconContainer, { backgroundColor: task.color + '20' }]}>
                       <View style={[styles.taskIcon, { backgroundColor: task.color }]}>
@@ -1262,7 +1291,7 @@ const generateTasksFromData = React.useCallback(() => {
                         <Ionicons name="radio-button-off" size={20} color={colors.border} />
                       )}
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             ))}
