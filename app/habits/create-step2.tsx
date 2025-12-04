@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -15,35 +16,47 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useHabit } from '@/contexts/HabitContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { habitService } from '@/services';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 interface Step1Data {
   habitName?: string;
-  icon?: string;
+  habitType?: string;
   description?: string;
-  category?: string;
-  color?: string;
   target?: {
     value?: number;
     unit?: string;
-    frequency?: string;
   };
-  reminderTimes?: string[];
-  reminderDays?: number[];
+  color?: string;
+  icon?: string;
+  editMode?: boolean;
+  habitId?: string;
 }
 
-interface FrequencyOption {
+interface FrequencyTab {
   id: string;
   label: string;
-  icon: 'sunny-outline' | 'calendar-outline' | 'repeat-outline';
+  icon: keyof typeof Ionicons.glyphMap;
+  description: string;
 }
 
-const frequencyOptions: FrequencyOption[] = [
-  { id: 'daily', label: 'Daily', icon: 'sunny-outline' },
-  { id: 'weekly', label: 'Weekly', icon: 'calendar-outline' },
-  { id: 'interval', label: 'Interval', icon: 'repeat-outline' }
+const frequencyTabs: FrequencyTab[] = [
+  {
+    id: 'daily',
+    label: 'Daily',
+    icon: 'sunny-outline' as keyof typeof Ionicons.glyphMap,
+    description: 'Every day at the same time'
+  },
+  {
+    id: 'interval',
+    label: 'Interval',
+    icon: 'repeat-outline' as keyof typeof Ionicons.glyphMap,
+    description: 'On specific days each week'
+  }
 ];
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -52,7 +65,7 @@ export default function CreateHabitStep2Screen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { addHabit } = useHabit();
+  const { addHabit, updateHabit } = useHabit();
   const { user } = useAuth();
   const params = useLocalSearchParams();
 
@@ -60,67 +73,179 @@ export default function CreateHabitStep2Screen() {
   const step1Data = params.step1Data ? JSON.parse(params.step1Data as string) as Step1Data : {};
 
   const [activeFrequencyTab, setActiveFrequencyTab] = useState('daily');
-  
-  const [habitData, setHabitData] = useState({
-    habitName: step1Data.habitName || '',
-    icon: step1Data.icon || '🎯',
-    description: step1Data.description || '',
-    category: step1Data.category || 'custom',
-    color: step1Data.color || '#4ECDC4',
 
-    // Frequency settings
-    frequency: step1Data.target?.frequency || 'daily',
-    selectedDays: step1Data.reminderDays || [0, 1, 2, 3, 4, 5, 6],
-    intervalDays: step1Data.target?.frequency === 'interval' ? 3 : 1,
-
-    // Goal settings
-    targetValue: step1Data.target?.value || 1,
-    targetUnit: step1Data.target?.unit || 'times',
-    startDate: new Date(),
-    goalDays: 30,
-
-    // Reminder settings
-    reminderTimes: step1Data.reminderTimes || ['08:00'],
-  });
+  // Check if edit mode
+  const editMode = step1Data?.editMode || false;
+  const habitId = step1Data?.habitId || '';
 
   const [loading, setLoading] = useState(false);
+  const [showEndDate, setShowEndDate] = useState(false);
+
+  const [habitData, setHabitData] = useState({
+    habitName: step1Data?.habitName || '',
+    habitType: step1Data?.habitType || 'custom',
+    description: step1Data?.description || '',
+    target: {
+      value: step1Data?.target?.value || 1,
+      unit: step1Data?.target?.unit || 'times',
+    },
+    color: step1Data?.color || '#4ECDC4',
+    icon: step1Data?.icon || 'checkmark-circle-outline',
+
+    // Frequency settings
+    frequency: {
+      type: 'daily' as 'daily' | 'interval',
+      selectedDays: [] as number[], // Days for interval frequency
+      times: ['08:00'],
+    },
+
+    // Duration settings - set to start of today to avoid timezone issues
+    duration: {
+      startDate: (() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of day
+        return today;
+      })(),
+      endDate: undefined as Date | undefined,
+      totalDays: null as number | null,
+    },
+  });
+
+  // Load existing habit data for edit mode
+  useEffect(() => {
+    if (editMode && habitId && user) {
+      const loadHabitData = async () => {
+        try {
+          console.log('Loading habit data for edit:', habitId);
+          const habit = await habitService.getHabitById(user.userId, habitId);
+
+          if (habit) {
+            console.log('Loaded habit data:', habit);
+
+            // Update all habitData with loaded data
+            setHabitData({
+              habitName: habit.habitName || '',
+              habitType: habit.habitType || 'custom',
+              description: habit.description || '',
+              target: {
+                value: habit.target?.value || 1,
+                unit: habit.target?.unit || 'times',
+              },
+              color: habit.color || '#4ECDC4',
+              icon: habit.icon || 'checkmark-circle-outline',
+
+              // Update frequency data
+              frequency: {
+                type: habit.frequency?.type || 'daily',
+                times: habit.frequency?.times || ['08:00'],
+                selectedDays: habit.frequency?.specificDays || [],
+              },
+
+              // Update duration data
+              duration: {
+                startDate: habit.duration?.startDate || new Date(),
+                endDate: habit.duration?.endDate || undefined,
+                totalDays: habit.duration?.totalDays || null,
+              },
+            });
+
+            // Set frequency tab based on loaded data
+            setActiveFrequencyTab(habit.frequency?.type || 'daily');
+
+            // Set showEndDate based on whether end date exists
+            setShowEndDate(!!habit.duration?.endDate);
+          }
+        } catch (error) {
+          console.error('Error loading habit data:', error);
+        }
+      };
+
+      loadHabitData();
+    }
+  }, [editMode, habitId, user]);
 
   const handleSaveHabit = async () => {
     setLoading(true);
     try {
-      const newHabit = {
-        userId: user?.userId || '',
+      const duration: any = {
+        startDate: habitData.duration.startDate,
+        totalDays: habitData.duration.totalDays,
+      };
+
+      // Only include endDate if it exists
+      if (habitData.duration.endDate) {
+        duration.endDate = habitData.duration.endDate;
+      }
+
+      const frequencyData = {
+        type: habitData.frequency.type,
+        times: habitData.frequency.times,
+        specificDays: habitData.frequency.type === 'interval' ? habitData.frequency.selectedDays : [],
+      };
+
+      const habitPayload: any = {
         habitName: habitData.habitName,
-        habitType: habitData.category as 'water' | 'exercise' | 'sleep' | 'meditation' | 'custom',
+        habitType: habitData.habitType,
         description: habitData.description,
         target: {
-          value: habitData.targetValue,
-          unit: habitData.targetUnit,
-          frequency: activeFrequencyTab === 'interval' ? 'daily' : activeFrequencyTab as 'daily' | 'weekly' | 'monthly',
+          value: habitData.target.value,
+          unit: habitData.target.unit,
         },
-        reminderTimes: habitData.reminderTimes,
-        reminderDays: activeFrequencyTab === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : habitData.selectedDays,
-        startDate: habitData.startDate,
-        endDate: null,
-        isActive: true,
         color: habitData.color,
         icon: habitData.icon,
+
+        // Main frequency structure
+        frequency: {
+          type: habitData.frequency.type,
+          times: habitData.frequency.times,
+          specificDays: habitData.frequency.selectedDays || [],
+        },
+
+        // Legacy fields for backward compatibility
+        reminderDays: habitData.frequency.selectedDays || [],
+        reminderTimes: habitData.frequency.times,
+        schedule: {
+          type: habitData.frequency.type,
+          frequency: habitData.frequency.type,
+          days: habitData.frequency.selectedDays,
+        },
+
+        // Set both startDate and duration.startDate for compatibility
+        startDate: duration.startDate,
+        duration: {
+          startDate: duration.startDate,
+          endDate: duration.endDate,
+          totalDays: duration.totalDays,
+        },
+
+        isActive: true,
         streak: 0,
         bestStreak: 0,
         completedDates: [],
-        schedule: {
-          type: activeFrequencyTab === 'interval' ? 'daily' : activeFrequencyTab as 'daily' | 'weekly' | 'monthly',
-          frequency: activeFrequencyTab === 'interval' ? 'daily' : activeFrequencyTab as 'daily' | 'weekly' | 'monthly',
-          ...(activeFrequencyTab === 'weekly' && { days: habitData.selectedDays }),
-        },
       };
 
-      const result = await addHabit(newHabit);
+      // Only add endDate if it exists (to avoid Firebase undefined error)
+      if (duration.endDate) {
+        habitPayload.endDate = duration.endDate;
+      }
+
+      let result;
+      if (editMode && habitId) {
+        // Update existing habit
+        result = await updateHabit(habitId, habitPayload);
+      } else {
+        // Add new habit
+        const newHabit = {
+          userId: user?.userId || '',
+          ...habitPayload,
+        };
+        result = await addHabit(newHabit);
+      }
 
       if (result.success) {
         router.replace('/(tabs)/habits');
       } else {
-        Alert.alert('Error', result.error || 'Failed to create habit');
+        Alert.alert('Error', result.error || `Failed to ${editMode ? 'update' : 'create'} habit`);
       }
     } catch {
       Alert.alert('Error', 'An unexpected error occurred');
@@ -130,26 +255,39 @@ export default function CreateHabitStep2Screen() {
   };
 
   const toggleDay = (dayIndex: number) => {
-    setHabitData(prev => ({
-      ...prev,
-      selectedDays: prev.selectedDays.includes(dayIndex)
-        ? prev.selectedDays.filter((d: number) => d !== dayIndex)
-        : [...prev.selectedDays, dayIndex].sort((a: number, b: number) => a - b)
-    }));
+    setHabitData(prev => {
+      const newSelectedDays = prev.frequency.selectedDays?.includes(dayIndex)
+        ? prev.frequency.selectedDays.filter((d: number) => d !== dayIndex)
+        : [...(prev.frequency.selectedDays || []), dayIndex].sort((a: number, b: number) => a - b);
+
+      return {
+        ...prev,
+        frequency: {
+          ...prev.frequency,
+          selectedDays: newSelectedDays
+        }
+      };
+    });
   };
 
   const addReminderTime = () => {
     setHabitData(prev => ({
       ...prev,
-      reminderTimes: [...prev.reminderTimes, '12:00']
+      frequency: {
+        ...prev.frequency,
+        times: [...prev.frequency.times, '12:00']
+      }
     }));
   };
 
   const removeReminderTime = (index: number) => {
-    if (habitData.reminderTimes.length > 1) {
+    if (habitData.frequency.times.length > 1) {
       setHabitData(prev => ({
         ...prev,
-        reminderTimes: prev.reminderTimes.filter((_: string, i: number) => i !== index)
+        frequency: {
+          ...prev.frequency,
+          times: prev.frequency.times.filter((_: string, i: number) => i !== index)
+        }
       }));
     }
   };
@@ -158,23 +296,35 @@ export default function CreateHabitStep2Screen() {
     if (event.type === 'set' && selectedDate && index !== undefined) {
       const hours = selectedDate.getHours().toString().padStart(2, '0');
       const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
-      const newTimes = [...habitData.reminderTimes];
+      const newTimes = [...habitData.frequency.times];
       newTimes[index] = `${hours}:${minutes}`;
-      setHabitData(prev => ({ ...prev, reminderTimes: newTimes }));
+      setHabitData(prev => ({
+        ...prev,
+        frequency: {
+          ...prev.frequency,
+          times: newTimes
+        }
+      }));
     }
   };
 
-  const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (event.type === 'set' && selectedDate) {
-      setHabitData(prev => ({ ...prev, startDate: selectedDate }));
-    }
-  };
-
+  
   const convertTimeToDate = (timeString: string) => {
     const [hours, minutes] = timeString.split(':').map(Number);
     const date = new Date();
     date.setHours(hours, minutes, 0, 0);
     return date;
+  };
+
+  const handleTabPress = (tabId: string) => {
+    setActiveFrequencyTab(tabId);
+    setHabitData(prev => ({
+      ...prev,
+      frequency: {
+        ...prev.frequency,
+        type: tabId as 'daily' | 'interval'
+      }
+    }));
   };
 
   return (
@@ -190,7 +340,7 @@ export default function CreateHabitStep2Screen() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Create New Habit
+          {editMode ? 'Edit Habit' : 'Create New Habit'}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -228,53 +378,112 @@ export default function CreateHabitStep2Screen() {
           {/* Frequency Tabs */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>Frequency</Text>
-            <View style={styles.tabContainer}>
-              {frequencyOptions.map((option) => (
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              How often do you want to do this habit?
+            </Text>
+
+            <View style={styles.frequencyTabContainer}>
+              {frequencyTabs.map((tab) => (
                 <TouchableOpacity
-                  key={option.id}
+                  key={tab.id}
                   style={[
-                    styles.tab,
+                    styles.frequencyTab,
                     {
-                      backgroundColor: activeFrequencyTab === option.id
+                      backgroundColor: activeFrequencyTab === tab.id
                         ? colors.primary
                         : colors.backgroundSecondary,
-                      borderColor: activeFrequencyTab === option.id
+                      borderColor: activeFrequencyTab === tab.id
                         ? colors.primary
                         : colors.border,
                     }
                   ]}
-                  onPress={() => setActiveFrequencyTab(option.id)}
+                  onPress={() => handleTabPress(tab.id)}
                 >
                   <Ionicons
-                    name={option.icon}
+                    name={tab.icon}
                     size={20}
-                    color={activeFrequencyTab === option.id ? '#FFFFFF' : colors.textSecondary}
+                    color={activeFrequencyTab === tab.id ? '#FFFFFF' : colors.textSecondary}
                   />
                   <Text style={[
-                    styles.tabText,
-                    { color: activeFrequencyTab === option.id ? '#FFFFFF' : colors.text }
+                    styles.frequencyTabText,
+                    { color: activeFrequencyTab === tab.id ? '#FFFFFF' : colors.text }
                   ]}>
-                    {option.label}
+                    {tab.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            {/* Frequency Specific Options */}
+            <Text style={[styles.frequencyDescription, { color: colors.textSecondary }]}>
+              {frequencyTabs.find(tab => tab.id === activeFrequencyTab)?.description}
+            </Text>
+
+            </View>
+
+          {/* Frequency Content */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
             {activeFrequencyTab === 'daily' && (
-              <View style={styles.frequencyOption}>
-                <Text style={[styles.optionText, { color: colors.text }]}>
-                  Every day
+              <View style={styles.tabContent}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>Daily Reminder Times</Text>
+                </View>
+
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  When should you be reminded to do this habit?
                 </Text>
-                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+
+                <View style={styles.reminderGrid}>
+                  {habitData.frequency.times.map((time: string, index: number) => (
+                    <View key={index} style={styles.reminderItem}>
+                      <View style={styles.timeRow}>
+                        <View style={[styles.timePickerContainer, { backgroundColor: colors.backgroundSecondary }]}>
+                          <DateTimePicker
+                            testID={`timePicker${index}`}
+                            value={convertTimeToDate(time)}
+                            mode="time"
+                            onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, index)}
+                            textColor={colors.text}
+                            accentColor={colors.primary}
+                          />
+                        </View>
+                        {habitData.frequency.times.length > 1 && (
+                          <TouchableOpacity
+                            style={[styles.removeTimeButton, { backgroundColor: '#FF6B6B' }]}
+                            onPress={() => removeReminderTime(index)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="remove" size={16} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.addTimeButton, { backgroundColor: colors.primary + '20' }]}
+                  onPress={addReminderTime}
+                >
+                  <Ionicons name="add" size={20} color={colors.primary} />
+                  <Text style={[styles.addTimeText, { color: colors.primary }]}>
+                    Add Reminder Time
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
 
-            {activeFrequencyTab === 'weekly' && (
-              <View style={styles.frequencyOption}>
-                <Text style={[styles.optionLabel, { color: colors.text }]}>
-                  Select days:
+            {activeFrequencyTab === 'interval' && (
+              <View style={styles.tabContent}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="calendar-number-outline" size={20} color={colors.primary} />
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>Select Days</Text>
+                </View>
+
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  Select the days of the week when this habit should be done
                 </Text>
+
                 <View style={styles.daysGrid}>
                   {daysOfWeek.map((day, index) => (
                     <TouchableOpacity
@@ -282,10 +491,10 @@ export default function CreateHabitStep2Screen() {
                       style={[
                         styles.dayPill,
                         {
-                          backgroundColor: habitData.selectedDays.includes(index)
+                          backgroundColor: habitData.frequency.selectedDays?.includes(index)
                             ? colors.primary
                             : colors.backgroundSecondary,
-                          borderColor: habitData.selectedDays.includes(index)
+                          borderColor: habitData.frequency.selectedDays?.includes(index)
                             ? colors.primary
                             : colors.border,
                         }
@@ -294,39 +503,57 @@ export default function CreateHabitStep2Screen() {
                     >
                       <Text style={[
                         styles.dayText,
-                        { color: habitData.selectedDays.includes(index) ? '#FFFFFF' : colors.text }
+                        { color: habitData.frequency.selectedDays?.includes(index) ? '#FFFFFF' : colors.text }
                       ]}>
                         {day}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-              </View>
-            )}
 
-            {activeFrequencyTab === 'interval' && (
-              <View style={styles.frequencyOption}>
-                <Text style={[styles.optionLabel, { color: colors.text }]}>
-                  Repeat every:
+                <View style={[styles.divider, { borderBottomColor: colors.border }]} />
+
+                <Text style={[styles.subtitle, { marginTop: 16, color: colors.textSecondary }]}>
+                  Reminder times for selected days:
                 </Text>
-                <View style={styles.intervalContainer}>
-                  <TextInput
-                    style={[styles.intervalInput, {
-                      backgroundColor: colors.backgroundSecondary,
-                      borderColor: colors.border,
-                      color: colors.text
-                    }]}
-                    value={habitData.intervalDays.toString()}
-                    onChangeText={(text) => setHabitData(prev => ({
-                      ...prev,
-                      intervalDays: parseInt(text) || 1
-                    }))}
-                    keyboardType="numeric"
-                  />
-                  <Text style={[styles.intervalText, { color: colors.text }]}>
-                    days
-                  </Text>
+
+                <View style={styles.reminderGrid}>
+                  {habitData.frequency.times.map((time: string, index: number) => (
+                    <View key={index} style={styles.reminderItem}>
+                      <View style={styles.timeRow}>
+                        <View style={[styles.timePickerContainer, { backgroundColor: colors.backgroundSecondary }]}>
+                          <DateTimePicker
+                            testID={`timePicker${index}`}
+                            value={convertTimeToDate(time)}
+                            mode="time"
+                            onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, index)}
+                            textColor={colors.text}
+                            accentColor={colors.primary}
+                          />
+                        </View>
+                        {habitData.frequency.times.length > 1 && (
+                          <TouchableOpacity
+                            style={[styles.removeTimeButton, { backgroundColor: '#FF6B6B' }]}
+                            onPress={() => removeReminderTime(index)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="remove" size={16} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  ))}
                 </View>
+
+                <TouchableOpacity
+                  style={[styles.addTimeButton, { backgroundColor: colors.primary + '20' }]}
+                  onPress={addReminderTime}
+                >
+                  <Ionicons name="add" size={20} color={colors.primary} />
+                  <Text style={[styles.addTimeText, { color: colors.primary }]}>
+                    Add Reminder Time
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -347,10 +574,13 @@ export default function CreateHabitStep2Screen() {
                     borderColor: colors.border,
                     color: colors.text
                   }]}
-                  value={habitData.targetValue.toString()}
+                  value={habitData.target.value.toString()}
                   onChangeText={(text) => setHabitData(prev => ({
                     ...prev,
-                    targetValue: parseInt(text) || 1
+                    target: {
+                      ...prev.target,
+                      value: parseInt(text) || 1
+                    }
                   }))}
                   keyboardType="numeric"
                 />
@@ -363,94 +593,136 @@ export default function CreateHabitStep2Screen() {
                     borderColor: colors.border,
                     color: colors.text
                   }]}
-                  value={habitData.targetUnit}
-                  onChangeText={(text) => setHabitData(prev => ({ ...prev, targetUnit: text }))}
+                  value={habitData.target.unit}
+                  onChangeText={(text) => setHabitData(prev => ({
+                    ...prev,
+                    target: {
+                      ...prev.target,
+                      unit: text
+                    }
+                  }))}
                   placeholder="times, minutes, etc."
                 />
               </View>
             </View>
+          </View>
 
-            <View style={styles.goalRow}>
-              <View style={styles.goalInput}>
-                <Text style={[styles.goalLabel, { color: colors.text }]}>Start Date</Text>
+          {/* Duration Settings */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Duration</Text>
+            </View>
+
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Set how long you want to maintain this habit
+            </Text>
+
+            <View style={styles.durationRow}>
+              <View style={styles.durationInput}>
+                <Text style={[styles.durationLabel, { color: colors.text }]}>Start Date</Text>
                 <DateTimePicker
-                  testID="startDatePicker"
-                  value={habitData.startDate}
+                  value={(() => {
+                    const date = habitData.duration.startDate;
+                    if (date instanceof Date) {
+                      // Set to start of day to avoid timezone issues
+                      const startOfDay = new Date(date);
+                      startOfDay.setHours(0, 0, 0, 0);
+                      return startOfDay;
+                    }
+                    return new Date();
+                  })()}
                   mode="date"
-                  onChange={handleDateChange}
+                  onChange={(event, selectedDate) => {
+                    if (event.type === 'set' && selectedDate) {
+                      // Set to start of day
+                      const startOfDay = new Date(selectedDate);
+                      startOfDay.setHours(0, 0, 0, 0);
+
+                      setHabitData(prev => ({
+                        ...prev,
+                        duration: {
+                          ...prev.duration,
+                          startDate: startOfDay
+                        }
+                      }));
+                    }
+                  }}
                   textColor={colors.text}
                   accentColor={colors.primary}
                 />
               </View>
-              <View style={styles.goalInput}>
-                <Text style={[styles.goalLabel, { color: colors.text }]}>Goal Days</Text>
-                <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colors.backgroundSecondary,
-                    borderColor: colors.border,
-                    color: colors.text
-                  }]}
-                  value={habitData.goalDays.toString()}
-                  onChangeText={(text) => setHabitData(prev => ({
-                    ...prev,
-                    goalDays: parseInt(text) || 30
-                  }))}
-                  keyboardType="numeric"
-                  placeholder="30"
-                />
+
+              <View style={styles.durationInput}>
+                <Text style={[styles.durationLabel, { color: colors.text }]}>End Date (Optional)</Text>
+                {!showEndDate && !habitData.duration.endDate ? (
+                  <TouchableOpacity
+                    style={[styles.addEndDateButton, {
+                      backgroundColor: colors.backgroundSecondary,
+                      borderColor: colors.border,
+                      borderWidth: 1
+                    }]}
+                    onPress={() => setShowEndDate(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="add" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.endDateContainer}>
+                    <DateTimePicker
+                      value={(() => {
+                        const endDate = habitData.duration.endDate;
+                        if (endDate instanceof Date) {
+                          // Set to start of day to avoid timezone issues
+                          const startOfDay = new Date(endDate);
+                          startOfDay.setHours(0, 0, 0, 0);
+                          return startOfDay;
+                        }
+                        return new Date();
+                      })()}
+                      mode="date"
+                      onChange={(event, selectedDate) => {
+                        if (event.type === 'set' && selectedDate) {
+                          // Set to start of day
+                          const startOfDay = new Date(selectedDate);
+                          startOfDay.setHours(0, 0, 0, 0);
+
+                          setHabitData(prev => ({
+                            ...prev,
+                            duration: {
+                              ...prev.duration,
+                              endDate: startOfDay
+                            }
+                          }));
+                        }
+                      }}
+                      textColor={colors.text}
+                      accentColor={colors.primary}
+                      style={styles.endDatePicker}
+                    />
+                    <TouchableOpacity
+                      style={[styles.removeEndDateButton, { backgroundColor: '#FF6B6B' }]}
+                      onPress={() => {
+                        setHabitData(prev => ({
+                          ...prev,
+                          duration: {
+                            ...prev.duration,
+                            endDate: undefined
+                          }
+                        }));
+                        setShowEndDate(false);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="remove" size={16} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             </View>
           </View>
 
-          {/* Reminder Container */}
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Reminder</Text>
-            </View>
-
-            <Text style={[styles.optionLabel, { color: colors.text }]}>
-              Reminder times:
-            </Text>
-
-            <View style={styles.reminderGrid}>
-              {habitData.reminderTimes.map((time: string, index: number) => (
-                <View key={index} style={styles.reminderItem}>
-                  <View style={styles.timeRow}>
-                    <DateTimePicker
-                      testID={`timePicker${index}`}
-                      value={convertTimeToDate(time)}
-                      mode="time"
-                      onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, index)}
-                      textColor={colors.text}
-                      accentColor={colors.primary}
-                      style={{ flex: 1 }}
-                    />
-                    {habitData.reminderTimes.length > 1 && (
-                      <TouchableOpacity
-                        style={[styles.removeTimeButton, { backgroundColor: '#FF6B6B' }]}
-                        onPress={() => removeReminderTime(index)}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="remove" size={16} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              style={[styles.addTimeButton, { backgroundColor: colors.primary + '20' }]}
-              onPress={addReminderTime}
-            >
-              <Ionicons name="add" size={20} color={colors.primary} />
-              <Text style={[styles.addTimeText, { color: colors.primary }]}>
-                Add Reminder Time
-              </Text>
-            </TouchableOpacity>
-          </View>
-
+          
           {/* Bottom Space for Floating Button */}
           <View style={styles.bottomSpace} />
         </View>
@@ -468,10 +740,10 @@ export default function CreateHabitStep2Screen() {
           activeOpacity={0.8}
         >
           {loading ? (
-            <Text style={styles.saveButtonText}>Creating...</Text>
+            <Text style={styles.saveButtonText}>{editMode ? 'Updating...' : 'Creating...'}</Text>
           ) : (
             <>
-              <Text style={styles.saveButtonText}>Create Habit</Text>
+              <Text style={styles.saveButtonText}>{editMode ? 'Update Habit' : 'Create Habit'}</Text>
               <Ionicons name="checkmark" size={20} color="#FFFFFF" />
             </>
           )}
@@ -612,6 +884,11 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 16,
+  },
+  optionSubtext: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -759,5 +1036,86 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginRight: 8,
+  },
+  sublabel: {
+    fontSize: 14,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  frequencyTabContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    gap: 8,
+  },
+  frequencyTab: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  frequencyTabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  frequencyDescription: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  tabContent: {
+    padding: 0,
+  },
+  timePickerContainer: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    flex: 1,
+  },
+  divider: {
+    borderBottomWidth: 1,
+    marginVertical: 16,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  durationInput: {
+    flex: 1,
+  },
+  durationLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: -12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  addEndDateButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  endDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  endDatePicker: {
+    flex: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  removeEndDateButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -14,58 +15,113 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { habitService } from '@/services';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface TemplateData {
-  habitName: string;
-  category: string;
-  icon: string;
-  color: string;
-  description: string;
-  target: {
-    value: number;
-    unit: string;
-    frequency: string;
+interface HabitData {
+  habitName?: string;
+  habitType?: string;
+  description?: string;
+  target?: {
+    value?: number;
+    unit?: string;
   };
-  reminderTimes: string[];
-  reminderDays: number[];
+  color?: string;
+  icon?: string;
 }
 
-export default function CreateHabitStep1Screen() {
+interface HabitTypeOption {
+  id: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  emoji: string;
+  color: string;
+  defaultUnit: string;
+  defaultTarget: number;
+}
+
+const habitTypes: HabitTypeOption[] = [
+  { id: 'water', label: 'Water Intake', icon: 'water-outline', emoji: '💧', color: '#3498db', defaultUnit: 'glasses', defaultTarget: 8 },
+  { id: 'exercise', label: 'Exercise', icon: 'fitness-outline', emoji: '🏃', color: '#e74c3c', defaultUnit: 'minutes', defaultTarget: 30 },
+  { id: 'sleep', label: 'Sleep', icon: 'moon-outline', emoji: '🌙', color: '#9b59b6', defaultUnit: 'hours', defaultTarget: 8 },
+  { id: 'meditation', label: 'Meditation', icon: 'leaf-outline', emoji: '🧘', color: '#2ecc71', defaultUnit: 'minutes', defaultTarget: 15 },
+  { id: 'reading', label: 'Reading', icon: 'book-outline', emoji: '📚', color: '#f39c12', defaultUnit: 'pages', defaultTarget: 20 },
+  { id: 'health', label: 'Health', icon: 'heart-outline', emoji: '❤️', color: '#e91e63', defaultUnit: 'times', defaultTarget: 1 },
+  { id: 'custom', label: 'Custom', icon: 'star-outline', emoji: '⭐', color: '#34495e', defaultUnit: 'times', defaultTarget: 1 },
+];
+
+export default function AddHabitStep1NewScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const params = useLocalSearchParams();
+  const { user } = useAuth();
 
-  // Parse template data if exists
-  const templateData = params.template ? JSON.parse(params.template as string) as TemplateData : null;
+  // Check if edit mode
+  const editMode = params.editMode === 'true';
+  const habitId = params.habitId as string;
 
-  const [habitData, setHabitData] = useState({
-    habitName: templateData?.habitName || '',
-    icon: templateData?.icon || '🎯',
-    description: templateData?.description || '',
-    category: templateData?.category || 'custom',
-    color: templateData?.color || '#4ECDC4',
+  // Get edit data from params if exists
+  const editData = params.habitData ? JSON.parse(params.habitData as string) as HabitData : null;
+
+  const [habitData, setHabitData] = useState<HabitData>({
+    habitName: editData?.habitName || '',
+    habitType: editData?.habitType || 'custom',
+    description: editData?.description || '',
+    target: {
+      value: editData?.target?.value || 1,
+      unit: editData?.target?.unit || 'times',
+    },
+    color: editData?.color || '#4ECDC4',
+    icon: editData?.icon || 'checkmark-circle-outline',
   });
 
-  // Common emoji icons for habits
-  const habitIcons = [
-    '💧', '🏃', '🧘', '📚', '❤️', '🎯', '✨', '🌟',
-    '💪', '🥗', '😴', '🎨', '🎵', '📝', '🚀', '⭐',
-    '🌱', '🔥', '💡', '🏆', '🎪', '🌈', '☀️', '🌙'
-  ];
+  // Load existing habit data for edit mode
+  useEffect(() => {
+    if (editMode && habitId && user && !editData) {
+      // Only load from API if we don't have data from params
+      const loadHabitData = async () => {
+        try {
+          console.log('Loading habit data for edit (step 1):', habitId);
+          const habit = await habitService.getHabitById(user.userId, habitId);
+
+          if (habit) {
+            console.log('Loaded habit data (step 1):', habit);
+
+            // Update habitData with loaded data from API
+            setHabitData(prev => ({
+              ...prev,
+              habitName: habit.habitName || prev.habitName,
+              habitType: habit.habitType || prev.habitType,
+              description: habit.description || prev.description,
+              target: {
+                value: habit.target?.value || prev.target?.value || 1,
+                unit: habit.target?.unit || prev.target?.unit || 'times',
+              },
+              color: habit.color || prev.color,
+              icon: habit.icon || prev.icon,
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading habit data (step 1):', error);
+        }
+      };
+
+      loadHabitData();
+    }
+  }, [editMode, habitId, user, editData]);
 
   const handleNext = () => {
-    if (!habitData.habitName.trim()) {
-      alert('Please enter a habit name');
+    if (!habitData.habitName?.trim()) {
+      Alert.alert('Error', 'Please enter habit name');
       return;
     }
 
     // Prepare data for step 2
     const step2Data = {
       ...habitData,
-      ...(templateData?.target && { target: templateData.target }),
-      ...(templateData?.reminderTimes && { reminderTimes: templateData.reminderTimes }),
-      ...(templateData?.reminderDays && { reminderDays: templateData.reminderDays }),
+      editMode,
+      habitId,
     };
 
     router.push({
@@ -74,6 +130,56 @@ export default function CreateHabitStep1Screen() {
         step1Data: JSON.stringify(step2Data)
       }
     });
+  };
+
+  const renderHabitTypeOption = (type: HabitTypeOption) => {
+    return (
+      <TouchableOpacity
+        key={type.id}
+        style={[
+          styles.typeOption,
+          {
+            backgroundColor: habitData.habitType === type.id
+              ? type.color
+              : colors.backgroundSecondary,
+            borderColor: habitData.habitType === type.id
+              ? type.color
+              : colors.border,
+          }
+        ]}
+        onPress={() => {
+          setHabitData(prevData => ({
+            ...prevData,
+            habitType: type.id,
+            target: {
+              ...prevData.target,
+              unit: type.defaultUnit,
+              value: type.defaultTarget,
+            },
+            color: type.color,
+            icon: type.emoji, // Save emoji to database
+          }));
+        }}
+      >
+        <Text style={{ fontSize: 20, marginBottom: 2 }}>
+          {type.emoji}
+        </Text>
+        <Text style={[
+          styles.typeText,
+          {
+            color: habitData.habitType === type.id ? '#FFFFFF' : colors.text,
+            marginTop: 2
+          }
+        ]}>
+          {type.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const getCurrentUnit = () => {
+    const selectedType = habitTypes.find(t => t.id === habitData.habitType);
+    return selectedType?.defaultUnit || 'times';
   };
 
   return (
@@ -89,7 +195,7 @@ export default function CreateHabitStep1Screen() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Create New Habit
+          {editMode ? 'Edit Habit' : 'Add Habit'}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -117,10 +223,10 @@ export default function CreateHabitStep1Screen() {
           {/* Title */}
           <View style={styles.section}>
             <Text style={[styles.title, { color: colors.text }]}>
-              Basic Information
+              Habit Information
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Let&apos;s start with the basic details of your habit
+              Enter basic details of your habit
             </Text>
           </View>
 
@@ -140,38 +246,56 @@ export default function CreateHabitStep1Screen() {
             />
           </View>
 
-          {/* Icon Selection */}
+          {/* Habit Type Selection */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.label, { color: colors.text }]}>Choose Icon</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Habit Type</Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Select an emoji that represents your habit
+              Select type of habit (target will auto-adjust)
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.iconContainer}>
-                {habitIcons.map((icon, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.iconOption,
-                      {
-                        backgroundColor: habitData.icon === icon ? colors.primary + '20' : colors.backgroundSecondary,
-                        borderColor: habitData.icon === icon ? colors.primary : colors.border,
-                      }
-                    ]}
-                    onPress={() => setHabitData(prev => ({ ...prev, icon }))}
-                  >
-                    <Text style={styles.iconText}>{icon}</Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.typeContainer}>
+                {habitTypes.map(renderHabitTypeOption)}
               </View>
             </ScrollView>
+          </View>
+
+          {/* Target Input (Auto-adjust based on type) */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>Target</Text>
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Amount per session (auto-adjusts by habit type)
+            </Text>
+            <View style={styles.targetContainer}>
+              <TextInput
+                style={[styles.targetInput, {
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border,
+                  color: colors.text,
+                }]}
+                placeholder="e.g., 8, 30, 1"
+                placeholderTextColor={colors.textSecondary}
+                value={habitData.target?.value?.toString() || ''}
+                onChangeText={(text) => setHabitData(prev => ({
+                  ...prev,
+                  target: {
+                    ...prev.target!,
+                    value: parseInt(text) || 1
+                  }
+                }))}
+                keyboardType="numeric"
+                maxLength={4}
+              />
+              <Text style={[styles.targetUnit, { color: colors.textSecondary }]}>
+                {getCurrentUnit()}
+              </Text>
+            </View>
           </View>
 
           {/* Description Input */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>Description (Optional)</Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Add a short description to remind yourself why this habit matters
+              Add special instructions or notes
             </Text>
             <TextInput
               style={[styles.textArea, {
@@ -179,7 +303,7 @@ export default function CreateHabitStep1Screen() {
                 borderColor: colors.border,
                 color: colors.text
               }]}
-              placeholder="Why is this habit important to you?"
+              placeholder="Enter any special instructions or notes..."
               placeholderTextColor={colors.textSecondary}
               value={habitData.description}
               onChangeText={(text) => setHabitData(prev => ({ ...prev, description: text }))}
@@ -342,28 +466,47 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
   },
+  typeContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 5,
+  },
+  typeOption: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 12,
+    minWidth: 80,
+  },
+  typeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  targetContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  targetInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    marginRight: 12,
+  },
+  targetUnit: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
   textArea: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     minHeight: 100,
-  },
-  iconContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 5,
-  },
-  iconOption: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  iconText: {
-    fontSize: 24,
   },
   bottomSpace: {
     height: 100,
