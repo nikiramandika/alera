@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -44,23 +44,46 @@ export default function HomeScreen() {
 
   // Import contexts for real data
   const { habits, refreshHabits } = useHabit();
-  const { medicines, refreshMedicines } = useMedicine();
+  const { medicines, medicineHistory, refreshMedicines } = useMedicine();
 
-  // Refresh data when screen comes into focus
+  // Refresh data when screen comes into focus - but limit frequency to prevent loops
+  const refreshTriggered = useRef(false);
+  const lastRefreshTime = useRef(0);
+
   useFocusEffect(
     React.useCallback(() => {
+      const now = Date.now();
+
+      // Prevent refresh if it's been less than 3 seconds since last refresh
+      if (refreshTriggered.current && (now - lastRefreshTime.current) < 3000) {
+        console.log('⏭️ Skipping refresh - too soon since last refresh');
+        return;
+      }
+
+      refreshTriggered.current = true;
+      lastRefreshTime.current = now;
+
       const refreshData = async () => {
         try {
+          console.log('🔄 REFRESHING DATA ON FOCUS');
           await Promise.all([
             refreshHabits(),
             refreshMedicines()
           ]);
+          console.log('✅ DATA REFRESH COMPLETED');
         } catch (error) {
-          console.error('Error refreshing data on focus:', error);
+          console.error('❌ Error refreshing data on focus:', error);
         }
       };
 
       refreshData();
+
+      // Reset trigger after 5 seconds to allow next refresh
+      const timeout = setTimeout(() => {
+        refreshTriggered.current = false;
+      }, 5000);
+
+      return () => clearTimeout(timeout);
     }, [refreshHabits, refreshMedicines])
   );
 
@@ -145,9 +168,10 @@ const generateTasksFromData = React.useCallback(() => {
 
   const isToday = selectedDateStr === todayStr;
 
-  console.log('DEBUG: Total habits:', habits.length);
-  console.log('DEBUG: Total medicines:', medicines.length);
-  console.log('DEBUG: Selected date:', selectedDateStr);
+  // Only log debug info in development and when data actually changes
+  if (__DEV__ && (habits.length > 0 || medicines.length > 0)) {
+    console.log('📊 DEBUG: Data update - Habits:', habits.length, 'Medicines:', medicines.length, 'MedicineHistory:', medicineHistory.length, 'Date:', selectedDateStr);
+  }
 
   // Function to create habit task
   const createHabitTask = (habit: any, selectedDateStr: string, todayStr: string): Task => {
@@ -211,7 +235,22 @@ const generateTasksFromData = React.useCallback(() => {
   // Function to create medicine task
   const createMedicineTask = (medicine: any, selectedDateStr: string, todayStr: string): Task => {
     const isFutureDate = selectedDateStr > todayStr;
-    const isTakenOnSelectedDate = isFutureDate ? false : false; // TODO: Check from medicine history
+
+    // Check if medicine was taken on selected date using medicine history
+    const isTakenOnSelectedDate = !isFutureDate && medicineHistory.some((history: any) => {
+      if (history.reminderId === medicine.reminderId) {
+        const historyDate = new Date(history.scheduledTime);
+        const historyDateStr = historyDate.getFullYear() + '-' +
+          String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
+          String(historyDate.getDate()).padStart(2, '0');
+        return historyDateStr === selectedDateStr && history.status === 'taken';
+      }
+      return false;
+    });
+
+    if (__DEV__ && isTakenOnSelectedDate) {
+      console.log(`💊 Medicine "${medicine.medicineName}" was taken on ${selectedDateStr}`);
+    }
 
     // Create detailed subtitle with medicine information
     const subtitleParts = [];
@@ -393,17 +432,19 @@ const generateTasksFromData = React.useCallback(() => {
             const isOverdue = isToday && !isCompletedOnSelectedDate && now > toleranceTime;
             const isUpcoming = isToday && !isCompletedOnSelectedDate && now >= indonesiaReminderTime && now <= toleranceTime;
 
-            // Debug logs
-            console.log(`Habit "${habit.habitName}" Debug:`, {
-              taskTime: time,
-              reminderTime: indonesiaReminderTime.toISOString(),
-              currentTime: now.toISOString(),
-              toleranceTime: toleranceTime.toISOString(),
-              isToday,
-              isCompletedOnSelectedDate,
-              isOverdue,
-              isUpcoming
-            });
+            // Debug logs (only in development)
+            if (__DEV__) {
+              console.log(`Habit "${habit.habitName}" Debug:`, {
+                taskTime: time,
+                reminderTime: indonesiaReminderTime.toISOString(),
+                currentTime: now.toISOString(),
+                toleranceTime: toleranceTime.toISOString(),
+                isToday,
+                isCompletedOnSelectedDate,
+                isOverdue,
+                isUpcoming
+              });
+            }
 
             allTimeBasedTasks.push({
               task: {
@@ -512,22 +553,41 @@ const generateTasksFromData = React.useCallback(() => {
             const indonesiaReminderTime = getIndonesiaTime(reminderTime);
 
             const isFutureDate = selectedDateStr > todayStr;
-            const isTakenOnSelectedDate = isFutureDate ? false : false; // TODO: Check from medicine history
+
+            // Check if this specific medicine dose was taken using history
+            const isTakenOnSelectedDate = !isFutureDate && medicineHistory.some((history: any) => {
+              if (history.reminderId === medicine.reminderId) {
+                const historyDate = new Date(history.scheduledTime);
+                const historyDateStr = historyDate.getFullYear() + '-' +
+                  String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
+                  String(historyDate.getDate()).padStart(2, '0');
+                const historyTime = historyDate.getHours().toString().padStart(2, '0') + ':' +
+                                  historyDate.getMinutes().toString().padStart(2, '0');
+                return historyDateStr === selectedDateStr && historyTime === time && history.status === 'taken';
+              }
+              return false;
+            });
+
             const toleranceTime = new Date(indonesiaReminderTime.getTime() + OVERDUE_TOLERANCE_MINUTES * 60 * 1000);
             const isOverdue = isToday && !isTakenOnSelectedDate && now > toleranceTime;
             const isUpcoming = isToday && !isTakenOnSelectedDate && now >= indonesiaReminderTime && now <= toleranceTime;
 
-            // Debug logs
-            console.log(`Medicine "${medicine.medicineName}" Debug:`, {
-              taskTime: time,
-              reminderTime: indonesiaReminderTime.toISOString(),
-              currentTime: now.toISOString(),
-              toleranceTime: toleranceTime.toISOString(),
-              isToday,
-              isTakenOnSelectedDate,
-              isOverdue,
-              isUpcoming
-            });
+            // Debug logs (only in development)
+            if (__DEV__) {
+              console.log(`💊 Medicine "${medicine.medicineName}" Debug:`, {
+                taskTime: time,
+                reminderTime: indonesiaReminderTime.toISOString(),
+                currentTime: now.toISOString(),
+                toleranceTime: toleranceTime.toISOString(),
+                isToday,
+                isTakenOnSelectedDate,
+                isOverdue,
+                isUpcoming,
+                medicineId: medicine.reminderId,
+                totalHistoryCount: medicineHistory.length,
+                relevantHistoryCount: medicineHistory.filter((h: any) => h.reminderId === medicine.reminderId).length
+              });
+            }
 
             allTimeBasedTasks.push({
               task: {
@@ -549,8 +609,10 @@ const generateTasksFromData = React.useCallback(() => {
   // Collect all tasks
   collectAllTasks();
 
-  // Debug: Log all collected time-based tasks
-  console.log('DEBUG: All time-based tasks:', allTimeBasedTasks.map(t => `${t.task.title} (${t.task.type}) - ${t.time} - Overdue: ${t.isOverdue} - Upcoming: ${t.isUpcoming}`));
+  // Debug: Log all collected time-based tasks (only in development)
+  if (__DEV__ && allTimeBasedTasks.length > 0) {
+    console.log('DEBUG: All time-based tasks:', allTimeBasedTasks.map(t => `${t.task.title} (${t.task.type}) - ${t.time} - Overdue: ${t.isOverdue} - Upcoming: ${t.isUpcoming}`));
+  }
 
   // Now group and sort tasks properly
   const overdue: Task[] = [];

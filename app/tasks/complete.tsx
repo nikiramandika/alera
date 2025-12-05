@@ -18,6 +18,9 @@ export default function TaskCompleteScreen() {
   const [task, setTask] = useState<any>(null);
   const [isCompleting, setIsCompleting] = useState(false);
   const taskDataProcessed = useRef(false);
+  const isInitialized = useRef(false);
+  const hapticTriggered = useRef(false);
+  const persistentTask = useRef<any>(null); // Store task data persistently
   const { markMedicineTaken, refreshMedicines } = useMedicine();
   const { markHabitCompleted, refreshHabits } = useHabit();
 
@@ -58,17 +61,44 @@ export default function TaskCompleteScreen() {
     // Prevent processing the same task data multiple times
     if (taskDataProcessed.current) return;
 
-    console.log('Params received:', params); // Debug log
+    console.log('=== TASK PARSING START ===');
+    console.log('Params received:', params);
+    console.log('Context functions available:', {
+      markMedicineTaken: typeof markMedicineTaken,
+      markHabitCompleted: typeof markHabitCompleted,
+      refreshMedicines: typeof refreshMedicines,
+      refreshHabits: typeof refreshHabits
+    });
+
     if (params.taskData) {
-      console.log('Task data received:', params.taskData); // Debug log
+      console.log('Task data received:', params.taskData);
       try {
         const parsedTask = JSON.parse(params.taskData as string);
-        console.log('Parsed task:', parsedTask); // Debug log
+        console.log('Parsed task successfully:', parsedTask);
+
+        // Check if task is already completed
+        if (parsedTask.completed === true) {
+          console.log('⚠️ Task already completed, redirecting back...');
+          Alert.alert(
+            'Already Completed',
+            'This task has already been completed.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/(tabs)')
+              }
+            ]
+          );
+          return;
+        }
+
         setTask(parsedTask);
+        persistentTask.current = parsedTask; // Store persistently
         taskDataProcessed.current = true; // Mark as processed
+        console.log('=== TASK PARSING SUCCESS ===');
       } catch (error) {
         console.error('Error parsing task data:', error);
-        console.log('Raw task data:', params.taskData); // Debug log
+        console.log('Raw task data:', params.taskData);
         Alert.alert(
           'Error',
           'Failed to load task data',
@@ -82,7 +112,7 @@ export default function TaskCompleteScreen() {
       }
     } else {
       console.log('No task data provided');
-      console.log('All params:', params); // Debug log
+      console.log('All params:', params);
       Alert.alert(
         'Error',
         'No task data provided',
@@ -94,7 +124,7 @@ export default function TaskCompleteScreen() {
         ]
       );
     }
-  }, [params.taskData, router]);
+  }, [params, router, markMedicineTaken, markHabitCompleted, refreshMedicines, refreshHabits]);
 
   const slideX = useRef(new Animated.Value(0)).current;
   const [isCompleted, setIsCompleted] = useState(false);
@@ -106,12 +136,16 @@ export default function TaskCompleteScreen() {
   const buttonPadding = 6; // Left padding from styles (3px on each side)
   const maxSlideDistance = sliderWidth - buttonWidth - buttonPadding;
 
-  console.log('Slider calculations:', {
-    screenWidth,
-    sliderWidth,
-    maxSlideDistance,
-    completionThreshold: maxSlideDistance * 0.8
-  });
+  // Log slider calculations once for debugging
+  if (!isInitialized.current) {
+    console.log('Slider calculations initialized:', {
+      screenWidth,
+      sliderWidth,
+      maxSlideDistance,
+      completionThreshold: maxSlideDistance * 0.8
+    });
+    isInitialized.current = true;
+  }
 
   // Animated values for emoji scale and transition
   const emojiScale = slideX.interpolate({
@@ -146,9 +180,9 @@ export default function TaskCompleteScreen() {
   });
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !isCompleting,
+      onStartShouldSetPanResponder: () => !isCompleting && !isCompleted,
       onMoveShouldSetPanResponder: (_, gesture) =>
-        !isCompleting && Math.abs(gesture.dx) > 3, // Reduced threshold for easier activation
+        !isCompleting && !isCompleted && Math.abs(gesture.dx) > 3, // Reduced threshold for easier activation
 
       onPanResponderGrant: () => {
         // Add haptic feedback when user starts sliding
@@ -164,20 +198,34 @@ export default function TaskCompleteScreen() {
           const clampedValue = Math.min(gesture.dx, maxSlideDistance);
           slideX.setValue(clampedValue);
 
-          // Add haptic feedback when approaching completion
-          const completionPoint = maxSlideDistance * 0.8;
-          if (gesture.dx > completionPoint && gesture.dx < completionPoint + 5) {
+          // Add haptic feedback when approaching completion (only once)
+          const completionPoint = maxSlideDistance * 0.5; // Earlier feedback at 50%
+          if (gesture.dx > completionPoint && !hapticTriggered.current) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            hapticTriggered.current = true;
           }
         }
       },
 
       onPanResponderRelease: (_, gesture) => {
-        // Completion threshold at 80% of max distance
-        const completionThreshold = maxSlideDistance * 0.8;
+        // Reset haptic trigger for next gesture
+        hapticTriggered.current = false;
+
+        // Lower completion threshold at 60% of max distance for easier completion
+        const completionThreshold = maxSlideDistance * 0.6;
+        console.log('PanResponder release:', {
+          gestureDx: gesture.dx,
+          completionThreshold,
+          shouldComplete: gesture.dx > completionThreshold,
+          maxSlideDistance,
+          percentage: (gesture.dx / maxSlideDistance * 100).toFixed(1) + '%'
+        });
+
         if (gesture.dx > completionThreshold) {
+          console.log('✅ THRESHOLD REACHED - Triggering handleComplete...');
           handleComplete();
         } else {
+          console.log('❌ THRESHOLD NOT REACHED - Springing back to start...');
           // Smooth spring back animation
           Animated.spring(slideX, {
             toValue: 0,
@@ -192,9 +240,31 @@ export default function TaskCompleteScreen() {
   ).current;
 
   const handleComplete = async () => {
-    if (isCompleting || !task) return;
+    // Use persistentTask instead of state task to prevent race conditions
+    const currentTask = persistentTask.current || task;
+
+    console.log('🔥 handleComplete called!', {
+      isCompleting,
+      task: !!currentTask,
+      taskType: currentTask?.type,
+      taskId: currentTask?.id,
+      usingPersistent: !!persistentTask.current,
+      persistentTaskValid: !!persistentTask.current?.id,
+      stateTaskValid: !!task?.id
+    });
+
+    if (isCompleting || !currentTask) {
+      console.log('❌ handleComplete early return:', {
+        isCompleting,
+        hasTask: !!currentTask,
+        persistentExists: !!persistentTask.current,
+        stateExists: !!task
+      });
+      return;
+    }
 
     setIsCompleting(true);
+    console.log('Starting completion animation...');
 
     // First animate to full completion position
     Animated.timing(slideX, {
@@ -204,49 +274,142 @@ export default function TaskCompleteScreen() {
     }).start();
 
     try {
-      let result = { success: false };
+      let result: { success: boolean; error?: string } = { success: false };
 
-      if (task.type === 'medicine') {
-        // Extract medicine ID from task ID
-        const medicineId = task.id.replace('medicine-', '');
+      if (currentTask.type === 'medicine') {
+        // Extract medicine ID from task ID with proper parsing
+        let medicineId = currentTask.id;
+        console.log('🔍 Original task ID:', currentTask.id);
+
+        // Step 1: Remove 'medicine-' prefix if present
+        if (medicineId.startsWith('medicine-')) {
+          medicineId = medicineId.replace('medicine-', '');
+          console.log('🔍 After removing medicine- prefix:', medicineId);
+        }
+
+        // Step 2: Remove time suffix (e.g., "abc123-23:00" -> "abc123")
+        const timeIndex = medicineId.lastIndexOf('-');
+        if (timeIndex > 0) {
+          const potentialTime = medicineId.substring(timeIndex + 1);
+          // Check if it's a time format (HH:MM)
+          if (potentialTime.includes(':') && /^\d{1,2}:\d{2}$/.test(potentialTime)) {
+            medicineId = medicineId.substring(0, timeIndex);
+            console.log('🔍 After removing time suffix:', medicineId, '(removed time:', potentialTime + ')');
+          }
+        }
+
+        console.log('✅ Final medicine ID:', medicineId);
+
         const scheduledTime = new Date();
-        if (task.time) {
-          const [hours, minutes] = task.time.split(':').map(Number);
+        if (currentTask.time) {
+          const [hours, minutes] = currentTask.time.split(':').map(Number);
           scheduledTime.setHours(hours, minutes, 0, 0);
         }
-        result = await markMedicineTaken(medicineId, scheduledTime);
-      } else if (task.type === 'habit') {
-        // Extract habit ID from task ID
-        const habitId = task.id.replace('habit-', '');
+
+        console.log('🚀 Calling markMedicineTaken:', {
+          originalId: currentTask.id,
+          finalMedicineId: medicineId,
+          scheduledTime: scheduledTime.toISOString(),
+          taskType: currentTask.type,
+          taskData: currentTask,
+          medicineIdType: typeof medicineId,
+          medicineIdLength: medicineId.length
+        });
+
+        // Check if markMedicineTaken function exists
+        if (typeof markMedicineTaken === 'function') {
+          result = await markMedicineTaken(medicineId, scheduledTime);
+          console.log('📊 markMedicineTaken result:', result);
+        } else {
+          console.error('❌ markMedicineTaken function not available');
+          result = { success: false, error: 'Medicine function not available' };
+        }
+
+        // If medicine not found, try with different ID formats
+        if (!result.success && result.error?.includes('Medicine not found')) {
+          console.log('🔄 Medicine not found, trying alternative ID formats...');
+
+          // Try without any processing (use original ID)
+          const originalId = currentTask.id;
+          console.log('🔄 Trying with original ID:', originalId);
+          result = await markMedicineTaken(originalId, scheduledTime);
+          console.log('📊 Result with original ID:', result);
+        }
+      } else if (currentTask.type === 'habit') {
+        // Extract habit ID from task ID with proper parsing
+        let habitId = currentTask.id;
+        console.log('🔍 Original task ID:', currentTask.id);
+
+        // Step 1: Remove 'habit-' prefix if present
+        if (habitId.startsWith('habit-')) {
+          habitId = habitId.replace('habit-', '');
+          console.log('🔍 After removing habit- prefix:', habitId);
+        }
+
+        // Step 2: Remove time suffix (e.g., "abc123-23:00" -> "abc123")
+        const timeIndex = habitId.lastIndexOf('-');
+        if (timeIndex > 0) {
+          const potentialTime = habitId.substring(timeIndex + 1);
+          // Check if it's a time format (HH:MM)
+          if (potentialTime.includes(':') && /^\d{1,2}:\d{2}$/.test(potentialTime)) {
+            habitId = habitId.substring(0, timeIndex);
+            console.log('🔍 After removing time suffix:', habitId, '(removed time:', potentialTime + ')');
+          }
+        }
+
+        console.log('✅ Final habit ID:', habitId);
+
         const targetValue = 1; // Default target value
-        result = await markHabitCompleted(habitId, targetValue);
+        console.log('🚀 Calling markHabitCompleted:', {
+          originalId: currentTask.id,
+          finalHabitId: habitId,
+          targetValue,
+          taskType: currentTask.type
+        });
+
+        // Check if markHabitCompleted function exists
+        if (typeof markHabitCompleted === 'function') {
+          result = await markHabitCompleted(habitId, targetValue);
+        } else {
+          console.error('markHabitCompleted function not available');
+          result = { success: false, error: 'Habit function not available' };
+        }
       }
 
+      console.log('Task completion result:', result);
+
       if (result.success) {
+        console.log('Task completed successfully!');
         setIsCompleted(true);
 
         // Success haptic feedback
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
-        // Add a delay to show the completed state with checkmark
+        // Enhanced visual feedback before navigation
         setTimeout(async () => {
-          // Refresh data to update the home screen
+          console.log('🔄 Refreshing data before navigation...');
+
+          // Explicitly refresh data to ensure consistency
           try {
-            if (task.type === 'medicine') {
+            if (currentTask.type === 'medicine') {
               await refreshMedicines();
-            } else if (task.type === 'habit') {
+              console.log('✅ Medicines refreshed');
+            } else if (currentTask.type === 'habit') {
               await refreshHabits();
+              console.log('✅ Habits refreshed');
             }
           } catch (error) {
-            console.error('Error refreshing data after completion:', error);
+            console.error('❌ Error refreshing data:', error);
           }
 
-          // Add another delay before navigation for better UX
+          // Add small delay for visual confirmation
           setTimeout(() => {
+            console.log('🏠 Navigating back to home...');
             router.replace('/(tabs)');
-          }, 500);
-        }, 1500); // Show completion state for 1.5 seconds
+          }, 300);
+        }, 1200); // Show completion for 1.2 seconds
       } else {
+        console.log('Task completion failed:', result);
         Alert.alert('Error', 'Failed to complete task');
         // Smooth spring back animation
         Animated.spring(slideX, {
@@ -301,10 +464,45 @@ export default function TaskCompleteScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: taskColors.background }]}>
+      {/* Completion Success Overlay */}
+      {isCompleted && (
+        <View style={styles.completionOverlay}>
+          <View style={styles.completionContent}>
+            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Text style={styles.completionText}>Task Completed!</Text>
+            <Text style={styles.completionSubtext}>Great job! 🎉</Text>
+          </View>
+        </View>
+      )}
       {/* Back Button */}
       <TouchableOpacity style={styles.backButton} onPress={handleBack}>
         <Ionicons name="chevron-back" size={26} color={taskColors.text} />
       </TouchableOpacity>
+
+      {/* Debug Test Button - Remove in production */}
+      {__DEV__ && task && (
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            top: 80,
+            right: 20,
+            backgroundColor: 'red',
+            padding: 10,
+            borderRadius: 5,
+            zIndex: 1000
+          }}
+          onPress={() => {
+            console.log('=== TEST BUTTON PRESSED ===');
+            const currentTask = persistentTask.current || task;
+            console.log('Task data:', currentTask);
+            console.log('Persistent task:', persistentTask.current);
+            console.log('State task:', task);
+            handleComplete();
+          }}
+        >
+          <Text style={{ color: 'white', fontSize: 12 }}>TEST</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Icon */}
       <View style={styles.iconWrapper}>
@@ -361,11 +559,17 @@ export default function TaskCompleteScreen() {
             },
           ]}
         >
-          <Ionicons name="chevron-forward" size={22} color="#FFF" />
+          {isCompleting ? (
+            <Ionicons name="time" size={22} color="#FFF" />
+          ) : isCompleted ? (
+            <Ionicons name="checkmark" size={22} color="#FFF" />
+          ) : (
+            <Ionicons name="chevron-forward" size={22} color="#FFF" />
+          )}
         </Animated.View>
 
         <Text style={[styles.sliderText, { color: taskColors.text }]}>
-          {isCompleted ? 'Task completed!' : 'Swap to finish the task'}
+          {isCompleted ? 'Task completed!' : isCompleting ? 'Completing...' : 'Swap to finish the task'}
         </Text>
 
         {/* Gesture Area - Larger touch area */}
@@ -383,6 +587,40 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingTop: 20,
+  },
+  completionOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  completionContent: {
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 40,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  completionText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  completionSubtext: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
