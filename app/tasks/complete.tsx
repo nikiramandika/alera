@@ -2,7 +2,7 @@
 // NOTE: This is a rewritten layout to follow the clean, centered style from your screenshot
 
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, Alert, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, Alert, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -10,7 +10,6 @@ import * as Haptics from 'expo-haptics';
 import { useMedicine } from '@/contexts/MedicineContext';
 import { useHabit } from '@/contexts/HabitContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
 
 export default function TaskCompleteScreen() {
   const router = useRouter();
@@ -24,9 +23,8 @@ export default function TaskCompleteScreen() {
   const { markMedicineTaken, refreshMedicines } = useMedicine();
   const { markHabitCompleted, refreshHabits } = useHabit();
 
-  // Color scheme and dynamic colors
+  // Color scheme
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
 
   // Get task-specific colors
   const getTaskColors = () => {

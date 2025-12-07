@@ -731,7 +731,7 @@ export default function AnalyticsScreen() {
         </Text>
         <LineChart
           data={getHabitData()}
-d          width={screenWidth - Spacing.lg * 2}
+          width={screenWidth - Spacing.lg * 2}
           height={220}
           chartConfig={chartConfig}
           bezier
@@ -925,6 +925,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
     paddingHorizontal: Spacing.lg,
     minHeight: 200,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
   },
   circleBackground: {
     position: 'absolute',

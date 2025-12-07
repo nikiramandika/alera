@@ -8,13 +8,14 @@ import {
   Switch,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -29,10 +30,9 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user, signOut, updateUserProfile } = useAuth();
+  const { user, signOut, updateUserProfile, updateProfilePhoto } = useAuth();
   const router = useRouter();
 
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Animation values
@@ -49,7 +49,7 @@ export default function ProfileScreen() {
       damping: 15,
       stiffness: 100,
     }));
-  }, []);
+  }, [headerScale, cardTranslateY]);
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: headerScale.value }]
@@ -87,8 +87,98 @@ export default function ProfileScreen() {
         Alert.alert('Error', result.error || 'Failed to update profile');
       }
       // Settings changes update silently
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred');
+    }
+  };
+
+  const handleChoosePhoto = async () => {
+    Alert.alert(
+      'Profile Photo',
+      'Choose a photo for your profile',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Take Photo',
+          onPress: () => takePhoto(),
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: () => pickImage(),
+        },
+      ]
+    );
+  };
+
+  const takePhoto = async () => {
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Camera permission is required to take photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const photoURI = result.assets[0].uri;
+        await uploadPhoto(photoURI);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      // Request media library permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Gallery permission is required to select photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const photoURI = result.assets[0].uri;
+        await uploadPhoto(photoURI);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to select photo');
+    }
+  };
+
+  const uploadPhoto = async (photoURI: string) => {
+    try {
+      setLoading(true);
+      const result = await updateProfilePhoto(photoURI);
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to update profile photo');
+      } else {
+        Alert.alert('Success', 'Profile photo updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      Alert.alert('Error', 'Failed to upload photo');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -111,12 +201,20 @@ export default function ProfileScreen() {
         {/* Profile Content */}
         <View style={styles.profileContent}>
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-              <Text style={styles.avatarText}>
-                {user?.displayName?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.editAvatarButton}>
+            {user?.photoURL ? (
+              <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+                <Text style={styles.avatarText}>
+                  {user?.displayName?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.editAvatarButton}
+              onPress={handleChoosePhoto}
+              disabled={loading}
+            >
               <Ionicons name="camera" size={16} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -471,6 +569,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxl,
     paddingHorizontal: Spacing.lg,
     minHeight: 320,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
   },
   circleBackground: {
     position: 'absolute',
@@ -494,6 +594,11 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   avatarText: {
     fontSize: 36,

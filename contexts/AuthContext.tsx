@@ -22,6 +22,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateUserProfile: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>;
+  updateProfilePhoto: (photoURI: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 // Helper function to check if user needs onboarding
@@ -106,11 +107,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error creating user document:', error);
       throw error;
     }
-  };
-
-  // Check if user needs onboarding
-  const needsOnboarding = (user: User): boolean => {
-    return !user.profile || !user.profile.gender || !user.profile.weight || !user.profile.age;
   };
 
   // Listen for auth state changes
@@ -281,6 +277,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Update profile photo
+  const updateProfilePhoto = async (photoURI: string): Promise<{ success: boolean; error?: string }> => {
+    console.log('🔍 [DEBUG] Updating profile photo with URI:', photoURI);
+    if (!user) return { success: false, error: 'No user logged in' };
+
+    try {
+      console.log('🔍 [DEBUG] Calling userService.updateUser with photoURL');
+      // Update user with photo URL
+      await userService.updateUser(user.userId, { photoURL: photoURI });
+      console.log('🔍 [DEBUG] Profile photo updated successfully in database');
+
+      // Update local state - preserve original createdAt
+      const updatedUser = {
+        ...user,
+        photoURL: photoURI,
+        updatedAt: new Date(),
+        createdAt: user.createdAt // Preserve original creation date
+      };
+      console.log('🔍 [DEBUG] Updated local user state with photo:', updatedUser);
+      setUser(updatedUser);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('🔍 [DEBUG] Error updating profile photo:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   const value: AuthContextType = {
     user,
     firebaseUser,
@@ -289,7 +313,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signInWithGoogle,
     signOut,
-    updateUserProfile
+    updateUserProfile,
+    updateProfilePhoto
   };
 
   return (

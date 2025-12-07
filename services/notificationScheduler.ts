@@ -2,6 +2,10 @@ import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppStateStatus } from 'react-native';
 
+declare global {
+  var NotificationsRef: any;
+}
+
 interface ScheduledNotificationInfo {
   id: string;
   medicineId?: string;
@@ -16,7 +20,6 @@ interface ScheduledNotificationInfo {
 class NotificationScheduler {
   private intervalId: NodeJS.Timeout | null = null;
   private isRunning: boolean = false;
-  private checkInterval: number = 60000; // Back to 60 seconds for better battery life
   private appState: 'active' | 'background' | 'inactive' = 'active';
 
   constructor() {
@@ -28,15 +31,11 @@ class NotificationScheduler {
 
     // Test Notifications module availability at initialization
     try {
-      const NotificationsModule = require('expo-notifications');
+      const NotificationsModule = Notifications;
       console.log('🔔 [SCHEDULER] Notifications module imported:', typeof NotificationsModule);
       console.log('🔔 [SCHEDULER] scheduleNotificationAsync available:', typeof NotificationsModule.scheduleNotificationAsync);
 
-      if (NotificationsModule.default) {
-        global.NotificationsRef = NotificationsModule.default;
-      } else {
-        global.NotificationsRef = NotificationsModule;
-      }
+      global.NotificationsRef = NotificationsModule;
     } catch (error) {
       console.error('🔔 [SCHEDULER] Failed to import Notifications module:', error);
     }
@@ -51,15 +50,12 @@ class NotificationScheduler {
 
       if (nextAppState === 'active') {
         this.appState = 'active';
-        this.checkInterval = 30000; // 30 seconds when active
         console.log('🔔 [SCHEDULER] Active mode - checking every 30 seconds');
       } else if (nextAppState === 'background') {
         this.appState = 'background';
-        this.checkInterval = 300000; // 5 minutes when background
         console.log('🔔 [SCHEDULER] Background mode - checking every 5 minutes');
       } else {
         this.appState = 'inactive';
-        this.checkInterval = 600000; // 10 minutes when inactive
         console.log('🔔 [SCHEDULER] Inactive mode - checking every 10 minutes');
       }
 
@@ -90,7 +86,7 @@ class NotificationScheduler {
     // Set up interval only as backup (reduced frequency)
     this.intervalId = setInterval(() => {
       this.checkAndTriggerNotifications(); // Backup checking
-    }, 600000); // 10 minutes backup only
+    }, 600000) as any; // 10 minutes backup only
   }
 
   // Stop the checking system
@@ -308,9 +304,7 @@ class NotificationScheduler {
         triggerDate.setDate(triggerDate.getDate() + 1);
       }
 
-      // Get channel ID based on notification type
-      const channelId = notification.type === 'medicine' ? 'medicine-reminders' : 'habit-reminders';
-
+  
       const id = await NotificationsRef.scheduleNotificationAsync({
         content: {
           title: notification.title,
