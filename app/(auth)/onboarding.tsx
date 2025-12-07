@@ -97,7 +97,7 @@ export default function OnboardingScreen() {
       });
 
       if (result.success) {
-        router.replace('/(tabs)');
+        router.replace('/(auth)/transition');
       } else {
         Alert.alert('Error', result.error || 'Failed to save profile data');
       }

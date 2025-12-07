@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import SplashScreen from '@/components/SplashScreen';
 
 export default function Index() {
   const router = useRouter();
@@ -16,9 +16,7 @@ export default function Index() {
       const handleRouting = () => {
         setHasRedirected(true);
 
-        // Get current route to prevent unnecessary redirects
-        const currentRoute = ''; // Reset for proper routing
-
+  
         if (user) {
           // User is logged in, check if they have completed onboarding
           const hasCompletedOnboarding = user.profile &&
@@ -31,7 +29,7 @@ export default function Index() {
             router.replace('/(auth)/onboarding');
           } else {
             console.log('User has completed onboarding, redirecting to tabs...');
-            router.replace('/(tabs)');
+            router.replace('/(auth)/transition');
           }
         } else {
           console.log('User not logged in, redirecting to welcome...');
@@ -46,13 +44,9 @@ export default function Index() {
     }, [user, loading, hasRedirected, router])
   );
 
-  // Show loading screen while checking auth state
+  // Show splash screen while checking auth state or during redirect
   if (loading || !hasRedirected) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#84CC16" />
-      </View>
-    );
+    return <SplashScreen />;
   }
 
   // Return empty view after redirecting

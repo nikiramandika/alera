@@ -54,7 +54,7 @@ export default function LoginScreen() {
     try {
       const result = await signIn(email, password);
       if (result.success) {
-        router.replace('/(tabs)');
+        router.replace('/(auth)/transition');
       } else {
         Alert.alert('Login Failed', result.error || 'An error occurred');
       }
@@ -70,7 +70,7 @@ export default function LoginScreen() {
     try {
       const result = await signInWithGoogle();
       if (result.success) {
-        router.replace('/(tabs)');
+        router.replace('/(auth)/transition');
       } else {
         Alert.alert('Google Sign-In Failed', result.error || 'An error occurred');
       }
