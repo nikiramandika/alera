@@ -264,8 +264,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await userService.updateUser(user.userId, data);
       console.log('🔍 [DEBUG] Profile updated successfully in database');
 
-      // Update local state
-      const updatedUser = { ...user, ...data, updatedAt: new Date() };
+      // Update local state - preserve original createdAt
+      const updatedUser = {
+        ...user,
+        ...data,
+        updatedAt: new Date(),
+        createdAt: user.createdAt // Preserve original creation date
+      };
       console.log('🔍 [DEBUG] Updated local user state:', updatedUser);
       setUser(updatedUser);
 

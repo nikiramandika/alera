@@ -18,6 +18,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useHabit } from '@/contexts/HabitContext';
 import { useMedicine } from '@/contexts/MedicineContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Task {
   id: string;
@@ -44,6 +45,7 @@ export default function HomeScreen() {
   const colors = Colors[colorScheme ?? 'light'];
 
   // Import contexts for real data
+  const { user } = useAuth();
   const { habits, refreshHabits, getHabitHistoryForDateRange } = useHabit();
   const { medicines, refreshMedicines, getMedicineHistoryForDateRange } = useMedicine();
 
@@ -1315,7 +1317,14 @@ const generateTasksFromData = React.useCallback(() => {
 
             <View style={styles.headerContent}>
               {/* Left side - Greeting */}
-              <Text style={[styles.greeting, { color: colors.primary }]}>Hi, User!</Text>
+              <Text style={[styles.greeting, { color: colors.primary }]}>
+                Hi, {(() => {
+                  const displayName = user?.displayName || 'User';
+                  const words = displayName.trim().split(' ');
+                  if (words.length <= 2) return displayName;
+                  return words.slice(0, 2).join(' ');
+                })()}!
+              </Text>
             </View>
 
             {/* Right side - Search and Calendar */}

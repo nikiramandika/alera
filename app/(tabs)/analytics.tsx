@@ -731,7 +731,7 @@ export default function AnalyticsScreen() {
         </Text>
         <LineChart
           data={getHabitData()}
-          width={screenWidth - Spacing.lg * 2}
+d          width={screenWidth - Spacing.lg * 2}
           height={220}
           chartConfig={chartConfig}
           bezier

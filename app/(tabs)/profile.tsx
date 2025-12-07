@@ -7,7 +7,6 @@ import {
   ScrollView,
   Switch,
   Alert,
-  Modal,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,7 +32,6 @@ export default function ProfileScreen() {
   const { user, signOut, updateUserProfile } = useAuth();
   const router = useRouter();
 
-  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -83,29 +81,14 @@ export default function ProfileScreen() {
   };
 
   const handleUpdateProfile = async (updatedData: any) => {
-    // Only show loading for profile modal changes, not settings switches
-    if (updatedData.displayName || updatedData.profile) {
-      setLoading(true);
-    }
-
     try {
       const result = await updateUserProfile(updatedData);
-      if (result.success) {
-        if (updatedData.displayName || updatedData.profile) {
-          setShowEditProfileModal(false);
-          // Only show success alert for profile changes, not settings
-          Alert.alert('Success', 'Profile updated successfully');
-        }
-        // Settings changes (notifications, vibration, etc.) update silently
-      } else {
-        // Only show error for critical errors
+      if (!result.success) {
         Alert.alert('Error', result.error || 'Failed to update profile');
       }
+      // Settings changes update silently
     } catch (error) {
-      // Only show error for critical errors
       Alert.alert('Error', 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -147,7 +130,7 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             style={[styles.editProfileButton, { backgroundColor: colors.card }]}
-            onPress={() => setShowEditProfileModal(true)}
+            onPress={() => router.push('/(auth)/edit-profile')}
           >
             <Ionicons name="create-outline" size={20} color={colors.primary} />
             <Text style={[styles.editProfileText, { color: colors.primary }]}>
@@ -162,57 +145,89 @@ export default function ProfileScreen() {
   const renderProfileInfo = () => (
     <Animated.View
       entering={FadeInDown.delay(100)}
-      style={[styles.sectionContainer, { backgroundColor: colors.card }]}
+      style={styles.sectionContainer}
     >
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Profile Information
       </Text>
 
-      <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <Ionicons name="person-outline" size={20} color={colors.primary} />
-          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-            Gender
-          </Text>
-          <Text style={[styles.infoValue, { color: colors.text }]}>
-            {user?.profile?.gender ? user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1) : 'Not set'}
-          </Text>
+      <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+        <View style={styles.infoRow}>
+          <View style={styles.infoItem}>
+            <View style={[styles.infoIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="person-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                Gender
+              </Text>
+              <Text style={[styles.infoValue, { color: colors.text }]}>
+                {user?.profile?.gender ? user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1) : 'Not set'}
+              </Text>
+            </View>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <Ionicons name="scale-outline" size={20} color={colors.primary} />
-          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-            Weight
-          </Text>
-          <Text style={[styles.infoValue, { color: colors.text }]}>
-            {user?.profile?.weight ? `${user.profile.weight} kg` : 'Not set'}
-          </Text>
+        <View style={[styles.infoRow, styles.infoRowBorder, { borderBottomColor: colors.border }]}>
+          <View style={styles.infoItem}>
+            <View style={[styles.infoIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="scale-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                Weight
+              </Text>
+              <Text style={[styles.infoValue, { color: colors.text }]}>
+                {user?.profile?.weight ? `${user.profile.weight} kg` : 'Not set'}
+              </Text>
+            </View>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-            Age
-          </Text>
-          <Text style={[styles.infoValue, { color: colors.text }]}>
-            {user?.profile?.age ? `${user.profile.age} years` : 'Not set'}
-          </Text>
+        <View style={[styles.infoRow, styles.infoRowBorder, { borderBottomColor: colors.border }]}>
+          <View style={styles.infoItem}>
+            <View style={[styles.infoIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                Age
+              </Text>
+              <Text style={[styles.infoValue, { color: colors.text }]}>
+                {user?.profile?.age ? `${user.profile.age} years` : 'Not set'}
+              </Text>
+            </View>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <Ionicons name="time-outline" size={20} color={colors.primary} />
-          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-            Member Since
-          </Text>
-          <Text style={[styles.infoValue, { color: colors.text }]}>
-            {user?.createdAt ? user.createdAt.toLocaleDateString() : 'Unknown'}
-          </Text>
+        <View style={styles.infoRow}>
+          <View style={styles.infoItem}>
+            <View style={[styles.infoIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="time-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                Member Since
+              </Text>
+              <Text style={[styles.infoValue, { color: colors.text }]}>
+                {user?.createdAt ? (() => {
+                  const createdDate = new Date(user.createdAt);
+                  console.log('DEBUG: raw createdAt:', user.createdAt);
+                  console.log('DEBUG: createdDate object:', createdDate);
+                  console.log('DEBUG: formatted date:', createdDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }));
+                  return createdDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  });
+                })() : 'Unknown'}
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
     </Animated.View>
@@ -230,10 +245,17 @@ export default function ProfileScreen() {
       <View style={[styles.settingsCard, { backgroundColor: colors.card }]}>
         <TouchableOpacity style={styles.settingItem}>
           <View style={styles.settingLeft}>
-            <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-            <Text style={[styles.settingText, { color: colors.text }]}>
-              Notifications
-            </Text>
+            <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingText, { color: colors.text }]}>
+                Notifications
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Receive push notifications
+              </Text>
+            </View>
           </View>
           <Switch
             value={user?.settings?.notifications || false}
@@ -243,12 +265,21 @@ export default function ProfileScreen() {
           />
         </TouchableOpacity>
 
+        <View style={[styles.settingBorder, { borderBottomColor: colors.border }]} />
+
         <TouchableOpacity style={styles.settingItem}>
           <View style={styles.settingLeft}>
-            <Ionicons name="volume-high-outline" size={20} color={colors.primary} />
-            <Text style={[styles.settingText, { color: colors.text }]}>
-              Notification Sound
-            </Text>
+            <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="volume-high-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingText, { color: colors.text }]}>
+                Notification Sound
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Play sound for notifications
+              </Text>
+            </View>
           </View>
           <Switch
             value={user?.settings?.notificationSound || false}
@@ -258,12 +289,21 @@ export default function ProfileScreen() {
           />
         </TouchableOpacity>
 
+        <View style={[styles.settingBorder, { borderBottomColor: colors.border }]} />
+
         <TouchableOpacity style={styles.settingItem}>
           <View style={styles.settingLeft}>
-            <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />
-            <Text style={[styles.settingText, { color: colors.text }]}>
-              Vibration
-            </Text>
+            <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingText, { color: colors.text }]}>
+                Vibration
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Vibrate for notifications
+              </Text>
+            </View>
           </View>
           <Switch
             value={user?.settings?.vibration || false}
@@ -273,28 +313,58 @@ export default function ProfileScreen() {
           />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.settingItem}>
+        <View style={[styles.settingBorder, { borderBottomColor: colors.border }]} />
+
+        <TouchableOpacity
+          style={styles.settingItem}
+          onPress={() => handleUpdateProfile({
+            settings: {
+              ...user?.settings,
+              language: user?.settings?.language === 'id' ? 'en' : 'id'
+            }
+          })}
+        >
           <View style={styles.settingLeft}>
-            <Ionicons name="language-outline" size={20} color={colors.primary} />
-            <Text style={[styles.settingText, { color: colors.text }]}>
-              Language
-            </Text>
+            <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="language-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingText, { color: colors.text }]}>
+                Language
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {user?.settings?.language === 'id' ? 'Indonesian' : 'English'}
+              </Text>
+            </View>
           </View>
-          <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-            {user?.settings?.language === 'id' ? 'Indonesian' : 'English'}
-          </Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.settingItem}>
+        <View style={[styles.settingBorder, { borderBottomColor: colors.border }]} />
+
+        <TouchableOpacity
+          style={styles.settingItem}
+          onPress={() => handleUpdateProfile({
+            settings: {
+              ...user?.settings,
+              theme: user?.settings?.theme === 'dark' ? 'light' : 'dark'
+            }
+          })}
+        >
           <View style={styles.settingLeft}>
-            <Ionicons name="moon-outline" size={20} color={colors.primary} />
-            <Text style={[styles.settingText, { color: colors.text }]}>
-              Theme
-            </Text>
+            <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="moon-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingText, { color: colors.text }]}>
+                Theme
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {user?.settings?.theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+              </Text>
+            </View>
           </View>
-          <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-            {user?.settings?.theme === 'dark' ? 'Dark' : 'Light'}
-          </Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -397,10 +467,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerGradient: {
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxl,
     paddingHorizontal: Spacing.lg,
-    minHeight: 280,
+    minHeight: 320,
   },
   circleBackground: {
     position: 'absolute',
@@ -467,30 +537,56 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     paddingHorizontal: Spacing.lg,
-    marginTop: Spacing.lg,
+    marginTop: Spacing.xl,
   },
   sectionTitle: {
     ...Typography.h3,
     fontWeight: '600',
     marginBottom: Spacing.md,
   },
+  infoCard: {
+    borderRadius: BorderRadius.lg,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      }
+    })
+  },
   infoRow: {
-    marginBottom: Spacing.md,
+    padding: Spacing.md,
+  },
+  infoRowBorder: {
+    borderBottomWidth: 1,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(0,0,0,0.02)',
+  },
+  infoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  infoContent: {
+    flex: 1,
   },
   infoLabel: {
     ...Typography.caption,
-    marginLeft: Spacing.md,
-    flex: 1,
+    fontSize: 13,
+    marginBottom: 2,
   },
   infoValue: {
     ...Typography.body,
+    fontSize: 16,
     fontWeight: '600',
   },
   settingsCard: {
@@ -512,20 +608,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E7',
+  },
+  settingBorder: {
+    marginHorizontal: Spacing.md,
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  settingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  settingContent: {
+    flex: 1,
+  },
   settingText: {
     ...Typography.body,
-    marginLeft: Spacing.md,
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  settingDescription: {
+    ...Typography.caption,
+    fontSize: 13,
   },
   settingValue: {
     ...Typography.body,
+    fontSize: 16,
     color: '#666',
   },
   quickActionsGrid: {
@@ -562,6 +677,85 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.sm,
   },
   footerSpace: {
-    height: 64,
+    height: 80,
+  },
+
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  modalCancelButton: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+  },
+  modalCancelText: {
+    ...Typography.body,
+    fontSize: 16,
+  },
+  modalTitle: {
+    ...Typography.h3,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalSaveButton: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+  },
+  modalSaveText: {
+    ...Typography.body,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: Spacing.lg,
+  },
+  formSection: {
+    marginBottom: Spacing.xl,
+  },
+  formLabel: {
+    ...Typography.body,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: Spacing.sm,
+  },
+  textInput: {
+    height: 48,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    fontSize: 16,
+  },
+  genderOptions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  genderOption: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  genderOptionText: {
+    ...Typography.body,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  formNote: {
+    ...Typography.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

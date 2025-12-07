@@ -45,10 +45,20 @@ export const userService = {
 
       if (userDoc.exists()) {
         const userData = userDoc.data() as User;
+
+        console.log('DEBUG: userData.createdAt:', userData.createdAt, 'type:', typeof userData.createdAt);
+        console.log('DEBUG: userData.updatedAt:', userData.updatedAt, 'type:', typeof userData.updatedAt);
+
+        // Handle different data types for dates
+        const createdAt = userData.createdAt?.toDate?.() ||
+                         (typeof userData.createdAt === 'string' ? new Date(userData.createdAt) : new Date());
+        const updatedAt = userData.updatedAt?.toDate?.() ||
+                         (typeof userData.updatedAt === 'string' ? new Date(userData.updatedAt) : new Date());
+
         return {
           ...userData,
-          createdAt: userData.createdAt?.toDate?.() || new Date(),
-          updatedAt: userData.updatedAt?.toDate?.() || new Date()
+          createdAt,
+          updatedAt
         };
       }
       return null;
@@ -63,8 +73,12 @@ export const userService = {
     try {
       console.log('🔍 [DEBUG] UserService: Updating user', userId, 'with updates:', updates);
       const userRef = doc(db, 'users', userId);
+
+      // Remove createdAt from updates to preserve original creation date
+      const { createdAt, ...updatesWithoutCreatedAt } = updates;
+
       await updateDoc(userRef, {
-        ...updates,
+        ...updatesWithoutCreatedAt,
         updatedAt: serverTimestamp()
       });
       console.log('🔍 [DEBUG] UserService: User updated successfully in database');
