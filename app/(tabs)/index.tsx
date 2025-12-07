@@ -19,6 +19,7 @@ import { Colors } from '@/constants/theme';
 import { useHabit } from '@/contexts/HabitContext';
 import { useMedicine } from '@/contexts/MedicineContext';
 import { useAuth } from '@/contexts/AuthContext';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 interface Task {
   id: string;
@@ -37,6 +38,8 @@ export default function HomeScreen() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   // Initialize with current date (no timezone offset for date comparison)
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -79,10 +82,22 @@ export default function HomeScreen() {
 
   // Fetch extended history when component mounts or habits change
   useEffect(() => {
-    if (habits.length > 0) {
-      fetchExtendedHabitHistory();
-    }
-  }, [habits.length, fetchExtendedHabitHistory]);
+    const loadInitialData = async () => {
+      try {
+        if (isInitialLoad && habits.length > 0) {
+          setIsLoadingTasks(true);
+          await fetchExtendedHabitHistory();
+          setIsInitialLoad(false); // Mark initial load as complete
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      } finally {
+        setIsLoadingTasks(false);
+      }
+    };
+
+    loadInitialData();
+  }, [habits.length, fetchExtendedHabitHistory, isInitialLoad]);
 
   // Update refs when functions change
   useEffect(() => {
@@ -110,6 +125,11 @@ export default function HomeScreen() {
       const refreshData = async () => {
         try {
           console.log('🔄 REFRESHING DATA ON FOCUS');
+          // Don't show loading for background refresh - let existing data show
+          // Only show loading if no data exists
+          if (habits.length === 0 && medicines.length === 0) {
+            setIsLoadingTasks(true);
+          }
           await Promise.all([
             refreshHabitsRef.current(),
             refreshMedicinesRef.current(),
@@ -118,6 +138,8 @@ export default function HomeScreen() {
           console.log('✅ DATA REFRESH COMPLETED');
         } catch (error) {
           console.error('❌ Error refreshing data on focus:', error);
+        } finally {
+          setIsLoadingTasks(false);
         }
       };
 
@@ -129,7 +151,7 @@ export default function HomeScreen() {
       }, 5000);
 
       return () => clearTimeout(timeout);
-    }, []) // Empty dependency array - use refs instead
+    }, [fetchExtendedHabitHistory, isInitialLoad]) // Include dependencies
   );
 
   
@@ -1421,8 +1443,18 @@ const generateTasksFromData = React.useCallback(() => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.tasksContent}>
-            {/* Overdue Tasks */}
-            {getTaskCount(tasks.overdue) > 0 && (
+            {/* Loading State - only show when no data exists yet */}
+            {(isLoadingTasks && habits.length === 0 && medicines.length === 0) ? (
+              <View style={styles.loadingContainer}>
+                <LoadingAnimation size="medium" />
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                  Loading your tasks...
+                </Text>
+              </View>
+            ) : (
+              <>
+                {/* Overdue Tasks */}
+                {getTaskCount(tasks.overdue) > 0 && (
               <View style={styles.taskSection}>
                 <View style={styles.sectionHeader}>
                   <Text style={[styles.sectionLabel, { color: '#F43F5E' }]}>Overdue</Text>
@@ -1579,14 +1611,16 @@ const generateTasksFromData = React.useCallback(() => {
               </View>
             ))}
 
-            {/* Empty State */}
-            {getTaskCount(tasks.overdue) === 0 &&
-             Object.keys(tasks.timeBased).length === 0 && (
-              <View style={styles.emptyState}>
-                <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
-                <Text style={[styles.emptyStateText, { color: colors.text }]}>No tasks found</Text>
-                <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>Try adjusting your search</Text>
-              </View>
+                {/* Empty State */}
+                {getTaskCount(tasks.overdue) === 0 &&
+                 Object.keys(tasks.timeBased).length === 0 && (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
+                    <Text style={[styles.emptyStateText, { color: colors.text }]}>No tasks found</Text>
+                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>Try adjusting your search</Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
         </ScrollView>
@@ -1848,6 +1882,18 @@ const styles = StyleSheet.create({
   },
   taskStatus: {
     alignItems: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    minHeight: 200,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 20,
+    textAlign: 'center',
   },
   emptyState: {
     alignItems: 'center',
