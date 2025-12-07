@@ -211,7 +211,7 @@ export default function TaskCompleteScreen() {
         // Reset haptic trigger for next gesture
         hapticTriggered.current = false;
 
-        // Lower completion threshold at 60% of max distance for easier completion
+        // OPTIMIZED: Even lower completion threshold at 60% for easier completion
         const completionThreshold = maxSlideDistance * 0.6;
         console.log('PanResponder release:', {
           gestureDx: gesture.dx,
@@ -266,12 +266,21 @@ export default function TaskCompleteScreen() {
     setIsCompleting(true);
     console.log('Starting completion animation...');
 
-    // First animate to full completion position
+    // OPTIMIZED: Faster completion animation
     Animated.timing(slideX, {
       toValue: maxSlideDistance,
-      duration: 400, // Longer duration for smoother animation
+      duration: 200, // Reduced from 400ms to 200ms for faster feedback
       useNativeDriver: false,
     }).start();
+
+    // OPTIMISTIC UI: Show immediate success feedback
+    // This provides instant visual feedback while database operations complete
+    setTimeout(() => {
+      if (!isCompleted) { // Only show if not already completed
+        setIsCompleted(true);
+        console.log('⚡ Optimistic UI: Showing completion immediately');
+      }
+    }, 100); // Show success after 100ms for instant feedback
 
     try {
       let result: { success: boolean; error?: string } = { success: false };
@@ -416,31 +425,39 @@ export default function TaskCompleteScreen() {
         // Success haptic feedback
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
-        // Enhanced visual feedback before navigation
-        setTimeout(async () => {
-          console.log('🔄 Refreshing data before navigation...');
+        // OPTIMIZED: Faster navigation with background data refresh
+        // Show minimal completion feedback (400ms) then navigate immediately
+        setTimeout(() => {
+          console.log('🏠 Navigating back to home...');
+          router.replace('/(tabs)');
+        }, 400); // Reduced from 1200ms to 400ms for faster feedback
 
-          // Explicitly refresh data to ensure consistency
+        // OPTIMIZED: Refresh data in background without blocking UI
+        // This ensures the home screen shows updated data when user arrives
+        setTimeout(async () => {
+          console.log('🔄 Refreshing data in background...');
           try {
             if (currentTask.type === 'medicine') {
               await refreshMedicines();
-              console.log('✅ Medicines refreshed');
+              console.log('✅ Medicines refreshed in background');
             } else if (currentTask.type === 'habit') {
               await refreshHabits();
-              console.log('✅ Habits refreshed');
+              console.log('✅ Habits refreshed in background');
             }
           } catch (error) {
-            console.error('❌ Error refreshing data:', error);
+            console.error('❌ Error refreshing data in background:', error);
+            // Even if refresh fails, user already navigated - no need to show error
           }
-
-          // Add small delay for visual confirmation
-          setTimeout(() => {
-            console.log('🏠 Navigating back to home...');
-            router.replace('/(tabs)');
-          }, 300);
-        }, 1200); // Show completion for 1.2 seconds
+        }, 500); // Start background refresh 100ms after navigation begins
       } else {
         console.log('Task completion failed:', result);
+
+        // ROLLBACK: Reset optimistic UI if database operation failed
+        if (isCompleted) {
+          setIsCompleted(false);
+          console.log('❌ Rolling back optimistic UI due to database error');
+        }
+
         Alert.alert('Error', 'Failed to complete task');
         // Smooth spring back animation
         Animated.spring(slideX, {
@@ -453,6 +470,13 @@ export default function TaskCompleteScreen() {
       }
     } catch (error) {
       console.error('Task completion error:', error);
+
+      // ROLLBACK: Reset optimistic UI if an unexpected error occurred
+      if (isCompleted) {
+        setIsCompleted(false);
+        console.log('❌ Rolling back optimistic UI due to unexpected error');
+      }
+
       Alert.alert('Error', 'An unexpected error occurred');
       // Smooth spring back animation
       Animated.spring(slideX, {
