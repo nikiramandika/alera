@@ -18,6 +18,7 @@ export interface User {
     gender?: 'male' | 'female' | 'other';
     weight?: number; // in kg
     age?: number; // in years
+    birthDate?: Date;
   };
 }
 
@@ -171,7 +172,7 @@ export interface Statistics {
 export interface OnboardingData {
   gender: 'male' | 'female' | 'other';
   weight: number;
-  age: number;
+  birthDate: Date;
 }
 
 // Navigation types

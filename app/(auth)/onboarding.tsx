@@ -5,11 +5,10 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Image,
-  Platform,
   Alert,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,9 +28,76 @@ export default function OnboardingScreen() {
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     gender: 'female',
     weight: 60,
-    age: 25,
+    birthDate: new Date(1998, 0, 1), // Default birth date (Jan 1, 1998)
   });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [weightInput, setWeightInput] = useState(onboardingData.weight.toString());
   const [loading, setLoading] = useState(false);
+
+  // Sync weightInput with onboardingData weight
+  useEffect(() => {
+    setWeightInput(onboardingData.weight.toString());
+  }, [onboardingData.weight]);
+
+  // Function to calculate age from birth date
+  const calculateAge = (birthDate: Date): number => {
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return age;
+  };
+
+  // Function to show date picker
+  const showDatepicker = () => {
+    setShowDatePicker(true);
+  };
+
+  // Helper function to generate years array
+  const generateYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = currentYear; year >= 1900; year--) {
+      years.push(year);
+    }
+    return years;
+  };
+
+  // Helper function to generate months array
+  const generateMonths = () => {
+    return [
+      { value: 0, label: 'January' },
+      { value: 1, label: 'February' },
+      { value: 2, label: 'March' },
+      { value: 3, label: 'April' },
+      { value: 4, label: 'May' },
+      { value: 5, label: 'June' },
+      { value: 6, label: 'July' },
+      { value: 7, label: 'August' },
+      { value: 8, label: 'September' },
+      { value: 9, label: 'October' },
+      { value: 10, label: 'November' },
+      { value: 11, label: 'December' },
+    ];
+  };
+
+  // Helper function to generate days array based on selected month and year
+  const generateDays = (year: number, month: number) => {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(day);
+    }
+    return days;
+  };
+
+  const years = generateYears();
+  const months = generateMonths();
+  const days = generateDays(onboardingData.birthDate.getFullYear(), onboardingData.birthDate.getMonth());
 
   // Redirect users who have completed onboarding
   useEffect(() => {
@@ -39,7 +105,7 @@ export default function OnboardingScreen() {
       const hasCompletedOnboarding = user.profile &&
         user.profile.gender &&
         user.profile.weight &&
-        user.profile.age;
+        user.profile.birthDate;
 
       if (hasCompletedOnboarding) {
         router.replace('/(tabs)');
@@ -64,7 +130,7 @@ export default function OnboardingScreen() {
       icon: '⚖️',
     },
     {
-      title: 'Enter Your Age',
+      title: 'Enter Your Birth Date',
       subtitle: 'To customize your health recommendations',
       icon: '🎂',
     },
@@ -92,8 +158,15 @@ export default function OnboardingScreen() {
   const handleComplete = async () => {
     setLoading(true);
     try {
+      const profileData: any = {
+        gender: onboardingData.gender,
+        weight: onboardingData.weight,
+        age: calculateAge(onboardingData.birthDate),
+        birthDate: onboardingData.birthDate,
+      };
+
       const result = await updateUserProfile({
-        profile: onboardingData
+        profile: profileData
       });
 
       if (result.success) {
@@ -101,7 +174,7 @@ export default function OnboardingScreen() {
       } else {
         Alert.alert('Error', result.error || 'Failed to save profile data');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -208,18 +281,46 @@ export default function OnboardingScreen() {
               { backgroundColor: colors.card, borderColor: colors.border }
             ]}>
               <TextInput
-                style={[styles.weightInput, { color: colors.text }]}
+                style={[
+                  styles.weightInput,
+                  {
+                    color: colors.text,
+                    fontSize: weightInput ? 42 : 18, // Smaller font when empty
+                    fontWeight: weightInput ? '700' : '400',
+                  }
+                ]}
                 placeholder="Enter your weight"
                 placeholderTextColor={colors.textSecondary}
-                value={onboardingData.weight.toString()}
+                value={weightInput}
                 onChangeText={(text) => {
-                  if (text === '') {
-                    setOnboardingData({ ...onboardingData, weight: 60 }); // Default weight
-                  } else {
-                    const weight = parseInt(text);
-                    if (!isNaN(weight) && weight >= 30 && weight <= 300) {
-                      setOnboardingData({ ...onboardingData, weight });
-                    }
+                  // Remove any non-numeric characters
+                  const cleanText = text.replace(/[^0-9]/g, '');
+                  setWeightInput(cleanText);
+
+                  // Update state only if valid number within range
+                  if (cleanText === '') {
+                    // Don't update onboardingData yet, allow user to type
+                    return;
+                  }
+
+                  const weight = parseInt(cleanText);
+                  if (!isNaN(weight) && weight >= 30 && weight <= 300) {
+                    setOnboardingData({ ...onboardingData, weight });
+                  }
+                }}
+                onBlur={() => {
+                  // When user finishes editing, validate and set default if needed
+                  const weight = parseInt(weightInput);
+                  if (weightInput === '' || isNaN(weight) || weight < 30 || weight > 300) {
+                    setWeightInput(onboardingData.weight.toString());
+                  }
+                }}
+                onSubmitEditing={() => {
+                  // Validate and set default if needed when submitted
+                  const weight = parseInt(weightInput);
+                  if (weightInput === '' || isNaN(weight) || weight < 30 || weight > 300) {
+                    setWeightInput('60');
+                    setOnboardingData({ ...onboardingData, weight: 60 });
                   }
                 }}
                 keyboardType="numeric"
@@ -240,39 +341,166 @@ export default function OnboardingScreen() {
 
       case 3:
         return (
-          <View style={styles.ageContainer}>
-            <View style={[
-              styles.ageInputContainer,
-              { backgroundColor: colors.card, borderColor: colors.border }
-            ]}>
-              <TextInput
-                style={[styles.ageInput, { color: colors.text }]}
-                placeholder="Enter your age"
-                placeholderTextColor={colors.textSecondary}
-                value={onboardingData.age.toString()}
-                onChangeText={(text) => {
-                  if (text === '') {
-                    setOnboardingData({ ...onboardingData, age: 25 }); // Default age
-                  } else {
-                    const age = parseInt(text);
-                    if (!isNaN(age) && age >= 10 && age <= 100) {
-                      setOnboardingData({ ...onboardingData, age });
-                    }
-                  }
-                }}
-                keyboardType="numeric"
-                maxLength={3}
-              />
-              <Text style={[styles.ageUnit, { color: colors.textSecondary }]}>
-                years old
+          <View style={styles.birthDateContainer}>
+            <TouchableOpacity
+              style={[
+                styles.birthDateInputContainer,
+                { backgroundColor: colors.card, borderColor: colors.border }
+              ]}
+              onPress={showDatepicker}
+            >
+              <Text style={[styles.birthDateText, { color: colors.text }]}>
+                {onboardingData.birthDate.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </Text>
+              <Ionicons name="calendar-outline" size={24} color={colors.primary} />
+            </TouchableOpacity>
+
+            <View style={styles.birthDateInfoContainer}>
+              <Text style={[styles.calculatedAge, { color: colors.text }]}>
+                Age: {calculateAge(onboardingData.birthDate)} years
+              </Text>
+              <Text style={[styles.sliderHint, { color: colors.textSecondary }]}>
+                Tap to select your birth date. You can adjust this later in settings.
               </Text>
             </View>
 
-            <View style={styles.ageSliderContainer}>
-              <Text style={[styles.sliderHint, { color: colors.textSecondary }]}>
-                Enter your age (10-100 years). You can adjust this later in settings.
-              </Text>
-            </View>
+            {/* Custom Date Picker Modal */}
+            {showDatePicker && (
+              <Modal
+                transparent={true}
+                animationType="slide"
+                visible={showDatePicker}
+                onRequestClose={() => setShowDatePicker(false)}
+              >
+                <View style={styles.modalOverlay}>
+                  <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+                    <View style={styles.modalHeader}>
+                      <TouchableOpacity
+                        onPress={() => setShowDatePicker(false)}
+                        style={styles.cancelButton}
+                      >
+                        <Text style={[styles.cancelText, { color: colors.primary }]}>
+                          Cancel
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>
+                        Select Birth Date
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setShowDatePicker(false)}
+                        style={styles.confirmButton}
+                      >
+                        <Text style={[styles.confirmText, { color: colors.primary }]}>
+                          Confirm
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.datePickerContainer}>
+                      <ScrollView style={styles.dateColumn} showsVerticalScrollIndicator={false}>
+                        {days.map(day => (
+                          <TouchableOpacity
+                            key={day}
+                            style={[
+                              styles.dateOption,
+                              {
+                                backgroundColor: day === onboardingData.birthDate.getDate()
+                                  ? colors.primary
+                                  : 'transparent'
+                              }
+                            ]}
+                            onPress={() => {
+                              const newDate = new Date(onboardingData.birthDate);
+                              newDate.setDate(day);
+                              setOnboardingData({ ...onboardingData, birthDate: newDate });
+                            }}
+                          >
+                            <Text style={[
+                              styles.dateOptionText,
+                              {
+                                color: day === onboardingData.birthDate.getDate()
+                                  ? '#FFFFFF'
+                                  : colors.text
+                              }
+                            ]}>
+                              {day}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+
+                      <ScrollView style={styles.dateColumn} showsVerticalScrollIndicator={false}>
+                        {months.map(month => (
+                          <TouchableOpacity
+                            key={month.value}
+                            style={[
+                              styles.dateOption,
+                              {
+                                backgroundColor: month.value === onboardingData.birthDate.getMonth()
+                                  ? colors.primary
+                                  : 'transparent'
+                              }
+                            ]}
+                            onPress={() => {
+                              const newDate = new Date(onboardingData.birthDate);
+                              newDate.setMonth(month.value);
+                              setOnboardingData({ ...onboardingData, birthDate: newDate });
+                            }}
+                          >
+                            <Text style={[
+                              styles.dateOptionText,
+                              {
+                                color: month.value === onboardingData.birthDate.getMonth()
+                                  ? '#FFFFFF'
+                                  : colors.text
+                              }
+                            ]}>
+                              {month.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+
+                      <ScrollView style={styles.dateColumn} showsVerticalScrollIndicator={false}>
+                        {years.map(year => (
+                          <TouchableOpacity
+                            key={year}
+                            style={[
+                              styles.dateOption,
+                              {
+                                backgroundColor: year === onboardingData.birthDate.getFullYear()
+                                  ? colors.primary
+                                  : 'transparent'
+                              }
+                            ]}
+                            onPress={() => {
+                              const newDate = new Date(onboardingData.birthDate);
+                              newDate.setFullYear(year);
+                              setOnboardingData({ ...onboardingData, birthDate: newDate });
+                            }}
+                          >
+                            <Text style={[
+                              styles.dateOptionText,
+                              {
+                                color: year === onboardingData.birthDate.getFullYear()
+                                  ? '#FFFFFF'
+                                  : colors.text
+                              }
+                            ]}>
+                              {year}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+            )}
           </View>
         );
 
@@ -293,7 +521,14 @@ export default function OnboardingScreen() {
                 Weight: {onboardingData.weight} kg
               </Text>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
-                Age: {onboardingData.age} years
+                Birth Date: {onboardingData.birthDate.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })}
+              </Text>
+              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
+                Age: {calculateAge(onboardingData.birthDate)} years
               </Text>
             </View>
           </View>
@@ -537,33 +772,94 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: Spacing.lg,
   },
-  ageContainer: {
+  birthDateContainer: {
     alignItems: 'center',
     paddingVertical: Spacing.lg,
   },
-  ageInputContainer: {
+  birthDateInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     borderWidth: 2,
     marginBottom: Spacing.lg,
+    minHeight: 80,
   },
-  ageInput: {
-    flex: 1,
-    fontSize: 42,
-    fontWeight: '700',
-    textAlign: 'center',
-    minHeight: 50,
-  },
-  ageUnit: {
-    ...Typography.h1,
-    marginLeft: Spacing.sm,
+  birthDateText: {
+    fontSize: 18,
     fontWeight: '600',
+    flex: 1,
   },
-  ageSliderContainer: {
+  birthDateInfoContainer: {
     alignItems: 'center',
     marginTop: Spacing.md,
+  },
+  calculatedAge: {
+    ...Typography.h3,
+    fontWeight: '600',
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  cancelButton: {
+    padding: 10,
+  },
+  cancelText: {
+    ...Typography.body,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    padding: 10,
+  },
+  confirmText: {
+    ...Typography.body,
+    fontWeight: '600',
+  },
+  modalTitle: {
+    ...Typography.h3,
+    fontWeight: '600',
+  },
+  datePickerContainer: {
+    flexDirection: 'row',
+    height: 250,
+    padding: Spacing.md,
+  },
+  dateColumn: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  dateOption: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    marginVertical: 2,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  dateOptionText: {
+    ...Typography.body,
+    fontSize: 16,
+    textAlign: 'center',
   },
   completionContainer: {
     alignItems: 'center',
