@@ -874,6 +874,7 @@ const styles = StyleSheet.create({
   },
   habitsContainer: {
     paddingTop: 20,
+    paddingBottom: 120,
     marginHorizontal: 20,
   },
   habitCard: {

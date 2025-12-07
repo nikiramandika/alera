@@ -996,6 +996,7 @@ const styles = StyleSheet.create({
   },
   medicationsContainer: {
     paddingTop: 20,
+    paddingBottom: 120,
     marginHorizontal: 20,
   },
   medicationCard: {
