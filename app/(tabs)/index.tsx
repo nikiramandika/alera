@@ -806,13 +806,22 @@ const generateTasksFromData = React.useCallback(() => {
     setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1));
   };
 
-  const changeYear = (year: number) => {
-    setCalendarMonth(new Date(year, calendarMonth.getMonth()));
+  
+  // State for inline month/year picker (not modal)
+  const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
+
+  // Helper function to close calendar and reset month/year picker
+  const closeCalendar = () => {
+    setShowCalendar(false);
+    setShowMonthYearPicker(false);
   };
 
-  const changeMonth = (month: number) => {
-    setCalendarMonth(new Date(calendarMonth.getFullYear(), month));
-  };
+
+  // Get current year and generate year range
+  const currentYear = new Date().getFullYear();
+  const yearRange = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i); // 10 years back, 10 years forward
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   // Get current time in Indonesia timezone for calendar comparison
   const getIndonesiaTimeForCalendar = (date: Date = new Date()) => {
@@ -891,7 +900,7 @@ const generateTasksFromData = React.useCallback(() => {
       <Modal
         visible={showSearch}
         animationType="slide"
-        transparent={false}
+        presentationStyle="pageSheet"
         onRequestClose={() => setShowSearch(false)}
       >
         <SafeAreaView style={[styles.searchModalContainer, { backgroundColor: colors.background }]}>
@@ -1057,14 +1066,14 @@ const generateTasksFromData = React.useCallback(() => {
         visible={showCalendar}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowCalendar(false)}
+        onRequestClose={() => closeCalendar()}
       >
         <SafeAreaView style={[styles.calendarModal, { backgroundColor: colors.background }]}>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
-          {/* Month/Year Navigation */}
+          {/* Fixed Header */}
           <View style={[styles.calendarHeader, { borderBottomColor: colors.border }]}>
-            <TouchableOpacity onPress={() => setShowCalendar(false)}>
+            <TouchableOpacity onPress={() => closeCalendar()}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
 
@@ -1080,129 +1089,214 @@ const generateTasksFromData = React.useCallback(() => {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity onPress={() => setShowCalendar(false)}>
+            <TouchableOpacity onPress={() => closeCalendar()}>
               <Text style={[styles.calendarDone, { color: colors.primary }]}>Done</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Month Year Quick Select */}
-          <View style={[styles.quickSelectContainer, { borderBottomColor: colors.border }]}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.monthYearScroll}
-            >
-              {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, index) => (
-                <TouchableOpacity
-                  key={month}
-                  style={[
-                    styles.monthButton,
-                    {
-                      backgroundColor: calendarMonth.getMonth() === index ? colors.primary : colors.card,
-                      borderColor: colors.border
-                    }
-                  ]}
-                  onPress={() => changeMonth(index)}
-                >
-                  <Text style={[
-                    styles.monthButtonText,
-                    {
-                      color: calendarMonth.getMonth() === index ? '#FFFFFF' : colors.text
-                    }
-                  ]}>
-                    {month}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+          {/* Scrollable Content */}
+          <ScrollView
+            style={styles.calendarScrollableContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Month Year Quick Select - User Friendly */}
+            <View style={[styles.quickSelectContainer, { borderBottomColor: colors.border }]}>
+              <TouchableOpacity
+                style={[styles.monthYearPickerButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => setShowMonthYearPicker(!showMonthYearPicker)}
+              >
+                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+                <Text style={[styles.monthYearPickerText, { color: colors.text }]}>
+                  {monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+                </Text>
+                <Ionicons name={showMonthYearPicker ? "chevron-up" : "chevron-down"} size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.yearScroll}
-            >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
-                <TouchableOpacity
-                  key={year}
-                  style={[
-                    styles.yearButton,
-                    {
-                      backgroundColor: calendarMonth.getFullYear() === year ? colors.primary : colors.card,
-                      borderColor: colors.border
-                    }
-                  ]}
-                  onPress={() => changeYear(year)}
-                >
-                  <Text style={[
-                    styles.yearButtonText,
-                    {
-                      color: calendarMonth.getFullYear() === year ? '#FFFFFF' : colors.text
-                    }
-                  ]}>
-                    {year}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Calendar Grid */}
-          <View style={styles.calendarGrid}>
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <View key={day} style={styles.dayHeader}>
-                <Text style={styles.dayHeaderText}>{day}</Text>
-              </View>
-            ))}
-
-            {Array.from({ length: 35 }, (_, i) => {
-              const dayNumber = i - 2; // Adjust for calendar starting position
-              const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), dayNumber);
-              const isValidDate = dayNumber > 0 && dayNumber <= new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
-              const isSelected = isValidDate && date.toDateString() === selectedDate.toDateString();
-
-              if (!isValidDate) {
-                return <View key={i} style={styles.dayCell} />;
-              }
-
-              // Check if today in Indonesia timezone
-              const todayIndonesia = getIndonesiaTimeForCalendar();
-              const todayReset = new Date(todayIndonesia);
-              todayReset.setHours(0, 0, 0, 0);
-
-              const dateReset = new Date(date);
-              dateReset.setHours(0, 0, 0, 0);
-              const isTodayIndonesia = dateReset.toDateString() === todayReset.toDateString();
-
-              return (
-                <View key={i} style={styles.dayCell}>
-                  <TouchableOpacity
-                    style={[
-                      styles.dayButton,
-                      {
-                        backgroundColor: isSelected ? colors.primary : (isTodayIndonesia ? colors.primary + '20' : 'transparent')
-                      }
-                    ]}
-                    onPress={() => {
-                      setSelectedDate(date);
-                      setShowCalendar(false);
-                    }}
+            {/* Inline Month Year Picker */}
+            {showMonthYearPicker && (
+              <View style={[styles.inlineMonthYearPicker, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+                {/* Year Selection */}
+                <View style={styles.pickerSection}>
+                  <Text style={[styles.pickerSectionTitle, { color: colors.text }]}>Year</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.yearPickerScroll}
+                    contentContainerStyle={styles.yearPickerContent}
                   >
-                    <Text style={[
-                      styles.dayButtonText,
-                      {
-                        color: isSelected ? '#FFFFFF' : (isTodayIndonesia ? colors.primary : colors.text)
-                      }
-                    ]}>
-                      {dayNumber}
-                    </Text>
-                  </TouchableOpacity>
+                    {yearRange.map((year) => (
+                      <TouchableOpacity
+                        key={year}
+                        style={[
+                          styles.yearPickerItem,
+                          {
+                            backgroundColor: calendarMonth.getFullYear() === year ? colors.primary : colors.card,
+                            borderColor: colors.border
+                          }
+                        ]}
+                        onPress={() => setCalendarMonth(new Date(year, calendarMonth.getMonth()))}
+                      >
+                        <Text style={[
+                          styles.yearPickerText,
+                          {
+                            color: calendarMonth.getFullYear() === year ? '#FFFFFF' : colors.text
+                          }
+                        ]}>
+                          {year}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-              );
-            })}
-          </View>
+
+                {/* Month Selection */}
+                <View style={styles.pickerSection}>
+                  <Text style={[styles.pickerSectionTitle, { color: colors.text }]}>Month</Text>
+                  <View style={styles.monthPickerGrid}>
+                    {monthNames.map((month, index) => (
+                      <TouchableOpacity
+                        key={month}
+                        style={[
+                          styles.monthPickerItem,
+                          {
+                            backgroundColor: calendarMonth.getMonth() === index ? colors.primary : colors.card,
+                            borderColor: colors.border
+                          }
+                        ]}
+                        onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), index))}
+                      >
+                        <Text style={[
+                          styles.monthPickerText,
+                          {
+                            color: calendarMonth.getMonth() === index ? '#FFFFFF' : colors.text
+                          }
+                        ]}>
+                          {month}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Quick Selection */}
+                <View style={styles.pickerSection}>
+                  <Text style={[styles.pickerSectionTitle, { color: colors.text }]}>Quick Select</Text>
+                  <View style={styles.quickSelectGrid}>
+                    <TouchableOpacity
+                      style={[styles.quickSelectButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      onPress={() => {
+                        const now = new Date();
+                        setCalendarMonth(new Date(now.getFullYear(), now.getMonth()));
+                        setShowMonthYearPicker(false);
+                      }}
+                    >
+                      <Ionicons name="today" size={20} color={colors.primary} />
+                      <Text style={[styles.quickSelectButtonText, { color: colors.text }]}>Today</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.quickSelectButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      onPress={() => {
+                        const now = new Date();
+                        setCalendarMonth(new Date(now.getFullYear(), 0)); // January
+                        setShowMonthYearPicker(false);
+                      }}
+                    >
+                      <Ionicons name="calendar" size={20} color={colors.primary} />
+                      <Text style={[styles.quickSelectButtonText, { color: colors.text }]}>This Year</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Calendar Grid */}
+            <View style={styles.calendarGrid}>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <View key={day} style={styles.dayHeader}>
+                  <Text style={styles.dayHeaderText}>{day}</Text>
+                </View>
+              ))}
+
+              {(() => {
+                // Get the first day of the month and how many days in the month
+                const firstDayOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+                const lastDayOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0);
+                const daysInMonth = lastDayOfMonth.getDate();
+
+                // Get the day of the week for the first day (0 = Sunday, 1 = Monday, etc.)
+                const firstDayOfWeek = firstDayOfMonth.getDay();
+
+                // Calculate total cells needed (6 weeks * 7 days = 42 cells max)
+                const totalCells = 42;
+                const calendarDays = [];
+
+                // Add empty cells for days before the first day of the month
+                for (let i = 0; i < firstDayOfWeek; i++) {
+                  calendarDays.push(null);
+                }
+
+                // Add all days of the month
+                for (let day = 1; day <= daysInMonth; day++) {
+                  calendarDays.push(day);
+                }
+
+                // Fill remaining cells with null to complete the grid
+                while (calendarDays.length < totalCells) {
+                  calendarDays.push(null);
+                }
+
+                return calendarDays.map((dayNumber, index) => {
+                  if (dayNumber === null) {
+                    return <View key={index} style={styles.dayCell} />;
+                  }
+
+                  const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), dayNumber);
+                  const isSelected = date.toDateString() === selectedDate.toDateString();
+
+                  // Check if today in Indonesia timezone
+                  const todayIndonesia = getIndonesiaTimeForCalendar();
+                  const todayReset = new Date(todayIndonesia);
+                  todayReset.setHours(0, 0, 0, 0);
+
+                  const dateReset = new Date(date);
+                  dateReset.setHours(0, 0, 0, 0);
+                  const isTodayIndonesia = dateReset.toDateString() === todayReset.toDateString();
+
+                  return (
+                    <View key={index} style={styles.dayCell}>
+                      <TouchableOpacity
+                        style={[
+                          styles.dayButton,
+                          {
+                            backgroundColor: isSelected ? colors.primary : (isTodayIndonesia ? colors.primary + '20' : 'transparent')
+                          }
+                        ]}
+                        onPress={() => {
+                          setSelectedDate(date);
+                          closeCalendar();
+                        }}
+                      >
+                        <Text style={[
+                          styles.dayButtonText,
+                          {
+                            color: isSelected ? '#FFFFFF' : (isTodayIndonesia ? colors.primary : colors.text)
+                          }
+                        ]}>
+                          {dayNumber}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                });
+              })()}
+            </View>
+          </ScrollView>
         </SafeAreaView>
       </Modal>
 
+  
       <View style={styles.container}>
         {/* Header Section */}
         <View style={[styles.headerContainer]}>
@@ -1242,7 +1336,10 @@ const generateTasksFromData = React.useCallback(() => {
                   </Text>
                   <TouchableOpacity
                     style={[styles.calendarButton, { backgroundColor: colors.card }]}
-                    onPress={() => setShowCalendar(true)}
+                    onPress={() => {
+                      setShowCalendar(true);
+                      setShowMonthYearPicker(false); // Reset month/year picker when opening calendar
+                    }}
                   >
                     <Ionicons name="calendar-outline" size={20} color={colors.primary} />
                   </TouchableOpacity>
@@ -1902,6 +1999,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
   },
+  calendarScrollableContent: {
+    flex: 1,
+  },
   calendarHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -2000,6 +2100,91 @@ const styles = StyleSheet.create({
   },
   dayButtonText: {
     fontSize: 16,
+    fontWeight: '600',
+  },
+  // Month Year Picker Button
+  monthYearPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginHorizontal: 20,
+  },
+  monthYearPickerText: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  // Inline Month Year Picker
+  inlineMonthYearPicker: {
+    borderBottomWidth: 1,
+    padding: 20,
+  },
+  pickerSection: {
+    marginBottom: 24,
+  },
+  pickerSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  yearPickerScroll: {
+    marginBottom: 8,
+  },
+  yearPickerContent: {
+    paddingHorizontal: 5,
+  },
+  yearPickerItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginRight: 12,
+    borderWidth: 1,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  yearPickerText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  monthPickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  monthPickerItem: {
+    width: '30%',
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  monthPickerText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quickSelectGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  quickSelectButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  quickSelectButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 });
