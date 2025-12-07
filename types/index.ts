@@ -120,6 +120,7 @@ export interface HabitHistory {
   };
   value: number; // Direct value property for service compatibility
   completedAt?: Date | null;
+  completionTime?: string; // The specific time this completion is for (e.g., "08:00")
   createdAt: Date;
 }
 

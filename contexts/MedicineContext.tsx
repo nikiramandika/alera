@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { medicineService, medicineHistoryService } from '@/services';
 import { notificationScheduler } from '@/services/notificationScheduler';
@@ -35,7 +35,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState(true);
 
   // Fetch medicines and history
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     console.log('🔍 [DEBUG] MedicineContext fetchData called');
     console.log('🔍 [DEBUG] User state:', user ? { userId: user.userId, email: user.email } : 'No user');
 
@@ -62,7 +62,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   // Add new medicine
   const addMedicine = async (medicine: Omit<MedicineReminder, 'reminderId' | 'userId' | 'createdAt' | 'updatedAt'>) => {
@@ -201,7 +201,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
-      await medicineHistoryService.markMedicineMissed(user.userId, reminderId, scheduledTime, 'Skipped');
+      await medicineHistoryService.markMedicineMissed(user.userId, reminderId, scheduledTime);
       await fetchData(); // Refresh data
       return { success: true };
     } catch (error) {
@@ -248,7 +248,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Fetch data when user changes
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [fetchData]);
 
   const value: MedicineContextType = {
     medicines,

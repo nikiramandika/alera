@@ -336,8 +336,10 @@ export default function TaskCompleteScreen() {
           console.log('📊 Result with original ID:', result);
         }
       } else if (currentTask.type === 'habit') {
-        // Extract habit ID from task ID with proper parsing
+        // Extract habit ID and completion time from task ID
         let habitId = currentTask.id;
+        let completionTime: string | undefined;
+
         console.log('🔍 Original task ID:', currentTask.id);
 
         // Step 1: Remove 'habit-' prefix if present
@@ -346,30 +348,34 @@ export default function TaskCompleteScreen() {
           console.log('🔍 After removing habit- prefix:', habitId);
         }
 
-        // Step 2: Remove time suffix (e.g., "abc123-23:00" -> "abc123")
+        // Step 2: Extract time suffix (e.g., "abc123-23:00" -> "abc123" with time "23:00")
         const timeIndex = habitId.lastIndexOf('-');
         if (timeIndex > 0) {
           const potentialTime = habitId.substring(timeIndex + 1);
           // Check if it's a time format (HH:MM)
           if (potentialTime.includes(':') && /^\d{1,2}:\d{2}$/.test(potentialTime)) {
+            completionTime = potentialTime;
             habitId = habitId.substring(0, timeIndex);
-            console.log('🔍 After removing time suffix:', habitId, '(removed time:', potentialTime + ')');
+            console.log('🔍 Extracted completion time:', completionTime);
+            console.log('🔍 After removing time suffix:', habitId);
           }
         }
 
         console.log('✅ Final habit ID:', habitId);
+        console.log('✅ Completion time:', completionTime);
 
         const targetValue = 1; // Default target value
         console.log('🚀 Calling markHabitCompleted:', {
           originalId: currentTask.id,
           finalHabitId: habitId,
+          completionTime,
           targetValue,
           taskType: currentTask.type
         });
 
         // Check if markHabitCompleted function exists
         if (typeof markHabitCompleted === 'function') {
-          result = await markHabitCompleted(habitId, targetValue);
+          result = await markHabitCompleted(habitId, targetValue, undefined, completionTime);
         } else {
           console.error('markHabitCompleted function not available');
           result = { success: false, error: 'Habit function not available' };
@@ -479,31 +485,7 @@ export default function TaskCompleteScreen() {
         <Ionicons name="chevron-back" size={26} color={taskColors.text} />
       </TouchableOpacity>
 
-      {/* Debug Test Button - Remove in production */}
-      {__DEV__ && task && (
-        <TouchableOpacity
-          style={{
-            position: 'absolute',
-            top: 80,
-            right: 20,
-            backgroundColor: 'red',
-            padding: 10,
-            borderRadius: 5,
-            zIndex: 1000
-          }}
-          onPress={() => {
-            console.log('=== TEST BUTTON PRESSED ===');
-            const currentTask = persistentTask.current || task;
-            console.log('Task data:', currentTask);
-            console.log('Persistent task:', persistentTask.current);
-            console.log('State task:', task);
-            handleComplete();
-          }}
-        >
-          <Text style={{ color: 'white', fontSize: 12 }}>TEST</Text>
-        </TouchableOpacity>
-      )}
-
+      
       {/* Icon */}
       <View style={styles.iconWrapper}>
         <Animated.View

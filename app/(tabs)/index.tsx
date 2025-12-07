@@ -43,8 +43,18 @@ export default function HomeScreen() {
   const colors = Colors[colorScheme ?? 'light'];
 
   // Import contexts for real data
-  const { habits, refreshHabits } = useHabit();
+  const { habits, habitHistory, refreshHabits } = useHabit();
   const { medicines, medicineHistory, refreshMedicines } = useMedicine();
+
+  // Store stable references to refresh functions
+  const refreshHabitsRef = useRef(refreshHabits);
+  const refreshMedicinesRef = useRef(refreshMedicines);
+
+  // Update refs when functions change
+  useEffect(() => {
+    refreshHabitsRef.current = refreshHabits;
+    refreshMedicinesRef.current = refreshMedicines;
+  }, [refreshHabits, refreshMedicines]);
 
   // Refresh data when screen comes into focus - but limit frequency to prevent loops
   const refreshTriggered = useRef(false);
@@ -67,8 +77,8 @@ export default function HomeScreen() {
         try {
           console.log('🔄 REFRESHING DATA ON FOCUS');
           await Promise.all([
-            refreshHabits(),
-            refreshMedicines()
+            refreshHabitsRef.current(),
+            refreshMedicinesRef.current()
           ]);
           console.log('✅ DATA REFRESH COMPLETED');
         } catch (error) {
@@ -84,7 +94,7 @@ export default function HomeScreen() {
       }, 5000);
 
       return () => clearTimeout(timeout);
-    }, [refreshHabits, refreshMedicines])
+    }, []) // Empty dependency array - use refs instead
   );
 
   
@@ -170,13 +180,36 @@ const generateTasksFromData = React.useCallback(() => {
 
   // Only log debug info in development and when data actually changes
   if (__DEV__ && (habits.length > 0 || medicines.length > 0)) {
-    console.log('📊 DEBUG: Data update - Habits:', habits.length, 'Medicines:', medicines.length, 'MedicineHistory:', medicineHistory.length, 'Date:', selectedDateStr);
+    console.log('📊 DEBUG: Data update - Habits:', habits.length, 'HabitHistory:', habitHistory.length, 'Medicines:', medicines.length, 'MedicineHistory:', medicineHistory.length, 'Date:', selectedDateStr);
   }
 
   // Function to create habit task
   const createHabitTask = (habit: any, selectedDateStr: string, todayStr: string): Task => {
     const isFutureDate = selectedDateStr > todayStr;
-    const isCompletedOnSelectedDate = !isFutureDate && (habit.completedDates?.includes(selectedDateStr) || false);
+
+    // Check if habit was completed on selected date using habit history
+    const isCompletedOnSelectedDate = !isFutureDate && habitHistory.some((history: any) => {
+      if (history.habitId === habit.habitId) {
+        const historyDate = new Date(history.date);
+        const historyDateStr = historyDate.getFullYear() + '-' +
+          String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
+          String(historyDate.getDate()).padStart(2, '0');
+        return historyDateStr === selectedDateStr && history.completed;
+      }
+      return false;
+    });
+
+    // Debug habit data structure
+    if (__DEV__) {
+      console.log(`🔍 Habit "${habit.habitName}" data:`, {
+        habitId: habit.habitId,
+        completedDates: habit.completedDates,
+        habitHistoryCount: habitHistory.filter((h: any) => h.habitId === habit.habitId).length,
+        relevantHistory: habitHistory.filter((h: any) => h.habitId === habit.habitId),
+        selectedDate: selectedDateStr,
+        isCompleted: isCompletedOnSelectedDate
+      });
+    }
 
     // Build subtitle with proper fallbacks for missing data
     const subtitleParts = [];
@@ -427,14 +460,32 @@ const generateTasksFromData = React.useCallback(() => {
             const indonesiaReminderTime = getIndonesiaTime(reminderTime);
 
             const isFutureDate = selectedDateStr > todayStr;
-            const isCompletedOnSelectedDate = !isFutureDate && (habit.completedDates?.includes(selectedDateStr) || false);
+
+            // Check if this specific habit was completed on selected date using history
+            const isCompletedOnSelectedDate = !isFutureDate && habitHistory.some((history: any) => {
+              if (history.habitId === habit.habitId) {
+                const historyDate = new Date(history.date);
+                const historyDateStr = historyDate.getFullYear() + '-' +
+                  String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
+                  String(historyDate.getDate()).padStart(2, '0');
+                const historyTime = historyDate.getHours().toString().padStart(2, '0') + ':' +
+                                  historyDate.getMinutes().toString().padStart(2, '0');
+                // For time-based habits, check if completion time matches the scheduled time
+                return historyDateStr === selectedDateStr &&
+                       historyTime === time &&
+                       history.completed;
+              }
+              return false;
+            });
+
             const toleranceTime = new Date(indonesiaReminderTime.getTime() + OVERDUE_TOLERANCE_MINUTES * 60 * 1000);
             const isOverdue = isToday && !isCompletedOnSelectedDate && now > toleranceTime;
             const isUpcoming = isToday && !isCompletedOnSelectedDate && now >= indonesiaReminderTime && now <= toleranceTime;
 
             // Debug logs (only in development)
             if (__DEV__) {
-              console.log(`Habit "${habit.habitName}" Debug:`, {
+              const relevantHistory = habitHistory.filter((h: any) => h.habitId === habit.habitId);
+              console.log(`⏰ Habit "${habit.habitName}" Debug:`, {
                 taskTime: time,
                 reminderTime: indonesiaReminderTime.toISOString(),
                 currentTime: now.toISOString(),
@@ -442,7 +493,13 @@ const generateTasksFromData = React.useCallback(() => {
                 isToday,
                 isCompletedOnSelectedDate,
                 isOverdue,
-                isUpcoming
+                isUpcoming,
+                habitId: habit.habitId,
+                completedDates: habit.completedDates,
+                selectedDate: selectedDateStr,
+                totalHistoryCount: habitHistory.length,
+                relevantHistoryCount: relevantHistory.length,
+                relevantHistory: relevantHistory
               });
             }
 
@@ -673,7 +730,7 @@ const generateTasksFromData = React.useCallback(() => {
     upcoming,
     timeBased: sortedTimeBased
   };
-}, [selectedDate, habits, medicines]);
+}, [selectedDate, habits, habitHistory, medicines, medicineHistory]);
 
   const tasks = useMemo(() => generateTasksFromData(), [generateTasksFromData]);
 

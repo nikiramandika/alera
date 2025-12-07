@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { habitService, habitHistoryService } from '@/services';
 import { notificationScheduler } from '@/services/notificationScheduler';
@@ -11,8 +11,8 @@ interface HabitContextType {
   addHabit: (habit: Omit<Habit, 'habitId' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
   updateHabit: (id: string, habit: Partial<Habit>) => Promise<{ success: boolean; error?: string }>;
   deleteHabit: (id: string) => Promise<{ success: boolean; error?: string }>;
-  markHabitCompleted: (habitId: string, value?: number, notes?: string) => Promise<{ success: boolean; error?: string }>;
-  markHabitIncomplete: (habitId: string) => Promise<{ success: boolean; error?: string }>;
+  markHabitCompleted: (habitId: string, value?: number, notes?: string, completionTime?: string) => Promise<{ success: boolean; error?: string }>;
+  markHabitIncomplete: (habitId: string, completionTime?: string) => Promise<{ success: boolean; error?: string }>;
   getTodayHabits: () => Habit[];
   getHabitProgress: (habitId: string) => number;
   refreshHabits: () => Promise<void>;
@@ -36,7 +36,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [loading, setLoading] = useState(true);
 
   // Fetch habits and history
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user) {
       setHabits([]);
       setHabitHistory([]);
@@ -58,7 +58,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   // Add new habit
   const addHabit = async (habit: Omit<Habit, 'habitId' | 'createdAt' | 'updatedAt'>) => {
@@ -183,11 +183,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Mark habit as completed
-  const markHabitCompleted = async (habitId: string, value?: number, notes?: string) => {
+  const markHabitCompleted = async (habitId: string, value?: number, notes?: string, completionTime?: string) => {
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
-      await habitHistoryService.markHabitCompleted(user.userId, habitId, value, notes);
+      await habitHistoryService.markHabitCompleted(user.userId, habitId, value, completionTime);
       await fetchData(); // Refresh data to update streaks
       return { success: true };
     } catch (error) {
@@ -197,11 +197,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Mark habit as incomplete (undo completion)
-  const markHabitIncomplete = async (habitId: string) => {
+  const markHabitIncomplete = async (habitId: string, completionTime?: string) => {
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
-      await habitHistoryService.markHabitIncomplete(user.userId, habitId);
+      await habitHistoryService.markHabitIncomplete(user.userId, habitId, completionTime);
       await fetchData(); // Refresh data to update streaks
       return { success: true };
     } catch (error) {
@@ -306,7 +306,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Fetch data when user changes
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [fetchData]);
 
   const value: HabitContextType = {
     habits,
