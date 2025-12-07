@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -28,6 +28,7 @@ interface Task {
   icon: string;
   color: string;
   type: 'habit' | 'medicine';
+  selectedDate?: string; // Added to pass selected date for completion
 }
 
 export default function HomeScreen() {
@@ -43,18 +44,49 @@ export default function HomeScreen() {
   const colors = Colors[colorScheme ?? 'light'];
 
   // Import contexts for real data
-  const { habits, habitHistory, refreshHabits } = useHabit();
-  const { medicines, medicineHistory, refreshMedicines } = useMedicine();
+  const { habits, refreshHabits, getHabitHistoryForDateRange } = useHabit();
+  const { medicines, refreshMedicines, getMedicineHistoryForDateRange } = useMedicine();
+
+  // State for extended history (for calendar view)
+  const [extendedHabitHistory, setExtendedHabitHistory] = useState<any[]>([]);
+  const [extendedMedicineHistory, setExtendedMedicineHistory] = useState<any[]>([]);
 
   // Store stable references to refresh functions
   const refreshHabitsRef = useRef(refreshHabits);
   const refreshMedicinesRef = useRef(refreshMedicines);
 
+  // Fetch extended habit history for calendar view
+  const fetchExtendedHabitHistory = useCallback(async () => {
+    try {
+      const today = new Date();
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - 7); // 7 days back
+      const endDate = new Date(today);
+      endDate.setDate(today.getDate() + 7); // 7 days forward
+
+      const [habitHist, medicineHist] = await Promise.all([
+        getHabitHistoryForDateRange(startDate, endDate),
+        getMedicineHistoryForDateRange(startDate, endDate)
+      ]);
+      setExtendedHabitHistory(habitHist);
+      setExtendedMedicineHistory(medicineHist);
+    } catch (error) {
+      console.error('Error fetching extended history:', error);
+    }
+  }, [getHabitHistoryForDateRange, getMedicineHistoryForDateRange]);
+
+  // Fetch extended history when component mounts or habits change
+  useEffect(() => {
+    if (habits.length > 0) {
+      fetchExtendedHabitHistory();
+    }
+  }, [habits.length, fetchExtendedHabitHistory]);
+
   // Update refs when functions change
   useEffect(() => {
     refreshHabitsRef.current = refreshHabits;
     refreshMedicinesRef.current = refreshMedicines;
-  }, [refreshHabits, refreshMedicines]);
+  }, [refreshHabits, refreshMedicines, fetchExtendedHabitHistory]);
 
   // Refresh data when screen comes into focus - but limit frequency to prevent loops
   const refreshTriggered = useRef(false);
@@ -78,7 +110,8 @@ export default function HomeScreen() {
           console.log('🔄 REFRESHING DATA ON FOCUS');
           await Promise.all([
             refreshHabitsRef.current(),
-            refreshMedicinesRef.current()
+            refreshMedicinesRef.current(),
+            fetchExtendedHabitHistory()
           ]);
           console.log('✅ DATA REFRESH COMPLETED');
         } catch (error) {
@@ -180,7 +213,7 @@ const generateTasksFromData = React.useCallback(() => {
 
   // Only log debug info in development and when data actually changes
   if (__DEV__ && (habits.length > 0 || medicines.length > 0)) {
-    console.log('📊 DEBUG: Data update - Habits:', habits.length, 'HabitHistory:', habitHistory.length, 'Medicines:', medicines.length, 'MedicineHistory:', medicineHistory.length, 'Date:', selectedDateStr);
+    console.log('📊 DEBUG: Data update - Habits:', habits.length, 'HabitHistory:', extendedHabitHistory.length, 'Medicines:', medicines.length, 'MedicineHistory:', extendedMedicineHistory.length, 'Date:', selectedDateStr);
   }
 
   // Function to create habit task
@@ -188,7 +221,7 @@ const generateTasksFromData = React.useCallback(() => {
     const isFutureDate = selectedDateStr > todayStr;
 
     // Check if habit was completed on selected date using habit history
-    const isCompletedOnSelectedDate = !isFutureDate && habitHistory.some((history: any) => {
+    const isCompletedOnSelectedDate = !isFutureDate && extendedHabitHistory.some((history: any) => {
       if (history.habitId === habit.habitId) {
         const historyDate = new Date(history.date);
         const historyDateStr = historyDate.getFullYear() + '-' +
@@ -204,8 +237,8 @@ const generateTasksFromData = React.useCallback(() => {
       console.log(`🔍 Habit "${habit.habitName}" data:`, {
         habitId: habit.habitId,
         completedDates: habit.completedDates,
-        habitHistoryCount: habitHistory.filter((h: any) => h.habitId === habit.habitId).length,
-        relevantHistory: habitHistory.filter((h: any) => h.habitId === habit.habitId),
+        habitHistoryCount: extendedHabitHistory.filter((h: any) => h.habitId === habit.habitId).length,
+        relevantHistory: extendedHabitHistory.filter((h: any) => h.habitId === habit.habitId),
         selectedDate: selectedDateStr,
         isCompleted: isCompletedOnSelectedDate
       });
@@ -270,7 +303,7 @@ const generateTasksFromData = React.useCallback(() => {
     const isFutureDate = selectedDateStr > todayStr;
 
     // Check if medicine was taken on selected date using medicine history
-    const isTakenOnSelectedDate = !isFutureDate && medicineHistory.some((history: any) => {
+    const isTakenOnSelectedDate = !isFutureDate && extendedMedicineHistory.some((history: any) => {
       if (history.reminderId === medicine.reminderId) {
         const historyDate = new Date(history.scheduledTime);
         const historyDateStr = historyDate.getFullYear() + '-' +
@@ -462,7 +495,7 @@ const generateTasksFromData = React.useCallback(() => {
             const isFutureDate = selectedDateStr > todayStr;
 
             // Check if this specific habit was completed on selected date using history
-            const isCompletedOnSelectedDate = !isFutureDate && habitHistory.some((history: any) => {
+            const isCompletedOnSelectedDate = !isFutureDate && extendedHabitHistory.some((history: any) => {
               if (history.habitId === habit.habitId) {
                 const historyDate = new Date(history.date);
                 const historyDateStr = historyDate.getFullYear() + '-' +
@@ -484,7 +517,7 @@ const generateTasksFromData = React.useCallback(() => {
 
             // Debug logs (only in development)
             if (__DEV__) {
-              const relevantHistory = habitHistory.filter((h: any) => h.habitId === habit.habitId);
+              const relevantHistory = extendedHabitHistory.filter((h: any) => h.habitId === habit.habitId);
               console.log(`⏰ Habit "${habit.habitName}" Debug:`, {
                 taskTime: time,
                 reminderTime: indonesiaReminderTime.toISOString(),
@@ -497,7 +530,7 @@ const generateTasksFromData = React.useCallback(() => {
                 habitId: habit.habitId,
                 completedDates: habit.completedDates,
                 selectedDate: selectedDateStr,
-                totalHistoryCount: habitHistory.length,
+                totalHistoryCount: extendedHabitHistory.length,
                 relevantHistoryCount: relevantHistory.length,
                 relevantHistory: relevantHistory
               });
@@ -612,7 +645,7 @@ const generateTasksFromData = React.useCallback(() => {
             const isFutureDate = selectedDateStr > todayStr;
 
             // Check if this specific medicine dose was taken using history
-            const isTakenOnSelectedDate = !isFutureDate && medicineHistory.some((history: any) => {
+            const isTakenOnSelectedDate = !isFutureDate && extendedMedicineHistory.some((history: any) => {
               if (history.reminderId === medicine.reminderId) {
                 const historyDate = new Date(history.scheduledTime);
                 const historyDateStr = historyDate.getFullYear() + '-' +
@@ -641,8 +674,8 @@ const generateTasksFromData = React.useCallback(() => {
                 isOverdue,
                 isUpcoming,
                 medicineId: medicine.reminderId,
-                totalHistoryCount: medicineHistory.length,
-                relevantHistoryCount: medicineHistory.filter((h: any) => h.reminderId === medicine.reminderId).length
+                totalHistoryCount: extendedMedicineHistory.length,
+                relevantHistoryCount: extendedMedicineHistory.filter((h: any) => h.reminderId === medicine.reminderId).length
               });
             }
 
@@ -730,7 +763,7 @@ const generateTasksFromData = React.useCallback(() => {
     upcoming,
     timeBased: sortedTimeBased
   };
-}, [selectedDate, habits, habitHistory, medicines, medicineHistory]);
+}, [selectedDate, habits, medicines, extendedMedicineHistory, extendedHabitHistory]);
 
   const tasks = useMemo(() => generateTasksFromData(), [generateTasksFromData]);
 
@@ -826,9 +859,16 @@ const generateTasksFromData = React.useCallback(() => {
   const handleTaskClick = (task: Task) => {
     console.log('Task clicked:', task); // Debug log
     if (task) {
-      const taskData = JSON.stringify(task);
+      // Include selectedDate in task data for proper completion date handling
+      const taskWithDate = {
+        ...task,
+        selectedDate: selectedDate.toISOString() // Include selected date for completion
+      };
+
+      const taskData = JSON.stringify(taskWithDate);
       console.log('Task data string length:', taskData.length); // Debug log
       console.log('Task data preview:', taskData.substring(0, 100) + '...'); // Debug log
+      console.log('Selected date sent:', selectedDate.toISOString()); // Debug log
 
       // Navigate to task completion screen with task data as modal
       router.push({

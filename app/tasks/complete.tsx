@@ -280,6 +280,7 @@ export default function TaskCompleteScreen() {
         // Extract medicine ID from task ID with proper parsing
         let medicineId = currentTask.id;
         console.log('🔍 Original task ID:', currentTask.id);
+        console.log('🔍 Selected date from task:', currentTask.selectedDate);
 
         // Step 1: Remove 'medicine-' prefix if present
         if (medicineId.startsWith('medicine-')) {
@@ -300,11 +301,19 @@ export default function TaskCompleteScreen() {
 
         console.log('✅ Final medicine ID:', medicineId);
 
-        const scheduledTime = new Date();
+        // Use selected date for scheduled time, fallback to current date
+        let scheduledTime = new Date();
+        if (currentTask.selectedDate) {
+          scheduledTime = new Date(currentTask.selectedDate);
+          console.log('🔍 Using selected date for scheduled time:', scheduledTime.toISOString());
+        }
+
         if (currentTask.time) {
           const [hours, minutes] = currentTask.time.split(':').map(Number);
           scheduledTime.setHours(hours, minutes, 0, 0);
         }
+
+        console.log('✅ Final scheduled time:', scheduledTime.toISOString());
 
         console.log('🚀 Calling markMedicineTaken:', {
           originalId: currentTask.id,
@@ -316,10 +325,14 @@ export default function TaskCompleteScreen() {
           medicineIdLength: medicineId.length
         });
 
+        // Use current date as actualTime (when user actually takes the medicine)
+        const actualTime = new Date();
+
         // Check if markMedicineTaken function exists
         if (typeof markMedicineTaken === 'function') {
-          result = await markMedicineTaken(medicineId, scheduledTime);
+          result = await markMedicineTaken(medicineId, scheduledTime, actualTime);
           console.log('📊 markMedicineTaken result:', result);
+          console.log('📊 Used scheduledTime:', scheduledTime.toISOString(), 'actualTime:', actualTime.toISOString());
         } else {
           console.error('❌ markMedicineTaken function not available');
           result = { success: false, error: 'Medicine function not available' };
@@ -332,7 +345,7 @@ export default function TaskCompleteScreen() {
           // Try without any processing (use original ID)
           const originalId = currentTask.id;
           console.log('🔄 Trying with original ID:', originalId);
-          result = await markMedicineTaken(originalId, scheduledTime);
+          result = await markMedicineTaken(originalId, scheduledTime, actualTime);
           console.log('📊 Result with original ID:', result);
         }
       } else if (currentTask.type === 'habit') {
@@ -341,6 +354,7 @@ export default function TaskCompleteScreen() {
         let completionTime: string | undefined;
 
         console.log('🔍 Original task ID:', currentTask.id);
+        console.log('🔍 Selected date from task:', currentTask.selectedDate);
 
         // Step 1: Remove 'habit-' prefix if present
         if (habitId.startsWith('habit-')) {
@@ -361,21 +375,32 @@ export default function TaskCompleteScreen() {
           }
         }
 
+        // Get completion date from task data (for past dates) or use current date
+        let completionDate: Date | undefined;
+        if (currentTask.selectedDate) {
+          completionDate = new Date(currentTask.selectedDate);
+          console.log('🔍 Using completion date from task:', completionDate.toISOString());
+        } else {
+          console.log('🔍 No selected date provided, using current date');
+        }
+
         console.log('✅ Final habit ID:', habitId);
         console.log('✅ Completion time:', completionTime);
+        console.log('✅ Completion date:', completionDate?.toISOString());
 
         const targetValue = 1; // Default target value
         console.log('🚀 Calling markHabitCompleted:', {
           originalId: currentTask.id,
           finalHabitId: habitId,
           completionTime,
+          completionDate: completionDate?.toISOString(),
           targetValue,
           taskType: currentTask.type
         });
 
         // Check if markHabitCompleted function exists
         if (typeof markHabitCompleted === 'function') {
-          result = await markHabitCompleted(habitId, targetValue, undefined, completionTime);
+          result = await markHabitCompleted(habitId, targetValue, undefined, completionTime, completionDate);
         } else {
           console.error('markHabitCompleted function not available');
           result = { success: false, error: 'Habit function not available' };

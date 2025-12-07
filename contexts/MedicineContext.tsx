@@ -11,11 +11,12 @@ interface MedicineContextType {
   addMedicine: (medicine: Omit<MedicineReminder, 'reminderId' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
   updateMedicine: (id: string, medicine: Partial<MedicineReminder>) => Promise<{ success: boolean; error?: string }>;
   deleteMedicine: (id: string) => Promise<{ success: boolean; error?: string }>;
-  markMedicineTaken: (reminderId: string, scheduledTime: Date) => Promise<{ success: boolean; error?: string }>;
+  markMedicineTaken: (reminderId: string, scheduledTime: Date, actualTime?: Date) => Promise<{ success: boolean; error?: string }>;
   markMedicineSkipped: (reminderId: string, scheduledTime: Date) => Promise<{ success: boolean; error?: string }>;
   getTodaySchedule: () => MedicineReminder[];
   getOverdueMeds: () => MedicineReminder[];
   refreshMedicines: () => Promise<void>;
+  getMedicineHistoryForDateRange: (startDate: Date, endDate: Date) => Promise<MedicineHistory[]>;
 }
 
 const MedicineContext = createContext<MedicineContextType | undefined>(undefined);
@@ -183,11 +184,11 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Mark medicine as taken
-  const markMedicineTaken = async (reminderId: string, scheduledTime: Date) => {
+  const markMedicineTaken = async (reminderId: string, scheduledTime: Date, actualTime?: Date) => {
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
-      await medicineHistoryService.markMedicineTaken(user.userId, reminderId, scheduledTime);
+      await medicineHistoryService.markMedicineTaken(user.userId, reminderId, scheduledTime, actualTime);
       await fetchData(); // Refresh data to update stock
       return { success: true };
     } catch (error) {
@@ -245,6 +246,17 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await fetchData();
   };
 
+  // Get medicine history for date range
+  const getMedicineHistoryForDateRange = async (startDate: Date, endDate: Date): Promise<MedicineHistory[]> => {
+    if (!user) return [];
+    try {
+      return await medicineHistoryService.getMedicineHistoryForDateRange(user.userId, startDate, endDate);
+    } catch (error) {
+      console.error('Error getting medicine history for date range:', error);
+      return [];
+    }
+  };
+
   // Fetch data when user changes
   useEffect(() => {
     fetchData();
@@ -262,6 +274,7 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     getTodaySchedule,
     getOverdueMeds,
     refreshMedicines,
+    getMedicineHistoryForDateRange,
   };
 
   return (

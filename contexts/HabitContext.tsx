@@ -11,12 +11,14 @@ interface HabitContextType {
   addHabit: (habit: Omit<Habit, 'habitId' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string }>;
   updateHabit: (id: string, habit: Partial<Habit>) => Promise<{ success: boolean; error?: string }>;
   deleteHabit: (id: string) => Promise<{ success: boolean; error?: string }>;
-  markHabitCompleted: (habitId: string, value?: number, notes?: string, completionTime?: string) => Promise<{ success: boolean; error?: string }>;
+  markHabitCompleted: (habitId: string, value?: number, notes?: string, completionTime?: string, completionDate?: Date) => Promise<{ success: boolean; error?: string }>;
   markHabitIncomplete: (habitId: string, completionTime?: string) => Promise<{ success: boolean; error?: string }>;
   getTodayHabits: () => Habit[];
   getHabitProgress: (habitId: string) => number;
   refreshHabits: () => Promise<void>;
   getTodayProgress: () => number;
+  getHabitHistoryForDate: (date: Date) => Promise<HabitHistory[]>;
+  getHabitHistoryForDateRange: (startDate: Date, endDate: Date) => Promise<HabitHistory[]>;
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -183,11 +185,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Mark habit as completed
-  const markHabitCompleted = async (habitId: string, value?: number, notes?: string, completionTime?: string) => {
+  const markHabitCompleted = async (habitId: string, value?: number, notes?: string, completionTime?: string, completionDate?: Date) => {
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
-      await habitHistoryService.markHabitCompleted(user.userId, habitId, value, completionTime);
+      await habitHistoryService.markHabitCompleted(user.userId, habitId, value, completionTime, completionDate);
       await fetchData(); // Refresh data to update streaks
       return { success: true };
     } catch (error) {
@@ -303,6 +305,28 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await fetchData();
   };
 
+  // Get habit history for specific date
+  const getHabitHistoryForDate = async (date: Date): Promise<HabitHistory[]> => {
+    if (!user) return [];
+    try {
+      return await habitHistoryService.getHabitHistoryForDate(user.userId, date);
+    } catch (error) {
+      console.error('Error getting habit history for date:', error);
+      return [];
+    }
+  };
+
+  // Get habit history for date range
+  const getHabitHistoryForDateRange = async (startDate: Date, endDate: Date): Promise<HabitHistory[]> => {
+    if (!user) return [];
+    try {
+      return await habitHistoryService.getHabitHistoryForDateRange(user.userId, startDate, endDate);
+    } catch (error) {
+      console.error('Error getting habit history for date range:', error);
+      return [];
+    }
+  };
+
   // Fetch data when user changes
   useEffect(() => {
     fetchData();
@@ -321,6 +345,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     getHabitProgress,
     refreshHabits,
     getTodayProgress,
+    getHabitHistoryForDate,
+    getHabitHistoryForDateRange,
   };
 
   return (

@@ -238,12 +238,12 @@ export const medicineHistoryService = {
   },
 
   // Mark medicine as taken
-  async markMedicineTaken(userId: string, medicineId: string, scheduledTime: Date): Promise<void> {
+  async markMedicineTaken(userId: string, medicineId: string, scheduledTime: Date, actualTime?: Date): Promise<void> {
     try {
       await this.addMedicineHistory(userId, medicineId, {
         medicineId,
         scheduledTime,
-        actualTime: new Date(),
+        actualTime: actualTime || new Date(), // Use provided actualTime or current time
         status: 'taken'
       });
     } catch (error) {
@@ -297,6 +297,27 @@ export const medicineHistoryService = {
       };
     } catch (error) {
       console.error('Error getting adherence stats:', error);
+      throw error;
+    }
+  },
+
+  // Get medicine history for date range (for calendar view)
+  async getMedicineHistoryForDateRange(userId: string, startDate: Date, endDate: Date): Promise<MedicineHistory[]> {
+    try {
+      const medicines = await medicineService.getMedicines(userId);
+      const allHistory: MedicineHistory[] = [];
+
+      for (const medicine of medicines) {
+        const history = await this.getMedicineHistory(userId, medicine.reminderId);
+        const rangeHistory = history.filter(h =>
+          h.scheduledTime >= startDate && h.scheduledTime <= endDate
+        );
+        allHistory.push(...rangeHistory);
+      }
+
+      return allHistory.sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
+    } catch (error) {
+      console.error('Error getting medicine history for date range:', error);
       throw error;
     }
   }
