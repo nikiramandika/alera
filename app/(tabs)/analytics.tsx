@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
+import { LineChart, PieChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -39,9 +39,6 @@ export default function AnalyticsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('week');
   const [selectedTab, setSelectedTab] = useState<'overview' | 'medicines' | 'habits'>('overview');
   const [weeklyData, setWeeklyData] = useState<any>(null);
-  const [monthlyData, setMonthlyData] = useState<any>(null);
-  const [healthScore, setHealthScore] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   // Local state for extended history (for analytics)
   const [extendedMedicineHistory, setExtendedMedicineHistory] = useState<any[]>([]);
@@ -61,7 +58,7 @@ export default function AnalyticsScreen() {
       damping: 15,
       stiffness: 100,
     }));
-  }, []);
+  }, [headerScale, cardTranslateY]);
 
   // Header animation
   const headerAnimatedStyle = useAnimatedStyle(() => ({
@@ -77,53 +74,60 @@ export default function AnalyticsScreen() {
   useEffect(() => {
     const fetchAnalyticsData = async () => {
       if (!user) {
-        setLoading(false);
         return;
       }
 
       try {
-        setLoading(true);
-
-        // Fetch data for the current week for better analytics
         const today = new Date();
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
-        endOfWeek.setHours(23, 59, 59, 999);
+        let startDate = new Date(today);
+        let endDate = new Date(today);
 
-        // Get extended history for the week
-        const [weekMedicineHistory, weekHabitHistory, weekly, monthly, score] = await Promise.all([
-          medicineHistoryService.getMedicineHistoryForDateRange(user.userId, startOfWeek, endOfWeek),
-          habitHistoryService.getHabitHistoryForDateRange(user.userId, startOfWeek, endOfWeek),
-          analyticsService.getWeeklyAnalytics(user.userId),
-          analyticsService.getMonthlyAnalytics(user.userId),
-          analyticsService.getHealthScore(user.userId)
+        // Set date range based on selected period
+        switch (selectedPeriod) {
+          case 'week':
+            startDate.setDate(today.getDate() - today.getDay() + 1); // Monday
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6); // Sunday
+            break;
+          case 'month':
+            startDate.setDate(1); // First day of month
+            endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of month
+            break;
+          case 'year':
+            startDate.setMonth(0, 1); // January 1st
+            endDate.setMonth(11, 31); // December 31st
+            break;
+        }
+
+        endDate.setHours(23, 59, 59, 999);
+
+        // Get history for the selected period
+        const [periodMedicineHistory, periodHabitHistory, weekly] = await Promise.all([
+          medicineHistoryService.getMedicineHistoryForDateRange(user.userId, startDate, endDate),
+          habitHistoryService.getHabitHistoryForDateRange(user.userId, startDate, endDate),
+          analyticsService.getWeeklyAnalytics(user.userId)
         ]);
 
         // Store extended history locally for charts
-        setExtendedMedicineHistory(weekMedicineHistory);
-        setExtendedHabitHistory(weekHabitHistory);
-
+        setExtendedMedicineHistory(periodMedicineHistory);
+        setExtendedHabitHistory(periodHabitHistory);
         setWeeklyData(weekly);
-        setMonthlyData(monthly);
-        setHealthScore(score);
 
-        console.log('📊 Analytics Data:', {
-          weekMedicineHistory: weekMedicineHistory.length,
-          weekHabitHistory: weekHabitHistory.length,
-          weeklyAnalytics: weekly
+        console.log(`📊 Analytics Data (${selectedPeriod}):`, {
+          periodMedicineHistory: periodMedicineHistory.length,
+          periodHabitHistory: periodHabitHistory.length,
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          selectedPeriod
         });
 
       } catch (error) {
         console.error('Error fetching analytics data:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchAnalyticsData();
-  }, [user]);
+  }, [user, selectedPeriod]);
 
   // Get real adherence data
   const getMedicationAdherence = () => {
@@ -155,11 +159,10 @@ export default function AnalyticsScreen() {
   };
 
   
-  const getWeeklyMedicationData = () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const getMedicationData = () => {
+    let labels: string[] = [];
+    let data: number[] = [];
     const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Start from Monday
 
     // Use extended history if available, otherwise fallback to context history
     const historyToUse = extendedMedicineHistory.length > 0 ? extendedMedicineHistory : medicineHistory;
@@ -168,89 +171,123 @@ export default function AnalyticsScreen() {
       extendedCount: extendedMedicineHistory.length,
       contextCount: medicineHistory.length,
       usingExtended: extendedMedicineHistory.length > 0,
+      selectedPeriod,
       sampleData: historyToUse.slice(0, 3)
     });
 
-    // Get real medicine data for the week
-    const data = days.map((day, index) => {
-      const currentDate = new Date(startOfWeek);
-      currentDate.setDate(startOfWeek.getDate() + index);
+    // Generate labels and data based on selected period
+    switch (selectedPeriod) {
+      case 'week':
+        labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay() + 1);
 
-      // Count medicines taken on this day from history
-      const dayStart = new Date(currentDate);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(currentDate);
-      dayEnd.setHours(23, 59, 59, 999);
+        data = labels.map((_, index) => {
+          const currentDate = new Date(startOfWeek);
+          currentDate.setDate(startOfWeek.getDate() + index);
+          return countMedicinesForDate(historyToUse, currentDate);
+        });
+        break;
 
-      const dayTaken = historyToUse.filter(m => {
-        // Handle multiple possible date fields
-        let takenDate = null;
-
-        if (m.scheduledTime) {
-          takenDate = m.scheduledTime instanceof Date ? m.scheduledTime : new Date(m.scheduledTime);
-        } else if (m.timestamp) {
-          takenDate = m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp);
-        } else if (m.createdAt) {
-          takenDate = m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt);
-        } else if (m.date) {
-          takenDate = m.date instanceof Date ? m.date : new Date(m.date);
+      case 'month':
+        // Show weekly data for month
+        const weeksInMonth = Math.ceil(today.getDate() / 7);
+        for (let i = 1; i <= weeksInMonth; i++) {
+          labels.push(`Week ${i}`);
         }
 
-        if (!takenDate || isNaN(takenDate.getTime())) {
-          console.log('❌ [DEBUG] Invalid date for medicine:', { m, takenDate });
-          return false;
+        for (let i = 0; i < weeksInMonth; i++) {
+          const weekStart = new Date(today.getFullYear(), today.getMonth(), i * 7 + 1);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+
+          const weekCount = historyToUse.filter(m => {
+            const takenDate = getMedicineDate(m);
+            if (!takenDate) return false;
+            return takenDate >= weekStart && takenDate <= weekEnd && (m.status === 'taken' || m.completed === true);
+          }).length;
+          data.push(weekCount);
         }
+        break;
 
-        const isInRange = takenDate >= dayStart && takenDate <= dayEnd;
-        const isTaken = m.status === 'taken' || m.completed === true;
+      case 'year':
+        // Show monthly data for year
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        labels = months;
 
-        // Log first few matches for debugging
-        if (isInRange && isTaken && index < 2) {
-          console.log('✅ [DEBUG] Found medicine taken:', {
-            day,
-            takenDate,
-            medicine: m.medicineName || 'Unknown',
-            status: m.status,
-            completed: m.completed
-          });
+        for (let month = 0; month < 12; month++) {
+          const monthStart = new Date(today.getFullYear(), month, 1);
+          const monthEnd = new Date(today.getFullYear(), month + 1, 0);
+
+          const monthCount = historyToUse.filter(m => {
+            const takenDate = getMedicineDate(m);
+            if (!takenDate) return false;
+            return takenDate >= monthStart && takenDate <= monthEnd && (m.status === 'taken' || m.completed === true);
+          }).length;
+          data.push(monthCount);
         }
+        break;
+    }
 
-        return isInRange && isTaken;
-      }).length;
-
-      return dayTaken;
-    });
-
-    console.log('📈 [DEBUG] Weekly Medicine Data:', data);
+    console.log('📈 [DEBUG] Medication Data:', { labels, data, selectedPeriod });
 
     // If all data is 0, add some sample data for demonstration
     if (data.every(value => value === 0) && medicines.length > 0) {
       console.log('📊 [INFO] No real medicine data found, adding sample data for demonstration');
-      return {
-        labels: days,
-        datasets: [{
-          data: [3, 4, 2, 5, 3, 4, 2], // Sample data
-          color: (opacity = 1) => `rgba(244, 123, 159, ${opacity})`,
-          strokeWidth: 2,
-        }]
-      };
+      const sampleData = selectedPeriod === 'year'
+        ? [15, 22, 18, 25, 20, 28, 24, 30, 26, 22, 18, 20]
+        : selectedPeriod === 'month'
+        ? [8, 12, 15, 10]
+        : [3, 4, 2, 5, 3, 4, 2];
+      data = sampleData;
     }
 
     return {
-      labels: days,
+      labels,
       datasets: [{
-        data: data,
+        data,
         color: (opacity = 1) => `rgba(244, 123, 159, ${opacity})`,
         strokeWidth: 2,
       }]
     };
   };
 
-  const getWeeklyHabitData = () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  // Helper function to get date from medicine record
+  const getMedicineDate = (medicine: any) => {
+    if (medicine.scheduledTime) {
+      return medicine.scheduledTime instanceof Date ? medicine.scheduledTime : new Date(medicine.scheduledTime);
+    } else if (medicine.timestamp) {
+      return medicine.timestamp instanceof Date ? medicine.timestamp : new Date(medicine.timestamp);
+    } else if (medicine.createdAt) {
+      return medicine.createdAt instanceof Date ? medicine.createdAt : new Date(medicine.createdAt);
+    } else if (medicine.date) {
+      return medicine.date instanceof Date ? medicine.date : new Date(medicine.date);
+    }
+    return null;
+  };
+
+  // Helper function to count medicines for a specific date
+  const countMedicinesForDate = (history: any[], date: Date) => {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    return history.filter(m => {
+      const takenDate = getMedicineDate(m);
+      if (!takenDate || isNaN(takenDate.getTime())) {
+        return false;
+      }
+      const isInRange = takenDate >= dayStart && takenDate <= dayEnd;
+      const isTaken = m.status === 'taken' || m.completed === true;
+      return isInRange && isTaken;
+    }).length;
+  };
+
+  const getHabitData = () => {
+    let labels: string[] = [];
+    let data: number[] = [];
     const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Start from Monday
 
     // Use extended history if available, otherwise fallback to context history
     const historyToUse = extendedHabitHistory.length > 0 ? extendedHabitHistory : habitHistory;
@@ -259,82 +296,117 @@ export default function AnalyticsScreen() {
       extendedCount: extendedHabitHistory.length,
       contextCount: habitHistory.length,
       usingExtended: extendedHabitHistory.length > 0,
+      selectedPeriod,
       sampleData: historyToUse.slice(0, 3)
     });
 
-    // Get real habit data for the week
-    const data = days.map((day, index) => {
-      const currentDate = new Date(startOfWeek);
-      currentDate.setDate(startOfWeek.getDate() + index);
+    // Generate labels and data based on selected period
+    switch (selectedPeriod) {
+      case 'week':
+        labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay() + 1);
 
-      // Count habits completed on this day from history
-      const dayStart = new Date(currentDate);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(currentDate);
-      dayEnd.setHours(23, 59, 59, 999);
+        data = labels.map((_, index) => {
+          const currentDate = new Date(startOfWeek);
+          currentDate.setDate(startOfWeek.getDate() + index);
+          return countHabitsForDate(historyToUse, currentDate);
+        });
+        break;
 
-      const dayCompleted = historyToUse.filter(h => {
-        // Handle multiple possible date fields
-        let completedDate = null;
-
-        if (h.date) {
-          completedDate = h.date instanceof Date ? h.date : new Date(h.date);
-        } else if (h.timestamp) {
-          completedDate = h.timestamp instanceof Date ? h.timestamp : new Date(h.timestamp);
-        } else if (h.createdAt) {
-          completedDate = h.createdAt instanceof Date ? h.createdAt : new Date(h.createdAt);
-        } else if (h.completedAt) {
-          completedDate = h.completedAt instanceof Date ? h.completedAt : new Date(h.completedAt);
+      case 'month':
+        // Show weekly data for month
+        const weeksInMonth = Math.ceil(today.getDate() / 7);
+        for (let i = 1; i <= weeksInMonth; i++) {
+          labels.push(`Week ${i}`);
         }
 
-        if (!completedDate || isNaN(completedDate.getTime())) {
-          console.log('❌ [DEBUG] Invalid date for habit:', { h, completedDate });
-          return false;
+        for (let i = 0; i < weeksInMonth; i++) {
+          const weekStart = new Date(today.getFullYear(), today.getMonth(), i * 7 + 1);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+
+          const weekCount = historyToUse.filter(h => {
+            const completedDate = getHabitDate(h);
+            if (!completedDate) return false;
+            return completedDate >= weekStart && completedDate <= weekEnd && (h.completed === true || h.status === 'completed');
+          }).length;
+          data.push(weekCount);
         }
+        break;
 
-        const isInRange = completedDate >= dayStart && completedDate <= dayEnd;
-        const isCompleted = h.completed === true || h.status === 'completed';
+      case 'year':
+        // Show monthly data for year
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        labels = months;
 
-        // Log first few matches for debugging
-        if (isInRange && isCompleted && index < 2) {
-          console.log('✅ [DEBUG] Found habit completed:', {
-            day,
-            completedDate,
-            habit: h.habitName || 'Unknown',
-            completed: h.completed,
-            status: h.status
-          });
+        for (let month = 0; month < 12; month++) {
+          const monthStart = new Date(today.getFullYear(), month, 1);
+          const monthEnd = new Date(today.getFullYear(), month + 1, 0);
+
+          const monthCount = historyToUse.filter(h => {
+            const completedDate = getHabitDate(h);
+            if (!completedDate) return false;
+            return completedDate >= monthStart && completedDate <= monthEnd && (h.completed === true || h.status === 'completed');
+          }).length;
+          data.push(monthCount);
         }
+        break;
+    }
 
-        return isInRange && isCompleted;
-      }).length;
-
-      return dayCompleted;
-    });
-
-    console.log('📈 [DEBUG] Weekly Habit Data:', data);
+    console.log('📈 [DEBUG] Habit Data:', { labels, data, selectedPeriod });
 
     // If all data is 0, add some sample data for demonstration
     if (data.every(value => value === 0) && habits.length > 0) {
       console.log('📊 [INFO] No real habit data found, adding sample data for demonstration');
-      return {
-        labels: days,
-        datasets: [{
-          data: [2, 3, 4, 2, 5, 3, 4], // Sample data
-          color: (opacity = 1) => `rgba(78, 205, 196, ${opacity})`,
-          strokeWidth: 2,
-        }]
-      };
+      const sampleData = selectedPeriod === 'year'
+        ? [25, 30, 28, 35, 32, 38, 34, 40, 36, 32, 28, 30]
+        : selectedPeriod === 'month'
+        ? [18, 22, 25, 20]
+        : [2, 3, 4, 2, 5, 3, 4];
+      data = sampleData;
     }
 
     return {
-      labels: days,
+      labels,
       datasets: [{
-        data: data,
+        data,
         color: (opacity = 1) => `rgba(78, 205, 196, ${opacity})`,
         strokeWidth: 2,
       }]
     };
+  };
+
+  // Helper function to get date from habit record
+  const getHabitDate = (habit: any) => {
+    if (habit.date) {
+      return habit.date instanceof Date ? habit.date : new Date(habit.date);
+    } else if (habit.timestamp) {
+      return habit.timestamp instanceof Date ? habit.timestamp : new Date(habit.timestamp);
+    } else if (habit.createdAt) {
+      return habit.createdAt instanceof Date ? habit.createdAt : new Date(habit.createdAt);
+    } else if (habit.completedAt) {
+      return habit.completedAt instanceof Date ? habit.completedAt : new Date(habit.completedAt);
+    }
+    return null;
+  };
+
+  // Helper function to count habits for a specific date
+  const countHabitsForDate = (history: any[], date: Date) => {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    return history.filter(h => {
+      const completedDate = getHabitDate(h);
+      if (!completedDate || isNaN(completedDate.getTime())) {
+        return false;
+      }
+      const isInRange = completedDate >= dayStart && completedDate <= dayEnd;
+      const isCompleted = h.completed === true || h.status === 'completed';
+      return isInRange && isCompleted;
+    }).length;
   };
 
   const getMedicationTypeData = () => {
@@ -474,12 +546,12 @@ export default function AnalyticsScreen() {
             labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
             datasets: [
               {
-                data: getWeeklyMedicationData().datasets[0].data,
+                data: getMedicationData().datasets[0].data,
                 color: (opacity = 1) => `rgba(244, 123, 159, ${opacity})`,
                 strokeWidth: 3,
               },
               {
-                data: getWeeklyHabitData().datasets[0].data,
+                data: getHabitData().datasets[0].data,
                 color: (opacity = 1) => `rgba(78, 205, 196, ${opacity})`,
                 strokeWidth: 3,
               }
@@ -571,7 +643,7 @@ export default function AnalyticsScreen() {
           Medication Adherence
         </Text>
         <LineChart
-          data={getWeeklyMedicationData()}
+          data={getMedicationData()}
           width={screenWidth - Spacing.lg * 2}
           height={220}
           chartConfig={chartConfig}
@@ -658,7 +730,7 @@ export default function AnalyticsScreen() {
           Habit Completion
         </Text>
         <LineChart
-          data={getWeeklyHabitData()}
+          data={getHabitData()}
           width={screenWidth - Spacing.lg * 2}
           height={220}
           chartConfig={chartConfig}
