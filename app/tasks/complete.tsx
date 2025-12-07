@@ -510,7 +510,7 @@ export default function TaskCompleteScreen() {
     ...task, // include all backend fields
     title: task.name || task.title || 'Task',
     subtitle: task.description || task.subtitle || 'Complete your task',
-    icon: task.icon || task.emoji || (task.type === 'medicine' ? '💊' : '⭐'),
+    icon: task.type === 'medicine' ? '💊' : (task.icon || task.emoji || '⭐'),
   };
 
   const handleBack = () => {
