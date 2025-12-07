@@ -172,7 +172,7 @@ export const habitService = {
         }
         endDate.setHours(23, 59, 59, 999);
 
-        if (endDate < todayDate) {
+        if (endDate <= todayDate) {
           console.log(`Habit ${habit.habitName} has expired on ${endDate.toISOString()}`);
           return false;
         }
@@ -185,7 +185,7 @@ export const habitService = {
         }
         durationEndDate.setHours(23, 59, 59, 999);
 
-        if (durationEndDate < todayDate) {
+        if (durationEndDate <= todayDate) {
           console.log(`Habit ${habit.habitName} has expired on ${durationEndDate.toISOString()}`);
           return false;
         }

@@ -245,7 +245,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const today = new Date();
         today.setHours(23, 59, 59, 999);
 
-        if (durationEndDate < today) {
+        if (durationEndDate <= today) {
           console.log(`Habit ${habit.habitName} has expired on ${durationEndDate.toISOString()}`);
           return false;
         }

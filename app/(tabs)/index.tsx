@@ -436,7 +436,7 @@ const generateTasksFromData = React.useCallback(() => {
         const selectedDateEnd = new Date(selectedDateClean);
         selectedDateEnd.setHours(23, 59, 59, 999);
 
-        if (endDate < selectedDateEnd) {
+        if (endDate <= selectedDateEnd) {
           console.log(`SKIP Habit ${habit.habitName}: Expired on ${endDate.toISOString()}, selected date is ${selectedDateEnd.toISOString()}`);
           habitHasExpired = true;
           return;
@@ -453,7 +453,7 @@ const generateTasksFromData = React.useCallback(() => {
         const selectedDateEnd = new Date(selectedDateClean);
         selectedDateEnd.setHours(23, 59, 59, 999);
 
-        if (durationEndDate < selectedDateEnd) {
+        if (durationEndDate <= selectedDateEnd) {
           console.log(`SKIP Habit ${habit.habitName}: Expired on ${durationEndDate.toISOString()}, selected date is ${selectedDateEnd.toISOString()}`);
           habitHasExpired = true;
           return;
