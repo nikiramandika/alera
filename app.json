@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "alera-app",
-    "slug": "alera-app",
+    "name": "Alera",
+    "slug": "Alera",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -39,9 +39,6 @@
       [
         "expo-notifications",
         {
-          "sounds": [
-            "./assets/sounds/notification.wav"
-          ]
         }
       ],
       [
