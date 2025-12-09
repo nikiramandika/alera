@@ -31,7 +31,7 @@ export default function EditProfileScreen() {
     displayName: user?.displayName || '',
     gender: user?.profile?.gender || '',
     weight: user?.profile?.weight?.toString() || '',
-    birthDate: user?.profile?.birthDate || new Date(1998, 0, 1),
+    birthDate: user?.profile?.birthDate ? new Date(user.profile.birthDate) : new Date(1998, 0, 1),
   });
 
   // Function to calculate age from birth date
@@ -92,7 +92,10 @@ export default function EditProfileScreen() {
 
   const years = generateYears();
   const months = generateMonths();
-  const days = generateDays(editForm.birthDate.getFullYear(), editForm.birthDate.getMonth());
+  const days = generateDays(
+    editForm.birthDate.getFullYear(),
+    editForm.birthDate.getMonth()
+  );
 
   const handleSaveProfile = async () => {
     // Validation
