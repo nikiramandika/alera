@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   User as FirebaseUser,
   signInWithEmailAndPassword,
@@ -9,14 +10,16 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import { useRouter } from 'expo-router';
-import { auth } from '@/config/firebase';
+import { auth, enableAuthPersistence } from '@/config/firebase';
 import { User } from '@/types';
 import { userService } from '@/services';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
+  isOffline: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, displayName: string) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
@@ -68,6 +71,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checkingCache, setCheckingCache] = useState(true);
+  const networkStatus = useNetworkStatus();
+  const isOffline = networkStatus.isConnected === false;
 
   // Create user document in Firestore
   const createUserDocument = async (firebaseUser: FirebaseUser, displayName?: string): Promise<User> => {
@@ -111,39 +117,151 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Listen for auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('🔍 [DEBUG] Auth state changed, firebaseUser:', firebaseUser?.uid || 'No user');
-      setFirebaseUser(firebaseUser);
+    let isMounted = true;
 
-      if (firebaseUser) {
-        try {
-          console.log('🔍 [DEBUG] Checking if user exists in database...');
-          // Check if user exists first
-          let userData = await userService.getUser(firebaseUser.uid);
+    const initializeAuth = async () => {
+      try {
+        // Enable Firebase Auth persistence first
+        await enableAuthPersistence();
 
-          if (!userData) {
-            console.log('🔍 [DEBUG] User not found, creating new user document');
-            userData = await createUserDocument(firebaseUser);
-            console.log('🔍 [DEBUG] Created user data:', userData);
+        // First, try to load cached user data
+        const cachedUserData = await AsyncStorage.getItem('user_data');
+        const cachedUser = cachedUserData ? JSON.parse(cachedUserData) : null;
+
+        if (cachedUser && isMounted) {
+          console.log('🔍 [DEBUG] Loaded user from cache:', cachedUser.displayName);
+          setUser(cachedUser);
+          setCheckingCache(false);
+
+          // If offline, don't try to sync with Firebase immediately
+          if (!isOffline) {
+            console.log('🔍 [DEBUG] Online, will sync with Firebase');
           } else {
-            console.log('🔍 [DEBUG] User found in database:', userData);
+            console.log('🔍 [DEBUG] Offline, using cached data only');
+            setLoading(false);
+            return;
+          }
+        } else {
+          setCheckingCache(false);
+        }
+
+        // Then listen for Firebase auth state changes
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          console.log('🔍 [DEBUG] Auth state changed, firebaseUser:', firebaseUser?.uid || 'No user');
+          console.log('🔍 [DEBUG] Network status:', isOffline ? 'Offline' : 'Online');
+
+          if (!isMounted) return;
+
+          setFirebaseUser(firebaseUser);
+          setCheckingCache(false);
+
+          if (firebaseUser) {
+            // Firebase user exists - user is authenticated
+            console.log('🔍 [DEBUG] Firebase user authenticated:', firebaseUser.uid);
+
+            // Prioritize cached user data for immediate response
+            if (cachedUser && cachedUser.userId === firebaseUser.uid) {
+              console.log('🔍 [DEBUG] Using cached user data immediately');
+              setUser(cachedUser);
+              // Update cached data to ensure freshness
+              await AsyncStorage.setItem('user_data', JSON.stringify(cachedUser));
+            }
+
+            // Try to sync with database if online, but don't block user experience
+            if (!isOffline) {
+              try {
+                console.log('🔍 [DEBUG] Online mode, syncing with database...');
+                let userData = await userService.getUser(firebaseUser.uid);
+
+                if (!userData) {
+                  console.log('🔍 [DEBUG] User not found in database, creating new user document');
+                  userData = await createUserDocument(firebaseUser);
+                  console.log('🔍 [DEBUG] Created user data:', userData);
+                } else {
+                  console.log('🔍 [DEBUG] User found in database, syncing data');
+                }
+
+                // Update user state with fresh data from database
+                setUser(userData);
+                // Cache the updated data
+                await AsyncStorage.setItem('user_data', JSON.stringify(userData));
+              } catch (error) {
+                console.error('🔍 [DEBUG] Error syncing with database:', error);
+                // If we already have cached data set, keep it
+                if (!cachedUser || cachedUser.userId !== firebaseUser.uid) {
+                  console.log('🔍 [DEBUG] No valid cached data, creating basic user from Firebase');
+                  // Create minimal user data from Firebase user as fallback
+                  const fallbackUser: User = {
+                    userId: firebaseUser.uid,
+                    email: firebaseUser.email!,
+                    displayName: firebaseUser.displayName || 'User',
+                    photoURL: firebaseUser.photoURL,
+                    phoneNumber: firebaseUser.phoneNumber,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    settings: {
+                      notifications: true,
+                      notificationSound: true,
+                      vibration: true,
+                      language: 'id',
+                      theme: 'light'
+                    }
+                  };
+                  setUser(fallbackUser);
+                  await AsyncStorage.setItem('user_data', JSON.stringify(fallbackUser));
+                }
+              }
+            } else {
+              // Offline mode - ensure we have user data set
+              if (!cachedUser || cachedUser.userId !== firebaseUser.uid) {
+                console.log('🔍 [DEBUG] Offline mode with no valid cache, creating basic user');
+                // Create minimal user data for offline mode
+                const offlineUser: User = {
+                  userId: firebaseUser.uid,
+                  email: firebaseUser.email!,
+                  displayName: firebaseUser.displayName || 'User',
+                  photoURL: firebaseUser.photoURL,
+                  phoneNumber: firebaseUser.phoneNumber,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                  settings: {
+                    notifications: true,
+                    notificationSound: true,
+                    vibration: true,
+                    language: 'id',
+                    theme: 'light'
+                  }
+                };
+                setUser(offlineUser);
+                await AsyncStorage.setItem('user_data', JSON.stringify(offlineUser));
+              }
+            }
+          } else {
+            console.log('🔍 [DEBUG] User signed out');
+            setUser(null);
+            // Clear cached data
+            await AsyncStorage.removeItem('user_data');
           }
 
-          console.log('🔍 [DEBUG] Setting user state with displayName:', userData.displayName);
-          setUser(userData);
-        } catch (error) {
-          console.error('🔍 [DEBUG] Error fetching user data:', error);
+          setLoading(false);
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.error('🔍 [DEBUG] Error initializing auth:', error);
+        if (isMounted) {
+          setCheckingCache(false);
+          setLoading(false);
         }
-      } else {
-        console.log('🔍 [DEBUG] User signed out');
-        setUser(null);
       }
+    };
 
-      setLoading(false);
-    });
+    initializeAuth();
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      isMounted = false;
+    };
+  }, [isOffline]);
 
   // Sign in with email and password
   const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
@@ -244,6 +362,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async (): Promise<void> => {
     try {
       await firebaseSignOut(auth);
+      // Clear cached data
+      await AsyncStorage.removeItem('user_data');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -269,6 +389,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       console.log('🔍 [DEBUG] Updated local user state:', updatedUser);
       setUser(updatedUser);
+
+      // Update cached data
+      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
 
       return { success: true };
     } catch (error: any) {
@@ -298,6 +421,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔍 [DEBUG] Updated local user state with photo:', updatedUser);
       setUser(updatedUser);
 
+      // Update cached data
+      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+
       return { success: true };
     } catch (error: any) {
       console.error('🔍 [DEBUG] Error updating profile photo:', error);
@@ -309,6 +435,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     firebaseUser,
     loading,
+    isOffline,
     signIn,
     signUp,
     signInWithGoogle,

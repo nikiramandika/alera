@@ -1,8 +1,11 @@
 {
   "expo": {
     "name": "Alera",
-    "slug": "Alera",
+    "slug": "alera-app",
     "version": "1.0.0",
+    "developmentClient": {
+      "silentLaunch": true
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aleraapp",
@@ -12,7 +15,10 @@
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
       "icon": "./assets/images/Alera-ios.icon",
-      "bundleIdentifier": "com.alera.app"
+      "bundleIdentifier": "com.alera.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -38,8 +44,7 @@
       "expo-router",
       [
         "expo-notifications",
-        {
-        }
+        {}
       ],
       [
         "expo-splash-screen",
@@ -63,6 +68,7 @@
       "eas": {
         "projectId": "1990f75e-19de-4392-9496-1aa9ce444585"
       }
-    }
+    },
+    "owner": "nikiramandika"
   }
 }

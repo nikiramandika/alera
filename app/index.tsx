@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import SplashScreen from '@/components/SplashScreen';
 
 export default function Index() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, isOffline } = useAuth();
   const [hasRedirected, setHasRedirected] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   // Use useFocusEffect to handle routing when screen comes into focus
   useFocusEffect(
@@ -15,8 +17,8 @@ export default function Index() {
 
       const handleRouting = () => {
         setHasRedirected(true);
+        setIsCheckingSession(false);
 
-  
         if (user) {
           // User is logged in, check if they have completed onboarding
           const hasCompletedOnboarding = user.profile &&
@@ -29,7 +31,7 @@ export default function Index() {
             router.replace('/(auth)/onboarding');
           } else {
             console.log('User has completed onboarding, redirecting to tabs...');
-            router.replace('/(auth)/transition');
+            router.replace('/(tabs)');
           }
         } else {
           console.log('User not logged in, redirecting to welcome...');
@@ -37,18 +39,22 @@ export default function Index() {
         }
       };
 
-      // Add a small delay to ensure auth state is properly loaded
-      const timeoutId = setTimeout(handleRouting, 100);
+      // Immediate routing to reduce delay
+      const timeoutId = setTimeout(handleRouting, 10);
 
       return () => clearTimeout(timeoutId);
     }, [user, loading, hasRedirected, router])
   );
 
-  // Show splash screen while checking auth state or during redirect
-  if (loading || !hasRedirected) {
+  // Show unified loading state while checking session or initializing auth
+  if (loading || (isCheckingSession && !hasRedirected)) {
     return <SplashScreen />;
   }
 
-  // Return empty view after redirecting
-  return null;
+  // Return loading view after redirecting to prevent blank screen
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>
+      <ActivityIndicator size="large" color="#0EA5E9" />
+    </View>
+  );
 }
