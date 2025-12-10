@@ -418,8 +418,114 @@ export default function HabitsScreen() {
             </View>
 
             <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Habit Overview Card */}
+              <View style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.habitHeader}>
+                  <View
+                    style={[
+                      styles.colorIndicatorLarge,
+                      { backgroundColor: selectedHabit?.color || "#4ECDC4" },
+                    ]}
+                  >
+                    {selectedHabit?.icon && (
+                      <Text style={styles.detailIconInCircle}>{selectedHabit.icon}</Text>
+                    )}
+                  </View>
+                  <View style={styles.habitInfo}>
+                    <Text style={[styles.detailName, { color: colors.text }]}>
+                      {selectedHabit?.habitName}
+                    </Text>
+                    <Text
+                      style={[styles.detailType, { color: colors.textSecondary }]}
+                    >
+                      {selectedHabit && getHabitTypeLabel(selectedHabit.habitType)}
+                    </Text>
+                  </View>
+                </View>
 
-              
+                {/* Quick Stats */}
+                <View style={styles.quickStats}>
+                  <View
+                    style={[
+                      styles.statItem,
+                      { backgroundColor: colors.backgroundSecondary },
+                    ]}
+                  >
+                    <Ionicons
+                      name="at-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.statText, { color: colors.text }]}>
+                      {selectedHabit?.target.value} {selectedHabit?.target.unit}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.statItem,
+                      { backgroundColor: colors.backgroundSecondary },
+                    ]}
+                  >
+                    <Ionicons
+                      name="flame-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.statText, { color: colors.text }]}>
+                      {selectedHabit?.streak} streak
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Target Section */}
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="at-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Target
+                  </Text>
+                </View>
+                <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
+                  {selectedHabit?.target.value} {selectedHabit?.target.unit} per{" "}
+                  {selectedHabit?.target.frequency}
+                </Text>
+              </View>
+
+              {/* Schedule Section */}
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="time-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Schedule
+                  </Text>
+                </View>
+                <View style={styles.scheduleContent}>
+                  <Text style={[styles.scheduleType, { color: colors.text }]}>
+                    {selectedHabit?.frequency?.type === 'interval' ? 'Interval' : 'Daily'}
+                  </Text>
+                  <Text style={[styles.scheduleTimes, { color: colors.textSecondary }]}>
+                    {selectedHabit?.frequency?.times ? selectedHabit.frequency.times.join(", ") : "No reminders"}
+                  </Text>
+                  {selectedHabit?.frequency?.type === 'interval' && selectedHabit?.frequency?.specificDays && (
+                    <Text style={[styles.scheduleDays, { color: colors.textSecondary }]}>
+                      Days: {selectedHabit.frequency?.specificDays?.map((day: number) => {
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        return days[day] || day;
+                      }).join(", ")}
+                    </Text>
+                  )}
+                </View>
+              </View>
+
               {/* Duration Section */}
               <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
                 <View style={styles.sectionHeader}>
@@ -518,79 +624,6 @@ export default function HabitsScreen() {
                   )}
                 </View>
               </View>
-              {/* Habit Overview Card */}
-              <View style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary }]}>
-                <View style={styles.habitHeader}>
-                  <View
-                    style={[
-                      styles.colorIndicatorLarge,
-                      { backgroundColor: selectedHabit?.color || "#4ECDC4" },
-                    ]}
-                  >
-                    {selectedHabit?.icon && (
-                      <Text style={styles.detailIconInCircle}>{selectedHabit.icon}</Text>
-                    )}
-                  </View>
-                  <View style={styles.habitInfo}>
-                    <Text style={[styles.detailName, { color: colors.text }]}>
-                      {selectedHabit?.habitName}
-                    </Text>
-                    <Text
-                      style={[styles.detailType, { color: colors.textSecondary }]}
-                    >
-                      {selectedHabit && getHabitTypeLabel(selectedHabit.habitType)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Target Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons
-                    name="at-outline"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Target
-                  </Text>
-                </View>
-                <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
-                  {selectedHabit?.target.value} {selectedHabit?.target.unit} per{" "}
-                  {selectedHabit?.target.frequency}
-                </Text>
-              </View>
-
-              {/* Schedule Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons
-                    name="time-outline"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Schedule
-                  </Text>
-                </View>
-                <View style={styles.scheduleContent}>
-                  <Text style={[styles.scheduleType, { color: colors.text }]}>
-                    {selectedHabit?.frequency?.type === 'interval' ? 'Interval' : 'Daily'}
-                  </Text>
-                  <Text style={[styles.scheduleTimes, { color: colors.textSecondary }]}>
-                    {selectedHabit?.frequency?.times ? selectedHabit.frequency.times.join(", ") : "No reminders"}
-                  </Text>
-                  {selectedHabit?.frequency?.type === 'interval' && selectedHabit?.frequency?.specificDays && (
-                    <Text style={[styles.scheduleDays, { color: colors.textSecondary }]}>
-                      Days: {selectedHabit.frequency?.specificDays?.map((day: number) => {
-                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                        return days[day] || day;
-                      }).join(", ")}
-                    </Text>
-                  )}
-                </View>
-              </View>
 
               {/* Progress Section */}
               <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
@@ -634,6 +667,120 @@ export default function HabitsScreen() {
     </Modal>
   );
 
+  return (
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        style={colorScheme === "dark" ? "light" : "dark"}
+        backgroundColor={colors.background}
+      />
+
+      <View style={styles.container}>
+        {/* Header Section */}
+        <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
+          <LinearGradient
+            colors={[
+              colors.background,
+              colors.backgroundSecondary,
+              colors.gradientStart,
+            ]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.headerGradient}
+          >
+            <View
+              style={[
+                styles.circleBackground,
+                { backgroundColor: colors.primary + "20" },
+              ]}
+            />
+
+            <View style={styles.headerContent}>
+              <Text style={[styles.greeting, { color: colors.primary }]}>
+                My Habits
+              </Text>
+              <View
+                style={[styles.totalHabitsBadge, { backgroundColor: "#4ECDC4" }]}
+              >
+                <Text style={styles.totalHabitsText}>
+                  {habits.length} Total Habit{habits.length !== 1 ? "s" : ""}
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Content Section */}
+        <Animated.View style={[styles.contentContainer, cardsAnimatedStyle]}>
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          >
+            {filteredHabits.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <Ionicons
+                  name="sparkles-outline"
+                  size={80}
+                  color={colors.textSecondary}
+                />
+                <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+                  No Habits Yet!
+                </Text>
+                <Text
+                  style={[
+                    styles.emptyStateSubtitle,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  You have {filteredHabits.length} habits setup. Kindly setup a
+                  new one!
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.addHabitButton,
+                    { backgroundColor: colors.primary },
+                  ]}
+                  onPress={() => router.push("/habits/create-step1")}
+                >
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                  <Text style={styles.addHabitButtonText}>Add Habit</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.habitsContainer}>
+                <FlatList
+                  data={filteredHabits}
+                  renderItem={renderHabitCard}
+                  keyExtractor={(item) => item.habitId}
+                  showsVerticalScrollIndicator={false}
+                  scrollEnabled={false}
+                />
+              </View>
+            )}
+          </ScrollView>
+        </Animated.View>
+      </View>
+
+      {/* Floating Action Button */}
+      {filteredHabits.length > 0 && (
+        <TouchableOpacity
+          style={[styles.floatingActionButton, { backgroundColor: "#4ECDC4" }]}
+          onPress={() => router.push("/habits/create-step1")}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
+
+      {/* Detail Modal */}
+      {renderDetailModal()}
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {

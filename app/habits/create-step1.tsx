@@ -137,6 +137,15 @@ export default function AddHabitStep1NewScreen() {
       <TouchableOpacity
         key={type.id}
         style={[
+          styles.typeOption,
+          {
+            backgroundColor: habitData.habitType === type.id
+              ? type.color
+              : colors.backgroundSecondary,
+            borderColor: habitData.habitType === type.id
+              ? type.color
+              : colors.border,
+          }
         ]}
         onPress={() => {
           setHabitData(prevData => ({
@@ -197,17 +206,6 @@ export default function AddHabitStep1NewScreen() {
         <View style={[styles.progressBackground, { backgroundColor: colors.border }]} />
       </View>
 
-      
-          {/* Title */}
-          <View style={styles.section}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Habit Information
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Enter basic details of your habit
-            </Text>
-          </View>
-
       {/* Content */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
@@ -222,6 +220,15 @@ export default function AddHabitStep1NewScreen() {
             </View>
           </View>
 
+          {/* Title */}
+          <View style={styles.section}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Habit Information
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Enter basic details of your habit
+            </Text>
+          </View>
 
           {/* Habit Name Input */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -239,7 +246,6 @@ export default function AddHabitStep1NewScreen() {
             />
           </View>
 
-
           {/* Habit Type Selection */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>Habit Type</Text>
@@ -251,6 +257,38 @@ export default function AddHabitStep1NewScreen() {
                 {habitTypes.map(renderHabitTypeOption)}
               </View>
             </ScrollView>
+          </View>
+
+          {/* Target Input (Auto-adjust based on type) */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>Target</Text>
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Amount per session (auto-adjusts by habit type)
+            </Text>
+            <View style={styles.targetContainer}>
+              <TextInput
+                style={[styles.targetInput, {
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border,
+                  color: colors.text,
+                }]}
+                placeholder="e.g., 8, 30, 1"
+                placeholderTextColor={colors.textSecondary}
+                value={habitData.target?.value?.toString() || ''}
+                onChangeText={(text) => setHabitData(prev => ({
+                  ...prev,
+                  target: {
+                    ...prev.target!,
+                    value: parseInt(text) || 1
+                  }
+                }))}
+                keyboardType="numeric"
+                maxLength={4}
+              />
+              <Text style={[styles.targetUnit, { color: colors.textSecondary }]}>
+                {getCurrentUnit()}
+              </Text>
+            </View>
           </View>
 
           {/* Description Input */}
