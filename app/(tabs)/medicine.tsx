@@ -46,55 +46,32 @@ export default function MedicationScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [deletingMedicineId, setDeletingMedicineId] = useState<string | null>(null);
-  const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<string>>(new Set());
+const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<string>>(new Set());
 
-  // Animation values - changed delays
-  const headerScale = useSharedValue(0.85);
-  const cardTranslateY = useSharedValue(60);
-
-  // Helper to check expired medications
-  const isMedicationExpired = (medicine: any) => {
-    if (!medicine?.duration?.endDate) return false;
-
-    let endDate = medicine.duration.endDate;
-
-    if (typeof endDate?.toDate === 'function') {
-      endDate = endDate.toDate();
-    } else if (typeof endDate === 'string' || typeof endDate === 'number') {
-      endDate = new Date(endDate);
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return endDate < today;
-  };
-
-  // Format date helper
-  const formatDate = (date: any) => {
-    if (!date) return "Not available";
-    const dateObj = date instanceof Date ? date : new Date(date);
-    if (isNaN(dateObj.getTime())) return "Invalid";
-    return dateObj.toLocaleDateString();
-  };
+  // Animation values
+  const headerScale = useSharedValue(0.9);
+  const cardTranslateY = useSharedValue(50);
 
   useEffect(() => {
+    // Animate header in
     headerScale.value = withDelay(
-      150,
+      200,
       withSpring(1, {
-        damping: 12,
-        stiffness: 90,
+        damping: 15,
+        stiffness: 100,
       })
     );
 
+    // Animate cards in
     cardTranslateY.value = withDelay(
-      300,
+      400,
       withSpring(0, {
-        damping: 12,
-        stiffness: 90,
+        damping: 15,
+        stiffness: 100,
       })
     );
 
+    // Update time every minute
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
@@ -107,16 +84,19 @@ export default function MedicationScreen() {
     try {
       await refreshMedicines();
     } finally {
+      // Small delay for smooth UX
       setTimeout(() => {
         setRefreshing(false);
-      }, 500);
+      }, 300);
     }
   };
 
+  // Filter medicines to exclude optimistically deleted ones
   const filteredMedicines = medicines.filter(
     medicine => !optimisticallyDeletedIds.has(medicine.reminderId)
   );
 
+  // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: headerScale.value }],
   }));
@@ -124,6 +104,24 @@ export default function MedicationScreen() {
   const cardsAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: cardTranslateY.value }],
   }));
+
+  const toggleMedicationStatus = async (medicineId: string, time: string) => {
+    const scheduledTime = new Date();
+    const [hours, minutes] = time.split(":").map(Number);
+    scheduledTime.setHours(hours, minutes, 0, 0);
+
+    // If time is in the past, schedule for tomorrow
+    if (scheduledTime < currentTime) {
+      scheduledTime.setDate(scheduledTime.getDate() + 1);
+    }
+
+    const result = await markMedicineTaken(medicineId, scheduledTime);
+    if (!result.success) {
+      Alert.alert("Error", result.error || "Failed to mark medicine as taken");
+    } else {
+      await refreshMedicines();
+    }
+  };
 
   const getNextDoseTime = (time: string) => {
     const [hours, minutes, period] = time.split(/[:\s]/);
@@ -144,49 +142,40 @@ export default function MedicationScreen() {
     const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     if (diffHours > 24) return "Tomorrow";
-    if (diffHours > 0) return `${diffHours}h ${diffMins}m`;
-    if (diffMins > 0) return `${diffMins}m`;
+    if (diffHours > 0) return `In ${diffHours}h ${diffMins}m`;
+    if (diffMins > 0) return `In ${diffMins}m`;
     return "Now";
   };
 
-  const toggleMedicationStatus = async (medicineId: string, time: string) => {
-    const scheduledTime = new Date();
-    const [hours, minutes] = time.split(":").map(Number);
-    scheduledTime.setHours(hours, minutes, 0, 0);
-
-    if (scheduledTime < currentTime) {
-      scheduledTime.setDate(scheduledTime.getDate() + 1);
-    }
-
-    const result = await markMedicineTaken(medicineId, scheduledTime);
-    if (!result.success) {
-      Alert.alert("Oops!", result.error || "Could not mark medicine");
-    } else {
-      await refreshMedicines();
-    }
-  };
-
   const handleDeleteMedicine = (medicine: any) => {
+    console.log('Deleting medicine:', medicine); // Debug log
     Alert.alert(
-      "Remove Medicine",
-      `Remove "${medicine.medicineName}" from your list?`,
+      "Delete Medicine",
+      `Are you sure you want to delete "${medicine.medicineName}"? This action cannot be undone.`,
       [
         {
           text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Remove",
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
+              // Use reminderId instead of id
               const medicineId = medicine.reminderId || medicine.id;
+              console.log('Using medicine ID:', medicineId); // Debug log
 
+              // Optimistic delete: immediately remove from UI
               setOptimisticallyDeletedIds(prev => new Set(prev).add(medicineId));
               setDeletingMedicineId(medicineId);
 
               const result = await deleteMedicine(medicineId);
-              if (!result.success) {
+              if (result.success) {
+                // Success - medicine is already removed from UI
+                console.log('Delete successful');
+              } else {
+                // Failed - restore the medicine in UI
                 setOptimisticallyDeletedIds(prev => {
                   const newSet = new Set(prev);
                   newSet.delete(medicineId);
@@ -195,10 +184,11 @@ export default function MedicationScreen() {
 
                 Alert.alert(
                   "Error",
-                  result.error || "Cannot remove medicine"
+                  result.error || "Failed to delete medicine"
                 );
               }
             } catch {
+              // Error - restore the medicine in UI
               const medicineId = medicine.reminderId || medicine.id;
               setOptimisticallyDeletedIds(prev => {
                 const newSet = new Set(prev);
@@ -208,9 +198,10 @@ export default function MedicationScreen() {
 
               Alert.alert(
                 "Error",
-                "Something went wrong"
+                "An unexpected error occurred while deleting the medicine"
               );
             } finally {
+              // Clear loading state
               setDeletingMedicineId(null);
             }
           },
@@ -219,11 +210,86 @@ export default function MedicationScreen() {
     );
   };
 
+  // Render right action for swipeable
+  const renderRightActions = (medicine: any) => {
+    console.log('Render right actions for medicine:', medicine.medicineName); // Debug log
+
+    const medicineId = medicine.reminderId || medicine.id;
+    const isDeleting = deletingMedicineId === medicineId;
+
+    return (
+      <View style={styles.deleteContainer}>
+        <TouchableOpacity
+          style={[
+            styles.deleteButton,
+            isDeleting && styles.deleteButtonDisabled
+          ]}
+          onPress={() => {
+            if (!isDeleting) {
+              console.log('Delete button pressed for:', medicine.medicineName); // Debug log
+              handleDeleteMedicine(medicine);
+            }
+          }}
+          activeOpacity={0.9}
+          disabled={isDeleting}
+        >
+          {isDeleting ? (
+            <View style={styles.deleteLoadingContainer}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.deleteButtonText}>Deleting...</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.deleteIconContainer}>
+                <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+              </View>
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // Helper function to safely format dates
+  const formatDate = (date: any) => {
+    if (!date) return "Not set";
+    const dateObj = date instanceof Date ? date : new Date(date);
+    if (isNaN(dateObj.getTime())) return "Invalid date";
+    return dateObj.toLocaleDateString();
+  };
+
+  // Helper function to check if medication is expired
+  const isMedicationExpired = (medicine: any) => {
+    if (!medicine?.duration?.endDate) return false;
+
+    let endDate = medicine.duration.endDate;
+
+    // Handle Firebase Timestamp
+    if (typeof endDate?.toDate === 'function') {
+      endDate = endDate.toDate();
+    } else if (typeof endDate === 'string' || typeof endDate === 'number') {
+      endDate = new Date(endDate);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+
+    return endDate < today;
+  };
+
+  // Handle edit medication
   const handleEditMedication = () => {
     if (!selectedMedication) return;
 
+    // Pass the medication data to edit screen
+    console.log("Editing medication:", selectedMedication);
+
+    // Close the detail modal
     setShowDetailModal(false);
 
+    // Navigate to add screen with edit data
+    console.log("Sending edit data:", selectedMedication);
     router.push({
       pathname: "/medicine/add-step1",
       params: {
@@ -241,43 +307,6 @@ export default function MedicationScreen() {
     });
   };
 
-  const renderRightActions = (medicine: any) => {
-    const medicineId = medicine.reminderId || medicine.id;
-    const isDeleting = deletingMedicineId === medicineId;
-
-    return (
-      <View style={styles.deleteContainer}>
-        <TouchableOpacity
-          style={[
-            styles.deleteButton,
-            isDeleting && styles.deleteButtonDisabled
-          ]}
-          onPress={() => {
-            if (!isDeleting) {
-              handleDeleteMedicine(medicine);
-            }
-          }}
-          activeOpacity={0.85}
-          disabled={isDeleting}
-        >
-          {isDeleting ? (
-            <View style={styles.deleteLoadingContainer}>
-              <ActivityIndicator size="small" color="#FFFFFF" />
-              <Text style={styles.deleteButtonText}>Removing...</Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.deleteIconContainer}>
-                <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.deleteButtonText}>Remove</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
   const renderMedicationCard = ({
     item,
     index,
@@ -289,11 +318,11 @@ export default function MedicationScreen() {
       <Swipeable
         renderRightActions={() => renderRightActions(item)}
         friction={2}
-        rightThreshold={75}
+        rightThreshold={80}
         overshootRight={false}
       >
         <Animated.View
-          entering={FadeInDown.delay(index * 80)}
+          entering={FadeInDown.delay(index * 100)}
           style={[
             styles.medicationCard,
             {
@@ -310,7 +339,7 @@ export default function MedicationScreen() {
               setSelectedMedication(item);
               setShowDetailModal(true);
             }}
-            activeOpacity={0.65}
+            activeOpacity={0.7}
           >
             <View
               style={[styles.colorIndicator, { backgroundColor: item.color }]}
@@ -324,7 +353,7 @@ export default function MedicationScreen() {
                   </Text>
                   {isMedicationExpired(item) && (
                     <View style={styles.expiredBadge}>
-                      <Text style={styles.expiredBadgeText}>Completed</Text>
+                      <Text style={styles.expiredBadgeText}>Ended</Text>
                     </View>
                   )}
                 </View>
@@ -347,7 +376,7 @@ export default function MedicationScreen() {
                 >
                   <Ionicons
                     name="checkmark-outline"
-                    size={22}
+                    size={20}
                     color={colors.icon}
                   />
                 </TouchableOpacity>
@@ -358,6 +387,7 @@ export default function MedicationScreen() {
                   const dosage = item.dosage?.trim() || '';
                   const medicineType = item.medicineType?.trim() || '';
 
+                  // Check if dosage already contains the medicine type (case insensitive)
                   if (dosage && medicineType && dosage.toLowerCase().includes(medicineType.toLowerCase())) {
                     return dosage;
                   } else if (dosage && medicineType) {
@@ -405,6 +435,7 @@ export default function MedicationScreen() {
       >
         {selectedMedication && (
           <>
+            {/* Modal Header */}
             <View
               style={[styles.modalHeader, { borderBottomColor: colors.border }]}
             >
@@ -412,16 +443,16 @@ export default function MedicationScreen() {
                 onPress={() => setShowDetailModal(false)}
                 style={styles.headerButton}
               >
-                <Ionicons name="close-outline" size={26} color={colors.text} />
+                <Ionicons name="close-outline" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Details
+                Medicine Details
               </Text>
               <TouchableOpacity
                 onPress={handleEditMedication}
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
               >
-                <Ionicons name="create" size={18} color="#FFFFFF" />
+                <Ionicons name="create" size={16} color="#FFFFFF" />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             </View>
@@ -430,6 +461,7 @@ export default function MedicationScreen() {
               style={styles.modalContent}
               showsVerticalScrollIndicator={false}
             >
+              {/* Medicine Overview Card */}
               <View
                 style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary }]}
               >
@@ -457,6 +489,7 @@ export default function MedicationScreen() {
                         const dosage = selectedMedication?.dosage?.trim() || '';
                         const medicineType = selectedMedication?.medicineType?.trim() || '';
 
+                        // Check if dosage already contains the medicine type (case insensitive)
                         if (dosage && medicineType && dosage.toLowerCase().includes(medicineType.toLowerCase())) {
                           return dosage;
                         } else if (dosage && medicineType) {
@@ -473,6 +506,7 @@ export default function MedicationScreen() {
                   
                 </View>
 
+                {/* Quick Stats */}
                 <View style={styles.quickStats}>
                   <View
                     style={[
@@ -482,14 +516,14 @@ export default function MedicationScreen() {
                   >
                     <Ionicons
                       name="time-outline"
-                      size={22}
+                      size={20}
                       color={colors.primary}
                     />
                     <Text style={[styles.statText, { color: colors.text }]}>
                       {(() => {
                         const freq = selectedMedication?.frequency;
                         if (freq?.type === 'daily' && freq?.times) {
-                          return `${freq.times.length}x per day`;
+                          return `${freq.times.length}x daily`;
                         } else if (freq?.type === 'interval' && freq?.specificDays) {
                           const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                           return freq.specificDays.map((day: number) => dayNames[day]).join(', ');
@@ -500,16 +534,20 @@ export default function MedicationScreen() {
                       })()}
                     </Text>
                   </View>
-                </View>
+                  
+                  </View>
+                  
               </View>
 
+              {/* Schedule Section */}
               <View
                 style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}
               >
+                
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="time-outline"
-                    size={22}
+                    size={20}
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -526,12 +564,12 @@ export default function MedicationScreen() {
                         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                         return freq.specificDays.map((day: number) => dayNames[day]).join(", ");
                       } else if (freq?.type === 'as_needed') {
-                        return "When needed";
+                        return "As needed";
                       } else if (freq?.type === 'interval' && freq?.specificDays) {
                         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                        return `Every ${freq.specificDays.map((day: number) => dayNames[day]).join(', ')}`;
+                        return `On ${freq.specificDays.map((day: number) => dayNames[day]).join(', ')}`;
                       }
-                      return "Not scheduled";
+                      return "No schedule";
                     })()}
                   </Text>
                   <Text
@@ -551,7 +589,7 @@ export default function MedicationScreen() {
                             const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                             return freq.specificDays.map((day: number) => dayNames[day]).join(', ');
                           } else {
-                            return 'Custom schedule';
+                            return 'No days selected';
                           }
                         case 'as_needed':
                           return 'As Needed';
@@ -569,7 +607,7 @@ export default function MedicationScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Start Date
+                      Started
                     </Text>
                     <Text
                       style={[styles.durationValue, { color: colors.text }]}
@@ -585,7 +623,7 @@ export default function MedicationScreen() {
                           { color: colors.textSecondary },
                         ]}
                       >
-                        End Date
+                        Ends
                       </Text>
                       <Text
                         style={[styles.durationValue, { color: colors.text }]}
@@ -597,6 +635,7 @@ export default function MedicationScreen() {
                 </View>
               </View>
 
+              {/* Description Section */}
               {selectedMedication?.description && (
                 <View
                   style={[
@@ -607,11 +646,11 @@ export default function MedicationScreen() {
                   <View style={styles.sectionHeader}>
                     <Ionicons
                       name="information-circle-outline"
-                      size={22}
+                      size={20}
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Notes
+                      Description
                     </Text>
                   </View>
                   <Text
@@ -625,6 +664,7 @@ export default function MedicationScreen() {
                 </View>
               )}
 
+              {/* Take With Meal Section */}
               {selectedMedication?.takeWithMeal && (
                 <View
                   style={[
@@ -635,11 +675,11 @@ export default function MedicationScreen() {
                   <View style={styles.sectionHeader}>
                     <Ionicons
                       name="restaurant-outline"
-                      size={22}
+                      size={20}
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Meal Instructions
+                      Take With Meal
                     </Text>
                   </View>
                   <Text
@@ -648,11 +688,12 @@ export default function MedicationScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    {selectedMedication.takeWithMeal === 'before' ? 'Take before eating' : 'Take after eating'}
+                    {selectedMedication.takeWithMeal === 'before' ? 'Before meals' : 'After meals'}
                   </Text>
                 </View>
               )}
 
+              {/* Medicine Photo Section */}
               {selectedMedication?.drugAppearance && (
                 <View
                   style={[
@@ -663,11 +704,11 @@ export default function MedicationScreen() {
                   <View style={styles.sectionHeader}>
                     <Ionicons
                       name="image-outline"
-                      size={22}
+                      size={20}
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Photo
+                      Medicine Photo
                     </Text>
                   </View>
                   <Image
@@ -680,7 +721,59 @@ export default function MedicationScreen() {
                   />
                 </View>
               )}
-            </ScrollView>
+
+              {/* Duration Section */}
+              {/* <View
+                style={[styles.detailSection, { backgroundColor: colors.card }]}
+              >
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Duration
+                  </Text>
+                </View>
+                <View style={styles.durationContent}>
+                  <View style={styles.durationItem}>
+                    <Text
+                      style={[
+                        styles.durationLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Started
+                    </Text>
+                    <Text
+                      style={[styles.durationValue, { color: colors.text }]}
+                    >
+                      {formatDate(selectedMedication?.duration.startDate)}
+                    </Text>
+                  </View>
+                  {selectedMedication?.duration.endDate && (
+                    <View style={styles.durationItem}>
+                      <Text
+                        style={[
+                          styles.durationLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Ends
+                      </Text>
+                      <Text
+                        style={[styles.durationValue, { color: colors.text }]}
+                      >
+                        {formatDate(selectedMedication.duration.endDate)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View> */}
+
+              
+              </ScrollView>
           </>
         )}
       </SafeAreaView>
@@ -697,6 +790,7 @@ export default function MedicationScreen() {
       />
 
       <View style={styles.container}>
+        {/* Header Section */}
         <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
           <LinearGradient
             colors={[
@@ -711,13 +805,13 @@ export default function MedicationScreen() {
             <View
               style={[
                 styles.circleBackground,
-                { backgroundColor: colors.primary + "15" },
+                { backgroundColor: colors.primary + "20" },
               ]}
             />
 
             <View style={styles.headerContent}>
               <Text style={[styles.greeting, { color: colors.primary }]}>
-                My Medicines
+                My Medications
               </Text>
               <View
                 style={[
@@ -726,13 +820,15 @@ export default function MedicationScreen() {
                 ]}
               >
                 <Text style={styles.totalMedicationsText}>
-                  {medicines.length} Active
+                  {medicines.length} Total Medication
+                  {medicines.length !== 1 ? "s" : ""}
                 </Text>
               </View>
             </View>
           </LinearGradient>
         </Animated.View>
 
+        {/* Content Section */}
         <Animated.View style={[styles.contentContainer, cardsAnimatedStyle]}>
           <ScrollView
             style={styles.scrollView}
@@ -745,11 +841,11 @@ export default function MedicationScreen() {
               <View style={styles.emptyStateContainer}>
                 <Ionicons
                   name="medical-outline"
-                  size={90}
+                  size={80}
                   color={colors.textSecondary}
                 />
                 <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                  No Medicines Yet
+                  No Medications!
                 </Text>
                 <Text
                   style={[
@@ -757,7 +853,8 @@ export default function MedicationScreen() {
                     { color: colors.textSecondary },
                   ]}
                 >
-                  Start tracking your medications today
+                  You have {filteredMedicines.length} medications setup. Kindly setup a
+                  new one!
                 </Text>
                 <TouchableOpacity
                   style={[
@@ -766,9 +863,9 @@ export default function MedicationScreen() {
                   ]}
                   onPress={() => router.push("/medicine/add-step1")}
                 >
-                  <Ionicons name="add" size={22} color="#FFFFFF" />
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
                   <Text style={styles.addMedicationButtonText}>
-                    Add Medicine
+                    Add Medication
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -787,18 +884,21 @@ export default function MedicationScreen() {
         </Animated.View>
       </View>
 
+      {/* Floating Action Button */}
       {filteredMedicines.length > 0 && (
         <TouchableOpacity
           style={[styles.floatingActionButton, { backgroundColor: "#84CC16" }]}
           onPress={() => {
+            console.log("FAB pressed - navigating to add screen");
             router.push("/medicine/add-step1");
           }}
-          activeOpacity={0.75}
+          activeOpacity={0.8}
         >
-          <Ionicons name="add" size={30} color="#FFFFFF" />
+          <Ionicons name="add" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       )}
 
+      {/* Detail Modal */}
       {renderDetailModal()}
     </SafeAreaView>
   );
@@ -809,82 +909,82 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerContainer: {
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    paddingBottom: 18,
-    minHeight: 92,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    paddingBottom: 20,
+    minHeight: 88, // Height to center greeting vertically
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1.5,
       },
       android: {
-        elevation: 5,
+        elevation: 6,
         backgroundColor: "#ffffff",
       },
     }),
   },
   headerGradient: {
-    paddingTop: 18,
-    paddingBottom: 22,
+    paddingTop: 20,
+    paddingBottom: 24,
     paddingHorizontal: 20,
-    minHeight: 92,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    minHeight: 88,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   circleBackground: {
     position: "absolute",
-    top: "12%",
-    right: "-8%",
-    width: 160,
-    height: 160,
+    top: "15%",
+    right: "-10%",
+    width: 150,
+    height: 150,
     borderRadius: 999,
-    opacity: 0.25,
+    opacity: 0.3,
   },
   headerContent: {
     flex: 1,
     justifyContent: "center",
   },
   greeting: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: "700",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   totalMedicationsBadge: {
     alignSelf: "flex-start",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   totalMedicationsText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#FFFFFF",
   },
   floatingActionButton: {
     position: "absolute",
-    bottom: 95,
-    right: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    bottom: 100, // Increased from 24 to avoid tab overlap
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1000,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
       },
       android: {
-        elevation: 10,
+        elevation: 12,
       },
     }),
   },
@@ -895,34 +995,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   medicationsContainer: {
-    paddingTop: 18,
-    paddingBottom: 110,
+    paddingTop: 20,
+    paddingBottom: 120,
     marginHorizontal: 20,
   },
   medicationCard: {
-    borderRadius: 14,
+    borderRadius: 12,
     marginBottom: 0,
+
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 5,
+        elevation: 6,
         backgroundColor: "#ffffff",
       },
     }),
   },
   cardContent: {
     flexDirection: "row",
-    padding: 18,
+    padding: 16,
   },
   colorIndicator: {
-    width: 5,
-    borderRadius: 3,
-    marginRight: 14,
+    width: 4,
+    borderRadius: 2,
+    marginRight: 12,
   },
   medicationInfo: {
     flex: 1,

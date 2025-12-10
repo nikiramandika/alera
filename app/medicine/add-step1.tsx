@@ -20,277 +20,314 @@ import { Colors } from "@/constants/theme";
 import { medicineService } from "@/services";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface MedicineFormData {
-  name?: string;
-  amount?: string;
-  type?: string;
-  mealTiming?: "pre" | "post";
-  notes?: string;
-  photoUri?: string | null;
+interface MedicineData {
+  medicineName?: string;
+  dosage?: string;
+  medicineType?: string;
+  takeWithMeal?: "before" | "after";
+  description?: string;
+  drugAppearance?: string | null;
 }
 
-interface TypeOption {
-  value: string;
-  name: string;
-  unit: string;
+interface MedicineTypeOption {
+  id: string;
+  label: string;
+  dosageUnit: string;
 }
 
-const MEDICINE_TYPES: TypeOption[] = [
-  { value: "pill", name: "Pill", unit: "pill" },
-  { value: "cap", name: "Capsule", unit: "cap" },
-  { value: "syrup", name: "Syrup", unit: "ml" },
-  { value: "shot", name: "Injection", unit: "ml" },
-  { value: "cream", name: "Cream", unit: "application" },
-  { value: "inhale", name: "Inhaler", unit: "puff" },
-  { value: "drop", name: "Drops", unit: "drop" },
-  { value: "mist", name: "Spray", unit: "spray" },
-  { value: "patch", name: "Patch", unit: "patch" },
+const medicineTypes: MedicineTypeOption[] = [
+  { id: "tablet", label: "Tablet", dosageUnit: "tablet" },
+  { id: "capsule", label: "Capsule", dosageUnit: "capsule" },
+  { id: "liquid", label: "Liquid", dosageUnit: "ml" },
+  { id: "injection", label: "Injection", dosageUnit: "ml" },
+  { id: "topical", label: "Topical", dosageUnit: "application" },
+  { id: "inhaler", label: "Inhaler", dosageUnit: "puff" },
+  { id: "drops", label: "Drops", dosageUnit: "drops" },
+  { id: "spray", label: "Spray", dosageUnit: "spray" },
 ];
 
-export default function MedicineFormScreenStep1() {
-  const navigation = useRouter();
-  const theme = useColorScheme();
-  const themeColors = Colors[theme ?? "light"];
-  const routeParams = useLocalSearchParams();
+export default function AddMedicineStep1NewScreen() {
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? "light"];
+  const params = useLocalSearchParams();
   const { user } = useAuth();
 
-  const isEditingMode = routeParams.editMode === "true";
-  const medicineRecordId = routeParams.medicineId as string;
+  // Check if edit mode
+  const editMode = params.editMode === "true";
+  const medicineId = params.medicineId as string;
 
-  const existingData = routeParams.medicineData
-    ? (JSON.parse(routeParams.medicineData as string) as MedicineFormData)
+  // Get edit data from params if exists
+  const editData = params.medicineData
+    ? (JSON.parse(params.medicineData as string) as MedicineData)
     : null;
 
-  const [formState, setFormState] = useState<MedicineFormData>({
-    name: existingData?.name || "",
-    amount: existingData?.amount || "",
-    type: existingData?.type || "pill",
-    mealTiming: existingData?.mealTiming || "pre",
-    notes: existingData?.notes || "",
-    photoUri: existingData?.photoUri || null,
+  const [medicineData, setMedicineData] = useState<MedicineData>({
+    medicineName: editData?.medicineName || "",
+    dosage: editData?.dosage || "",
+    medicineType: editData?.medicineType || "tablet",
+    takeWithMeal: editData?.takeWithMeal || "before",
+    description: editData?.description || "",
+    drugAppearance: editData?.drugAppearance || null,
   });
 
+  // Load existing medicine data for edit mode
   useEffect(() => {
-    if (isEditingMode && medicineRecordId && user) {
-      const fetchExistingMedicine = async () => {
+    if (editMode && medicineId && user) {
+      const loadMedicineData = async () => {
         try {
-          console.log("Fetching medicine for edit:", medicineRecordId);
-          const medicineRecord = await medicineService.getMedicineById(
+          console.log("Loading medicine data for edit (step 1):", medicineId);
+          const medicine = await medicineService.getMedicineById(
             user.userId,
-            medicineRecordId
+            medicineId
           );
 
-          if (medicineRecord) {
-            console.log("Medicine data loaded:", medicineRecord);
-            setFormState((current) => ({
-              ...current,
-              name: medicineRecord.medicineName || current.name,
-              amount: medicineRecord.dosage || current.amount,
-              type: medicineRecord.medicineType || current.type,
-              mealTiming: medicineRecord.takeWithMeal || current.mealTiming,
-              notes: medicineRecord.description || current.notes,
-              photoUri: medicineRecord.drugAppearance || current.photoUri,
-            }));
+          if (medicine) {
+            console.log("Loaded medicine data (step 1):", medicine);
+            console.log("Original medicineData state:", {
+              medicineName: medicine.medicineName,
+              dosage: medicine.dosage,
+              medicineType: medicine.medicineType,
+              takeWithMeal: medicine.takeWithMeal,
+              description: medicine.description,
+              drugAppearance: medicine.drugAppearance,
+            });
+
+            // Update medicineData with loaded data
+            setMedicineData((prev) => {
+              const newData = {
+                ...prev,
+                medicineName: medicine.medicineName || prev.medicineName,
+                dosage: medicine.dosage || prev.dosage,
+                medicineType: medicine.medicineType || prev.medicineType,
+                takeWithMeal: medicine.takeWithMeal || prev.takeWithMeal,
+                description: medicine.description || prev.description,
+                drugAppearance: medicine.drugAppearance || prev.drugAppearance,
+              };
+              console.log("New medicineData state:", newData);
+              return newData;
+            });
           }
-        } catch (err) {
-          console.error("Failed to load medicine:", err);
-          Alert.alert("Error", "Could not load medicine data");
+        } catch (error) {
+          console.error("Error loading medicine data (step 1):", error);
         }
       };
 
-      fetchExistingMedicine();
+      loadMedicineData();
     }
-  }, [isEditingMode, medicineRecordId, user]);
+  }, [editMode, medicineId, user, editData]);
 
-  const proceedToNextStep = () => {
-    if (!formState.name?.trim()) {
-      Alert.alert("Required Field", "Medicine name is required");
+  const handleNext = () => {
+    if (!medicineData.medicineName?.trim()) {
+      Alert.alert("Error", "Please enter medicine name");
       return;
     }
 
-    if (!formState.amount?.trim()) {
-      Alert.alert("Required Field", "Dosage amount is required");
+    if (!medicineData.dosage?.trim()) {
+      Alert.alert("Error", "Please enter dosage");
       return;
     }
 
-    const dataForStep2 = {
-      ...formState,
-      editMode: isEditingMode,
-      medicineId: medicineRecordId,
+    // Prepare data for step 2
+    const step2Data = {
+      ...medicineData,
+      editMode,
+      medicineId,
     };
 
-    navigation.push({
+    router.push({
       pathname: "/medicine/add-step2",
       params: {
-        step1Data: JSON.stringify(dataForStep2),
+        step1Data: JSON.stringify(step2Data),
       },
     });
   };
 
-  const selectPhoto = async () => {
+  const pickImage = async () => {
     try {
-      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 0.7,
       });
 
-      if (!pickerResult.canceled) {
-        setFormState((prev) => ({
+      if (!result.canceled) {
+        setMedicineData((prev) => ({
           ...prev,
-          photoUri: pickerResult.assets[0].uri,
+          drugAppearance: result.assets[0].uri,
         }));
       }
-    } catch (error) {
-      Alert.alert("Error", "Unable to select image");
+    } catch {
+      Alert.alert("Error", "Failed to pick image");
     }
   };
 
-  const TypeButton = (option: TypeOption) => {
-    const isActive = formState.type === option.value;
+  const renderMedicineTypeOption = (type: MedicineTypeOption) => {
     return (
       <TouchableOpacity
-        key={option.value}
+        key={type.id}
         style={[
-          styles.typeBtn,
+          styles.typeOption,
           {
-            backgroundColor: isActive
-              ? themeColors.primary
-              : themeColors.backgroundSecondary,
-            borderColor: isActive ? themeColors.primary : themeColors.border,
+            backgroundColor:
+              medicineData.medicineType === type.id
+                ? colors.primary
+                : colors.backgroundSecondary,
+            borderColor:
+              medicineData.medicineType === type.id
+                ? colors.primary
+                : colors.border,
           },
         ]}
         onPress={() => {
-          setFormState((prev) => {
-            const amountParts = prev.amount?.split(" ") || [];
-            if (amountParts.length > 0) {
+          setMedicineData((prevData) => {
+            const dosageParts = prevData.dosage?.split(" ") || [];
+            if (dosageParts.length > 0) {
               return {
-                ...prev,
-                type: option.value,
-                amount: `${amountParts[0]} ${option.unit}`,
+                ...prevData,
+                medicineType: type.id,
+                dosage: `${dosageParts[0]} ${type.dosageUnit}`,
               };
             }
-            return { ...prev, type: option.value };
+            return { ...prevData, medicineType: type.id };
           });
         }}
       >
         <Text
           style={[
-            styles.typeBtnText,
-            { color: isActive ? "#FFF" : themeColors.text },
+            styles.typeText,
+            {
+              color:
+                medicineData.medicineType === type.id ? "#FFFFFF" : colors.text,
+            },
           ]}
         >
-          {option.name}
+          {type.label}
         </Text>
       </TouchableOpacity>
     );
   };
 
-  const MealTimingButton = (timing: "pre" | "post") => {
-    const isSelected = formState.mealTiming === timing;
-    return (
-      <TouchableOpacity
-        key={timing}
+  const renderMealOption = (option: "before" | "after") => (
+    <TouchableOpacity
+      key={option}
+      style={[
+        styles.mealOption,
+        {
+          backgroundColor:
+            medicineData.takeWithMeal === option
+              ? colors.primary
+              : colors.backgroundSecondary,
+          borderColor:
+            medicineData.takeWithMeal === option
+              ? colors.primary
+              : colors.border,
+        },
+      ]}
+      onPress={() =>
+        setMedicineData((prev) => ({ ...prev, takeWithMeal: option }))
+      }
+    >
+      <Text
         style={[
-          styles.mealBtn,
+          styles.mealText,
           {
-            backgroundColor: isSelected
-              ? themeColors.primary
-              : themeColors.backgroundSecondary,
-            borderColor: isSelected ? themeColors.primary : themeColors.border,
+            color:
+              medicineData.takeWithMeal === option ? "#FFFFFF" : colors.text,
           },
         ]}
-        onPress={() => setFormState((prev) => ({ ...prev, mealTiming: timing }))}
       >
-        <Text
-          style={[
-            styles.mealBtnText,
-            { color: isSelected ? "#FFF" : themeColors.text },
-          ]}
-        >
-          {timing === "pre" ? "Before Eating" : "After Eating"}
-        </Text>
-      </TouchableOpacity>
+        {option === "before" ? "Before Meals" : "After Meals"}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const getCurrentDosageUnit = () => {
+    const selectedType = medicineTypes.find(
+      (t) => t.id === medicineData.medicineType
     );
+    return selectedType?.dosageUnit || "tablet";
   };
 
-  const getUnitForCurrentType = () => {
-    const selected = MEDICINE_TYPES.find((t) => t.value === formState.type);
-    return selected?.unit || "pill";
-  };
-
-  const handleAmountChange = (input: string) => {
-    const digits = input.replace(/[^0-9]/g, "");
-    if (digits) {
-      setFormState((prev) => ({
-        ...prev,
-        amount: `${digits} ${getUnitForCurrentType()}`,
+  const updateDosage = (value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, "");
+    if (numericValue) {
+      setMedicineData((prevData) => ({
+        ...prevData,
+        dosage: `${numericValue} ${getCurrentDosageUnit()}`,
       }));
     }
   };
 
   return (
     <SafeAreaView
-      style={[styles.wrapper, { backgroundColor: themeColors.background }]}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
 
-      <View style={[styles.topBar, { borderBottomColor: themeColors.border }]}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          onPress={() => navigation.back()}
+          onPress={() => router.back()}
           style={[
-            styles.backBtn,
+            styles.backButton,
             {
-              borderColor: themeColors.border,
-              backgroundColor: themeColors.backgroundSecondary,
+              borderColor: colors.border,
+              backgroundColor: colors.backgroundSecondary,
             },
           ]}
         >
-          <Ionicons name="chevron-back" size={20} color={themeColors.text} />
+          <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.topBarTitle, { color: themeColors.text }]}>
-          {isEditingMode ? "Update Medicine" : "New Medicine"}
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {editMode ? "Edit Medicine" : "Add Medicine"}
         </Text>
-        <View style={styles.spacer} />
+        <View style={styles.placeholder} />
       </View>
 
-      <View style={styles.progress}>
+      {/* Progress Bar */}
+      <View style={styles.progressContainer}>
         <View
-          style={[styles.progressFilled, { backgroundColor: themeColors.primary }]}
+          style={[styles.progressBar, { backgroundColor: colors.primary }]}
         />
         <View
           style={[
-            styles.progressEmpty,
-            { backgroundColor: themeColors.border },
+            styles.progressBackground,
+            { backgroundColor: colors.border },
           ]}
         />
       </View>
 
-      <ScrollView style={styles.scroller} showsVerticalScrollIndicator={false}>
-        <View style={styles.contentArea}>
-          <View style={styles.stepDisplay}>
+      {/* Content */}
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          {/* Step Indicator */}
+          <View style={styles.stepIndicator}>
             <View
-              style={[styles.stepCircleActive, { backgroundColor: themeColors.primary }]}
+              style={[styles.stepActive, { backgroundColor: colors.primary }]}
             >
-              <Text style={styles.stepCircleActiveText}>1</Text>
+              <Text style={styles.stepActiveText}>1</Text>
             </View>
             <View
-              style={[styles.stepConnector, { backgroundColor: themeColors.border }]}
+              style={[styles.stepLine, { backgroundColor: colors.border }]}
             />
             <View
               style={[
-                styles.stepCircleInactive,
+                styles.stepInactive,
                 {
-                  backgroundColor: themeColors.backgroundSecondary,
-                  borderColor: themeColors.border,
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border,
                 },
               ]}
             >
               <Text
                 style={[
-                  styles.stepCircleInactiveText,
-                  { color: themeColors.textSecondary },
+                  styles.stepInactiveText,
+                  { color: colors.textSecondary },
                 ]}
               >
                 2
@@ -298,186 +335,198 @@ export default function MedicineFormScreenStep1() {
             </View>
           </View>
 
-          <View style={styles.headerSection}>
-            <Text style={[styles.mainTitle, { color: themeColors.text }]}>
-              Basic Medicine Info
+          {/* Title */}
+          <View style={styles.section}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Medicine Information
             </Text>
-            <Text style={[styles.mainSubtitle, { color: themeColors.textSecondary }]}>
-              Fill in the essential details about your medicine
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Enter basic details of your medicine
             </Text>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: themeColors.card }]}>
-            <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-              Medicine Photo (Optional)
+          {/* Drug Appearance (Photo Upload) */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Drug Appearance (Optional)
             </Text>
-            <Text style={[styles.fieldHint, { color: themeColors.textSecondary }]}>
-              Upload a photo for easy identification
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Add a photo to help identify your medicine
             </Text>
 
-            <TouchableOpacity style={styles.photoUpload} onPress={selectPhoto}>
-              {formState.photoUri ? (
-                <View style={styles.photoWrapper}>
+            <TouchableOpacity
+              style={styles.imageUploadButton}
+              onPress={pickImage}
+            >
+              {medicineData.drugAppearance ? (
+                <View style={styles.imageContainer}>
                   <Image
-                    source={{ uri: formState.photoUri }}
-                    style={styles.photoPreview}
+                    source={{ uri: medicineData.drugAppearance }}
+                    style={styles.uploadedImage}
                   />
                   <TouchableOpacity
-                    style={styles.photoRemove}
+                    style={styles.removeImageButton}
                     onPress={() =>
-                      setFormState((prev) => ({
+                      setMedicineData((prev) => ({
                         ...prev,
-                        photoUri: null,
+                        drugAppearance: null,
                       }))
                     }
                   >
-                    <Ionicons name="close" size={16} color="#FFF" />
+                    <Ionicons name="close" size={16} color="#FFFFFF" />
                   </TouchableOpacity>
                 </View>
               ) : (
-                <View style={styles.photoPlaceholder}>
+                <View style={styles.imagePlaceholder}>
                   <Ionicons
                     name="camera"
                     size={32}
-                    color={themeColors.textSecondary}
+                    color={colors.textSecondary}
                   />
                   <Text
                     style={[
-                      styles.photoPlaceholderText,
-                      { color: themeColors.textSecondary },
+                      styles.imagePlaceholderText,
+                      { color: colors.textSecondary },
                     ]}
                   >
-                    Add a photo
+                    Tap to add photo
                   </Text>
                 </View>
               )}
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: themeColors.card }]}>
-            <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-              Name of Medicine
+          {/* Medicine Name Input */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Medicine Name
             </Text>
             <TextInput
               style={[
-                styles.textField,
+                styles.input,
                 {
-                  backgroundColor: themeColors.backgroundSecondary,
-                  borderColor: themeColors.border,
-                  color: themeColors.text,
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border,
+                  color: colors.text,
                 },
               ]}
-              placeholder="Type medicine name here..."
-              placeholderTextColor={themeColors.textSecondary}
-              value={formState.name}
+              placeholder="Enter medicine name..."
+              placeholderTextColor={colors.textSecondary}
+              value={medicineData.medicineName}
               onChangeText={(text) =>
-                setFormState((prev) => ({ ...prev, name: text }))
+                setMedicineData((prev) => ({ ...prev, medicineName: text }))
               }
             />
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: themeColors.card }]}>
-            <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-              Type of Medicine
+          {/* Medicine Type Selection */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Medicine Type
             </Text>
-            <Text style={[styles.fieldHint, { color: themeColors.textSecondary }]}>
-              Choose the form (dosage unit will adjust automatically)
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Select form of medicine (dosage will auto-adjust)
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.typeList}>
-                {MEDICINE_TYPES.map(TypeButton)}
+              <View style={styles.typeContainer}>
+                {medicineTypes.map(renderMedicineTypeOption)}
               </View>
             </ScrollView>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: themeColors.card }]}>
-            <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-              Dosage Amount
+          {/* Dosage Input (Auto-adjust based on type) */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>Dosage</Text>
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Amount per intake (auto-adjusts by medicine type)
             </Text>
-            <Text style={[styles.fieldHint, { color: themeColors.textSecondary }]}>
-              Quantity per dose (unit changes with type)
-            </Text>
-            <View style={styles.amountRow}>
+            <View style={styles.dosageContainer}>
               <TextInput
                 style={[
-                  styles.amountField,
+                  styles.dosageInput,
                   {
-                    backgroundColor: themeColors.backgroundSecondary,
-                    borderColor: themeColors.border,
-                    color: themeColors.text,
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: colors.border,
+                    color: colors.text,
                   },
                 ]}
-                placeholder="e.g., 1, 5, 10"
-                placeholderTextColor={themeColors.textSecondary}
-                value={formState.amount?.split(" ")[0] || ""}
-                onChangeText={handleAmountChange}
+                placeholder="e.g., 500, 1, 5"
+                placeholderTextColor={colors.textSecondary}
+                value={medicineData.dosage?.split(" ")[0] || ""}
+                onChangeText={updateDosage}
                 keyboardType="numeric"
-                maxLength={5}
+                maxLength={4}
               />
-              <Text style={[styles.unitLabel, { color: themeColors.textSecondary }]}>
-                {getUnitForCurrentType()}
+              <Text
+                style={[styles.dosageUnit, { color: colors.textSecondary }]}
+              >
+                {getCurrentDosageUnit()}
               </Text>
             </View>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: themeColors.card }]}>
-            <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-              Meal Timing
+          {/* Take with Meal Selection */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Take with Meal
             </Text>
-            <Text style={[styles.fieldHint, { color: themeColors.textSecondary }]}>
-              When to take this medicine?
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              When should this medicine be taken?
             </Text>
-            <View style={styles.mealRow}>
-              {MealTimingButton("pre")}
-              {MealTimingButton("post")}
+            <View style={styles.mealContainer}>
+              {renderMealOption("before")}
+              {renderMealOption("after")}
             </View>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: themeColors.card }]}>
-            <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-              Additional Notes (Optional)
+          {/* Description Input */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Description (Optional)
             </Text>
-            <Text style={[styles.fieldHint, { color: themeColors.textSecondary }]}>
-              Special instructions or reminders
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Add special instructions or notes
             </Text>
             <TextInput
               style={[
-                styles.notesField,
+                styles.textArea,
                 {
-                  backgroundColor: themeColors.backgroundSecondary,
-                  borderColor: themeColors.border,
-                  color: themeColors.text,
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border,
+                  color: colors.text,
                 },
               ]}
-              placeholder="Any special instructions..."
-              placeholderTextColor={themeColors.textSecondary}
-              value={formState.notes}
+              placeholder="Enter any special instructions or notes..."
+              placeholderTextColor={colors.textSecondary}
+              value={medicineData.description}
               onChangeText={(text) =>
-                setFormState((prev) => ({ ...prev, notes: text }))
+                setMedicineData((prev) => ({ ...prev, description: text }))
               }
               multiline
-              numberOfLines={5}
+              numberOfLines={4}
               textAlignVertical="top"
             />
           </View>
 
-          <View style={styles.bottomGap} />
+          {/* Bottom Space for Floating Button */}
+          <View style={styles.bottomSpace} />
         </View>
       </ScrollView>
 
+      {/* Floating Next Button */}
       <View
         style={[
-          styles.actionBar,
-          { backgroundColor: themeColors.background },
+          styles.floatingButtonContainer,
+          { backgroundColor: colors.background },
         ]}
       >
         <TouchableOpacity
-          style={[styles.continueBtn, { backgroundColor: themeColors.primary }]}
-          onPress={proceedToNextStep}
-          activeOpacity={0.7}
+          style={[styles.nextButton, { backgroundColor: colors.primary }]}
+          onPress={handleNext}
+          activeOpacity={0.8}
         >
-          <Text style={styles.continueBtnText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFF" />
+          <Text style={styles.nextButtonText}>Next</Text>
+          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -485,10 +534,10 @@ export default function MedicineFormScreenStep1() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
+  container: {
     flex: 1,
   },
-  topBar: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -496,7 +545,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  backBtn: {
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -504,61 +553,61 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topBarTitle: {
+  headerTitle: {
     fontSize: 18,
     fontWeight: "600",
     flex: 1,
     textAlign: "center",
     marginHorizontal: 16,
   },
-  spacer: {
+  placeholder: {
     width: 40,
   },
-  progress: {
+  progressContainer: {
     height: 3,
     backgroundColor: "#E5E5E7",
     position: "relative",
   },
-  progressFilled: {
+  progressBar: {
     width: "50%",
     height: "100%",
   },
-  progressEmpty: {
+  progressBackground: {
     position: "absolute",
     right: 0,
     top: 0,
     width: "50%",
     height: "100%",
   },
-  scroller: {
+  scrollView: {
     flex: 1,
   },
-  contentArea: {
+  content: {
     padding: 20,
   },
-  stepDisplay: {
+  stepIndicator: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 32,
   },
-  stepCircleActive: {
+  stepActive: {
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepCircleActiveText: {
-    color: "#FFF",
+  stepActiveText: {
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },
-  stepConnector: {
+  stepLine: {
     width: 40,
     height: 2,
   },
-  stepCircleInactive: {
+  stepInactive: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -566,26 +615,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  stepCircleInactiveText: {
+  stepInactiveText: {
     fontSize: 16,
     fontWeight: "600",
   },
-  headerSection: {
+  section: {
     marginBottom: 24,
     alignItems: "center",
   },
-  mainTitle: {
+  title: {
     fontSize: 24,
     fontWeight: "700",
     marginBottom: 8,
     textAlign: "center",
   },
-  mainSubtitle: {
+  subtitle: {
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
   },
-  formCard: {
+  card: {
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -601,17 +650,17 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  fieldLabel: {
+  label: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 12,
   },
-  fieldHint: {
+  sublabel: {
     fontSize: 14,
     marginBottom: 16,
     lineHeight: 20,
   },
-  photoUpload: {
+  imageUploadButton: {
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -620,15 +669,15 @@ const styles = StyleSheet.create({
     padding: 20,
     borderStyle: "dashed",
   },
-  photoWrapper: {
+  imageContainer: {
     position: "relative",
   },
-  photoPreview: {
+  uploadedImage: {
     width: 120,
     height: 120,
     borderRadius: 12,
   },
-  photoRemove: {
+  removeImageButton: {
     position: "absolute",
     top: -8,
     right: -8,
@@ -639,40 +688,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  photoPlaceholder: {
+  imagePlaceholder: {
     alignItems: "center",
     justifyContent: "center",
   },
-  photoPlaceholderText: {
+  imagePlaceholderText: {
     fontSize: 14,
     marginTop: 8,
   },
-  textField: {
+  input: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
   },
-  typeList: {
+  typeContainer: {
     flexDirection: "row",
     paddingHorizontal: 5,
   },
-  typeBtn: {
+  typeOption: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
     borderWidth: 1,
     marginRight: 12,
   },
-  typeBtnText: {
+  typeText: {
     fontSize: 14,
     fontWeight: "500",
   },
-  amountRow: {
+  dosageContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
-  amountField: {
+  dosageInput: {
     flex: 1,
     borderWidth: 1,
     borderRadius: 12,
@@ -680,15 +729,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginRight: 12,
   },
-  unitLabel: {
+  dosageUnit: {
     fontSize: 16,
     fontWeight: "500",
   },
-  mealRow: {
+  mealContainer: {
     flexDirection: "row",
     gap: 12,
   },
-  mealBtn: {
+  mealOption: {
     flex: 1,
     paddingVertical: 16,
     borderRadius: 12,
@@ -696,21 +745,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  mealBtnText: {
+  mealText: {
     fontSize: 14,
     fontWeight: "500",
   },
-  notesField: {
+  textArea: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     minHeight: 100,
   },
-  bottomGap: {
+  bottomSpace: {
     height: 100,
   },
-  actionBar: {
+  floatingButtonContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
@@ -720,7 +769,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E5E5E7",
   },
-  continueBtn: {
+  nextButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -728,8 +777,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 28,
   },
-  continueBtnText: {
-    color: "#FFF",
+  nextButtonText: {
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
     marginRight: 8,

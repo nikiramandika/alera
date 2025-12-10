@@ -22,376 +22,407 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get("window");
 
-interface FirstStepData {
-  name?: string;
-  amount?: string;
-  type?: string;
-  mealTiming?: "pre" | "post";
-  notes?: string;
-  photoUri?: string | null;
+interface Step1Data {
+  medicineName?: string;
+  dosage?: string;
+  medicineType?: string;
+  takeWithMeal?: "before" | "after";
+  description?: string;
+  drugAppearance?: string | null;
   editMode?: boolean;
   medicineId?: string;
 }
 
-interface ScheduleOption {
-  key: string;
-  title: string;
-  iconName: keyof typeof Ionicons.glyphMap;
-  info: string;
+interface FrequencyTab {
+  id: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  description: string;
 }
 
-const SCHEDULE_OPTIONS: ScheduleOption[] = [
+const frequencyTabs: FrequencyTab[] = [
   {
-    key: "everyday",
-    title: "Every Day",
-    iconName: "calendar-outline" as keyof typeof Ionicons.glyphMap,
-    info: "Take medicine daily at set times",
+    id: "daily",
+    label: "Daily",
+    icon: "calendar-outline" as keyof typeof Ionicons.glyphMap,
+    description: "Every day at the same time",
   },
   {
-    key: "specific",
-    title: "Specific Days",
-    iconName: "calendar-number-outline" as keyof typeof Ionicons.glyphMap,
-    info: "Choose certain days of the week",
+    id: "interval",
+    label: "Interval",
+    icon: "calendar-number-outline" as keyof typeof Ionicons.glyphMap,
+    description: "On specific days each week",
   },
 ];
 
-const WEEKDAYS = [
-  { value: 0, short: "S" },
-  { value: 1, short: "M" },
-  { value: 2, short: "T" },
-  { value: 3, short: "W" },
-  { value: 4, short: "T" },
-  { value: 5, short: "F" },
-  { value: 6, short: "S" },
+const daysOfWeek = [
+  { id: 0, label: "Sun" },
+  { id: 1, label: "Mon" },
+  { id: 2, label: "Tue" },
+  { id: 3, label: "Wed" },
+  { id: 4, label: "Thu" },
+  { id: 5, label: "Fri" },
+  { id: 6, label: "Sat" },
 ];
 
-export default function MedicineScheduleScreen() {
-  const nav = useRouter();
-  const appTheme = useColorScheme();
-  const palette = Colors[appTheme ?? "light"];
+export default function AddMedicineStep2NewScreen() {
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? "light"];
   const { addMedicine, updateMedicine } = useMedicine();
   const { user } = useAuth();
-  const urlParams = useLocalSearchParams();
+  const params = useLocalSearchParams();
 
-  const previousData = urlParams.step1Data
-    ? (JSON.parse(urlParams.step1Data as string) as FirstStepData)
+  // Parse step1 data
+  const step1Data = params.step1Data
+    ? (JSON.parse(params.step1Data as string) as Step1Data)
     : null;
 
-  const editingMode = previousData?.editMode || false;
-  const recordId = previousData?.medicineId || "";
+  // Check if edit mode
+  const editMode = step1Data?.editMode || false;
+  const medicineId = step1Data?.medicineId || "";
 
-  const [selectedSchedule, setSelectedSchedule] = useState("everyday");
-  const [isSaving, setIsSaving] = useState(false);
-  const [hasEndDate, setHasEndDate] = useState(false);
+  const [activeFrequencyTab, setActiveFrequencyTab] = useState("daily");
+  const [loading, setLoading] = useState(false);
+  const [showEndDate, setShowEndDate] = useState(false);
 
-  const [medicineInfo, setMedicineInfo] = useState({
-    name: previousData?.name || "",
-    amount: previousData?.amount || "",
-    type: previousData?.type || "pill",
-    mealTiming: previousData?.mealTiming || "pre",
-    notes: previousData?.notes || "",
-    photoUri: previousData?.photoUri || null,
+  const [medicineData, setMedicineData] = useState({
+    medicineName: step1Data?.medicineName || "",
+    dosage: step1Data?.dosage || "",
+    medicineType: step1Data?.medicineType || "tablet",
+    takeWithMeal: step1Data?.takeWithMeal || "before",
+    description: step1Data?.description || "",
+    drugAppearance: step1Data?.drugAppearance || null,
 
-    schedule: {
-      pattern: "everyday" as "everyday" | "specific" | "when_needed",
-      weekdays: [] as number[],
-      alerts: ["09:00"],
+    // Frequency settings
+    frequency: {
+      type: "daily" as "daily" | "interval" | "as_needed",
+      selectedDays: [] as number[], // Days for interval frequency
+      times: ["08:00"],
     },
 
-    period: {
-      begins: new Date(),
-      ends: undefined as Date | undefined,
-      totalDuration: null as number | null,
+    // Duration settings
+    duration: {
+      startDate: new Date(),
+      endDate: undefined as Date | undefined,
+      totalDays: null as number | null,
     },
   });
 
+  // Load existing medicine data for edit mode
   useEffect(() => {
-    if (editingMode && recordId && user) {
-      const fetchMedicineInfo = async () => {
+    if (editMode && medicineId && user) {
+      const loadMedicineData = async () => {
         try {
-          console.log("Fetching medicine for schedule edit:", recordId);
-          const record = await medicineService.getMedicineById(
+          console.log("Loading medicine data for edit:", medicineId);
+          const medicine = await medicineService.getMedicineById(
             user.userId,
-            recordId
+            medicineId
           );
 
-          if (record) {
-            console.log("Medicine record fetched:", record);
+          if (medicine) {
+            console.log("Loaded medicine data:", medicine);
 
-            setMedicineInfo({
-              name: record.medicineName || "",
-              amount: record.dosage || "",
-              type: record.medicineType || "pill",
-              mealTiming: record.takeWithMeal || "pre",
-              notes: record.description || "",
-              photoUri: record.drugAppearance || null,
+            // Update all medicineData with loaded data
+            setMedicineData({
+              medicineName: medicine.medicineName || "",
+              dosage: medicine.dosage || "",
+              medicineType: medicine.medicineType || "tablet",
+              takeWithMeal: medicine.takeWithMeal || "before",
+              description: medicine.description || "",
+              drugAppearance: medicine.drugAppearance || null,
 
-              schedule: {
-                pattern: record.frequency?.type || "everyday",
-                alerts: record.frequency?.times || ["09:00"],
-                weekdays: record.frequency?.specificDays || [],
+              // Update frequency data
+              frequency: {
+                type: medicine.frequency?.type || "daily",
+                times: medicine.frequency?.times || ["08:00"],
+                selectedDays: medicine.frequency?.specificDays || [],
               },
 
-              period: {
-                begins: record.duration?.startDate || new Date(),
-                ends: record.duration?.endDate || undefined,
-                totalDuration: record.duration?.totalDays || null,
+              // Update duration data
+              duration: {
+                startDate: medicine.duration?.startDate || new Date(),
+                endDate: medicine.duration?.endDate || undefined,
+                totalDays: medicine.duration?.totalDays || null,
               },
             });
 
-            setSelectedSchedule(record.frequency?.type || "everyday");
-            setHasEndDate(!!record.duration?.endDate);
+            // Set frequency tab based on loaded data
+            setActiveFrequencyTab(medicine.frequency?.type || "daily");
+
+            // Set showEndDate based on whether end date exists
+            setShowEndDate(!!medicine.duration?.endDate);
           }
-        } catch (err) {
-          console.error("Failed to fetch medicine:", err);
+        } catch (error) {
+          console.error("Error loading medicine data:", error);
         }
       };
 
-      fetchMedicineInfo();
+      loadMedicineData();
     }
-  }, [editingMode, recordId, user]);
+  }, [editMode, medicineId, user]);
 
-  const submitMedicine = async () => {
-    setIsSaving(true);
+  const handleSaveMedicine = async () => {
+    setLoading(true);
     try {
-      const periodData: any = {
-        startDate: medicineInfo.period.begins,
-        totalDays: medicineInfo.period.totalDuration,
+      const duration: any = {
+        startDate: medicineData.duration.startDate,
+        totalDays: medicineData.duration.totalDays,
       };
 
-      if (medicineInfo.period.ends) {
-        periodData.endDate = medicineInfo.period.ends;
+      // Only include endDate if it exists
+      if (medicineData.duration.endDate) {
+        duration.endDate = medicineData.duration.endDate;
       }
 
-      const scheduleData = {
-        type: medicineInfo.schedule.pattern,
+      const frequencyData = {
+        type: medicineData.frequency.type,
         times:
-          medicineInfo.schedule.pattern !== "when_needed"
-            ? medicineInfo.schedule.alerts
+          medicineData.frequency.type !== "as_needed"
+            ? medicineData.frequency.times
             : [],
         specificDays:
-          medicineInfo.schedule.pattern === "specific"
-            ? medicineInfo.schedule.weekdays
+          medicineData.frequency.type === "interval"
+            ? medicineData.frequency.selectedDays
             : [],
       };
 
-      console.log("=== SCHEDULE SUBMISSION DATA ===");
-      console.log("Pattern:", medicineInfo.schedule.pattern);
-      console.log("Alerts:", medicineInfo.schedule.alerts);
-      console.log("Weekdays:", medicineInfo.schedule.weekdays);
-      console.log("Final schedule:", scheduleData);
+      console.log("=== MEDICINE FREQUENCY DATA ===");
+      console.log("Type:", medicineData.frequency.type);
+      console.log("Times:", medicineData.frequency.times);
+      console.log("Selected Days:", medicineData.frequency.selectedDays);
+      console.log("Final frequency payload:", frequencyData);
 
-      const payload = {
-        medicineName: medicineInfo.name,
-        dosage: medicineInfo.amount,
-        medicineType: medicineInfo.type,
-        takeWithMeal: medicineInfo.mealTiming,
-        description: medicineInfo.notes,
-        drugAppearance: medicineInfo.photoUri,
+      const medicinePayload = {
+        medicineName: medicineData.medicineName,
+        dosage: medicineData.dosage,
+        medicineType: medicineData.medicineType,
+        takeWithMeal: medicineData.takeWithMeal,
+        description: medicineData.description,
+        drugAppearance: medicineData.drugAppearance,
 
-        frequency: scheduleData,
-        duration: periodData,
+        frequency: frequencyData,
+
+        duration: duration,
 
         isActive: true,
-        color: palette.primary,
+        color: colors.primary,
         icon: "💊",
       };
 
-      let outcome;
-      if (editingMode && recordId) {
-        outcome = await updateMedicine(recordId, payload);
+      let result;
+      if (editMode && medicineId) {
+        // Update existing medicine
+        result = await updateMedicine(medicineId, medicinePayload);
       } else {
-        const newEntry = {
+        // Add new medicine
+        const newMedicine = {
           userId: user?.userId || "",
-          ...payload,
+          ...medicinePayload,
         };
-        outcome = await addMedicine(newEntry);
+        result = await addMedicine(newMedicine);
       }
 
-      if (outcome.success) {
-        nav.replace("/(tabs)/medicine");
+      if (result.success) {
+        router.replace("/(tabs)/medicine");
       } else {
         Alert.alert(
           "Error",
-          outcome.error || `Failed to ${editingMode ? "update" : "save"} medicine`
+          result.error || `Failed to ${editMode ? "update" : "add"} medicine`
         );
       }
     } catch {
-      Alert.alert("Error", "Something went wrong");
+      Alert.alert("Error", "An unexpected error occurred");
     } finally {
-      setIsSaving(false);
+      setLoading(false);
     }
   };
 
-  const selectWeekday = (day: number) => {
-    console.log("Selecting weekday:", day, "Current:", medicineInfo.schedule.weekdays);
-    setMedicineInfo((current) => {
-      const updatedDays = current.schedule.weekdays?.includes(day)
-        ? current.schedule.weekdays.filter((d: number) => d !== day)
-        : [...(current.schedule.weekdays || []), day].sort(
+  const toggleDay = (dayId: number) => {
+    console.log(
+      "Toggling day:",
+      dayId,
+      "Current selectedDays:",
+      medicineData.frequency.selectedDays
+    );
+    setMedicineData((prev) => {
+      const newSelectedDays = prev.frequency.selectedDays?.includes(dayId)
+        ? prev.frequency.selectedDays.filter((d: number) => d !== dayId)
+        : [...(prev.frequency.selectedDays || []), dayId].sort(
             (a: number, b: number) => a - b
           );
 
-      console.log("Updated weekdays:", updatedDays);
+      console.log("New selectedDays after toggle:", newSelectedDays);
 
       return {
-        ...current,
-        schedule: {
-          ...current.schedule,
-          weekdays: updatedDays,
+        ...prev,
+        frequency: {
+          ...prev.frequency,
+          selectedDays: newSelectedDays,
         },
       };
     });
   };
 
-  const insertAlertTime = () => {
-    setMedicineInfo((current) => ({
-      ...current,
-      schedule: {
-        ...current.schedule,
-        alerts: [...current.schedule.alerts, "13:00"],
+  const addReminderTime = () => {
+    setMedicineData((prev) => ({
+      ...prev,
+      frequency: {
+        ...prev.frequency,
+        times: [...prev.frequency.times, "12:00"],
       },
     }));
   };
 
-  const deleteAlertTime = (idx: number) => {
-    if (medicineInfo.schedule.alerts.length > 1) {
-      setMedicineInfo((current) => ({
-        ...current,
-        schedule: {
-          ...current.schedule,
-          alerts: current.schedule.alerts.filter(
-            (_: string, i: number) => i !== idx
+  const removeReminderTime = (index: number) => {
+    if (medicineData.frequency.times.length > 1) {
+      setMedicineData((prev) => ({
+        ...prev,
+        frequency: {
+          ...prev.frequency,
+          times: prev.frequency.times.filter(
+            (_: string, i: number) => i !== index
           ),
         },
       }));
     }
   };
 
-  const modifyTime = (
-    evt: DateTimePickerEvent,
-    picked?: Date,
-    idx?: number
+  const handleTimeChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date,
+    index?: number
   ) => {
-    if (evt.type === "set" && picked && idx !== undefined) {
-      const hrs = picked.getHours().toString().padStart(2, "0");
-      const mins = picked.getMinutes().toString().padStart(2, "0");
-      const updatedAlerts = [...medicineInfo.schedule.alerts];
-      updatedAlerts[idx] = `${hrs}:${mins}`;
-      setMedicineInfo((current) => ({
-        ...current,
-        schedule: {
-          ...current.schedule,
-          alerts: updatedAlerts,
+    if (event.type === "set" && selectedDate && index !== undefined) {
+      const hours = selectedDate.getHours().toString().padStart(2, "0");
+      const minutes = selectedDate.getMinutes().toString().padStart(2, "0");
+      const newTimes = [...medicineData.frequency.times];
+      newTimes[index] = `${hours}:${minutes}`;
+      setMedicineData((prev) => ({
+        ...prev,
+        frequency: {
+          ...prev.frequency,
+          times: newTimes,
         },
       }));
     }
   };
 
-  const parseTimeString = (time: string) => {
-    const [h, m] = time.split(":").map(Number);
-    const dt = new Date();
-    dt.setHours(h, m, 0, 0);
-    return dt;
+  const convertTimeToDate = (timeString: string) => {
+    const [hours, minutes] = timeString.split(":").map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
   };
 
-  const switchSchedule = (option: string) => {
-    setSelectedSchedule(option);
-    setMedicineInfo((current) => ({
-      ...current,
-      schedule: {
-        ...current.schedule,
-        pattern: option as "everyday" | "specific",
+  const handleTabPress = (tabId: string) => {
+    setActiveFrequencyTab(tabId);
+    setMedicineData((prev) => ({
+      ...prev,
+      frequency: {
+        ...prev.frequency,
+        type: tabId as "daily" | "interval",
       },
     }));
   };
 
-  const ScheduleTab = (opt: ScheduleOption, idx: number) => {
-    const active = selectedSchedule === opt.key;
+  const renderFrequencyTab = (tab: FrequencyTab, index: number) => {
+    const isActive = activeFrequencyTab === tab.id;
 
     return (
       <TouchableOpacity
-        key={opt.key}
+        key={tab.id}
         style={[
-          styles.scheduleTab,
+          styles.frequencyTab,
           {
-            backgroundColor: active
-              ? palette.primary
-              : palette.backgroundSecondary,
-            borderColor: active ? palette.primary : palette.border,
+            backgroundColor: isActive
+              ? colors.primary
+              : colors.backgroundSecondary,
+            borderColor: isActive ? colors.primary : colors.border,
           },
         ]}
-        onPress={() => switchSchedule(opt.key)}
+        onPress={() => handleTabPress(tab.id)}
       >
         <Ionicons
-          name={opt.iconName}
+          name={tab.icon}
           size={20}
-          color={active ? "#FFF" : palette.textSecondary}
+          color={isActive ? "#FFFFFF" : colors.textSecondary}
         />
         <Text
           style={[
-            styles.scheduleTabLabel,
-            { color: active ? "#FFF" : palette.text },
+            styles.frequencyTabText,
+            {
+              color: isActive ? "#FFFFFF" : colors.text,
+            },
           ]}
         >
-          {opt.title}
+          {tab.label}
         </Text>
       </TouchableOpacity>
     );
   };
 
-  const displayScheduleContent = () => {
-    switch (selectedSchedule) {
-      case "everyday":
-        return showEverydayView();
-      case "specific":
-        return showSpecificDaysView();
+  const renderTabContent = () => {
+    switch (activeFrequencyTab) {
+      case "daily":
+        return renderDailyContent();
+      case "interval":
+        return renderIntervalContent();
       default:
-        return showEverydayView();
+        return renderDailyContent();
     }
   };
 
-  const showEverydayView = () => (
-    <View style={styles.scheduleContent}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name="notifications-outline" size={20} color={palette.primary} />
-        <Text style={[styles.sectionTitle, { color: palette.text }]}>
-          Alert Times
+  const renderDailyContent = () => (
+    <View style={styles.tabContent}>
+      <View style={styles.cardHeader}>
+        <Ionicons
+          name="notifications-outline"
+          size={20}
+          color={colors.primary}
+        />
+        <Text style={[styles.cardTitle, { color: colors.text }]}>
+          Daily Reminder Times
         </Text>
       </View>
 
-      <Text style={[styles.description, { color: palette.textSecondary }]}>
-        Set reminders for taking this medicine
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        When should you be reminded to take this medicine?
       </Text>
 
-      <View style={styles.alertsList}>
-        {medicineInfo.schedule.alerts.map((time: string, idx: number) => (
-          <View key={idx} style={styles.alertBox}>
-            <View style={styles.alertControls}>
+      <View style={styles.reminderGrid}>
+        {medicineData.frequency.times.map((time: string, index: number) => (
+          <View key={index} style={styles.reminderItem}>
+            <View style={styles.timeRow}>
               <View
                 style={[
-                  styles.pickerWrapper,
-                  { backgroundColor: palette.backgroundSecondary },
+                  styles.timePickerContainer,
+                  { backgroundColor: colors.backgroundSecondary },
                 ]}
               >
                 <DateTimePicker
-                  testID={`alert${idx}`}
-                  value={parseTimeString(time)}
+                  testID={`timePicker${index}`}
+                  value={convertTimeToDate(time)}
                   mode="time"
-                  onChange={(e, t) => modifyTime(e, t, idx)}
-                  textColor={palette.text}
-                  accentColor={palette.primary}
+                  onChange={(event, selectedTime) =>
+                    handleTimeChange(event, selectedTime, index)
+                  }
+                  textColor={colors.text}
+                  accentColor={colors.primary}
                 />
               </View>
-              {medicineInfo.schedule.alerts.length > 1 && (
+              {medicineData.frequency.times.length > 1 && (
                 <TouchableOpacity
-                  style={[styles.deleteBtn, { backgroundColor: "#FF6B6B" }]}
-                  onPress={() => deleteAlertTime(idx)}
+                  style={[
+                    styles.removeTimeButton,
+                    { backgroundColor: "#FF6B6B" },
+                  ]}
+                  onPress={() => removeReminderTime(index)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="remove" size={16} color="#FFF" />
+                  <Ionicons name="remove" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
             </View>
@@ -401,106 +432,115 @@ export default function MedicineScheduleScreen() {
 
       <TouchableOpacity
         style={[
-          styles.insertBtn,
-          { backgroundColor: palette.primary + "20" },
+          styles.addTimeButton,
+          { backgroundColor: colors.primary + "20" },
         ]}
-        onPress={insertAlertTime}
+        onPress={addReminderTime}
       >
-        <Ionicons name="add" size={20} color={palette.primary} />
-        <Text style={[styles.insertBtnLabel, { color: palette.primary }]}>
-          Add Alert
+        <Ionicons name="add" size={20} color={colors.primary} />
+        <Text style={[styles.addTimeText, { color: colors.primary }]}>
+          Add Reminder Time
         </Text>
       </TouchableOpacity>
     </View>
   );
 
-  const showSpecificDaysView = () => (
-    <View style={styles.scheduleContent}>
-      <View style={styles.sectionHeader}>
+  const renderIntervalContent = () => (
+    <View style={styles.tabContent}>
+      <View style={styles.cardHeader}>
         <Ionicons
           name="calendar-number-outline"
           size={20}
-          color={palette.primary}
+          color={colors.primary}
         />
-        <Text style={[styles.sectionTitle, { color: palette.text }]}>
-          Choose Days
+        <Text style={[styles.cardTitle, { color: colors.text }]}>
+          Select Days
         </Text>
       </View>
 
-      <Text style={[styles.description, { color: palette.textSecondary }]}>
-        Pick which days to take this medicine
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        Select the days of the week when this medicine should be taken
       </Text>
 
-      <View style={styles.weekdayGrid}>
-        {WEEKDAYS.map((wd) => (
+      <View style={styles.daysGrid}>
+        {daysOfWeek.map((day) => (
           <TouchableOpacity
-            key={wd.value}
+            key={day.id}
             style={[
-              styles.weekdayChip,
+              styles.dayPill,
               {
-                backgroundColor: medicineInfo.schedule.weekdays?.includes(wd.value)
-                  ? palette.primary
-                  : palette.backgroundSecondary,
-                borderColor: medicineInfo.schedule.weekdays?.includes(wd.value)
-                  ? palette.primary
-                  : palette.border,
+                backgroundColor: medicineData.frequency.selectedDays?.includes(
+                  day.id
+                )
+                  ? colors.primary
+                  : colors.backgroundSecondary,
+                borderColor: medicineData.frequency.selectedDays?.includes(
+                  day.id
+                )
+                  ? colors.primary
+                  : colors.border,
               },
             ]}
-            onPress={() => selectWeekday(wd.value)}
+            onPress={() => toggleDay(day.id)}
           >
             <Text
               style={[
-                styles.weekdayLabel,
+                styles.dayText,
                 {
-                  color: medicineInfo.schedule.weekdays?.includes(wd.value)
-                    ? "#FFF"
-                    : palette.text,
+                  color: medicineData.frequency.selectedDays?.includes(day.id)
+                    ? "#FFFFFF"
+                    : colors.text,
                 },
               ]}
             >
-              {wd.short}
+              {day.label}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <View style={[styles.separator, { borderBottomColor: palette.border }]} />
+      <View style={[styles.divider, { borderBottomColor: colors.border }]} />
 
       <Text
         style={[
-          styles.description,
-          { marginTop: 16, color: palette.textSecondary },
+          styles.subtitle,
+          { marginTop: 16, color: colors.textSecondary },
         ]}
       >
-        Alert times for selected days:
+        Reminder times for selected days:
       </Text>
 
-      <View style={styles.alertsList}>
-        {medicineInfo.schedule.alerts.map((time: string, idx: number) => (
-          <View key={idx} style={styles.alertBox}>
-            <View style={styles.alertControls}>
+      <View style={styles.reminderGrid}>
+        {medicineData.frequency.times.map((time: string, index: number) => (
+          <View key={index} style={styles.reminderItem}>
+            <View style={styles.timeRow}>
               <View
                 style={[
-                  styles.pickerWrapper,
-                  { backgroundColor: palette.backgroundSecondary },
+                  styles.timePickerContainer,
+                  { backgroundColor: colors.backgroundSecondary },
                 ]}
               >
                 <DateTimePicker
-                  testID={`alert${idx}`}
-                  value={parseTimeString(time)}
+                  testID={`timePicker${index}`}
+                  value={convertTimeToDate(time)}
                   mode="time"
-                  onChange={(e, t) => modifyTime(e, t, idx)}
-                  textColor={palette.text}
-                  accentColor={palette.primary}
+                  onChange={(event, selectedTime) =>
+                    handleTimeChange(event, selectedTime, index)
+                  }
+                  textColor={colors.text}
+                  accentColor={colors.primary}
                 />
               </View>
-              {medicineInfo.schedule.alerts.length > 1 && (
+              {medicineData.frequency.times.length > 1 && (
                 <TouchableOpacity
-                  style={[styles.deleteBtn, { backgroundColor: "#FF6B6B" }]}
-                  onPress={() => deleteAlertTime(idx)}
+                  style={[
+                    styles.removeTimeButton,
+                    { backgroundColor: "#FF6B6B" },
+                  ]}
+                  onPress={() => removeReminderTime(index)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="remove" size={16} color="#FFF" />
+                  <Ionicons name="remove" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
             </View>
@@ -510,14 +550,14 @@ export default function MedicineScheduleScreen() {
 
       <TouchableOpacity
         style={[
-          styles.insertBtn,
-          { backgroundColor: palette.primary + "20" },
+          styles.addTimeButton,
+          { backgroundColor: colors.primary + "20" },
         ]}
-        onPress={insertAlertTime}
+        onPress={addReminderTime}
       >
-        <Ionicons name="add" size={20} color={palette.primary} />
-        <Text style={[styles.insertBtnLabel, { color: palette.primary }]}>
-          Add Alert
+        <Ionicons name="add" size={20} color={colors.primary} />
+        <Text style={[styles.addTimeText, { color: colors.primary }]}>
+          Add Reminder Time
         </Text>
       </TouchableOpacity>
     </View>
@@ -525,197 +565,210 @@ export default function MedicineScheduleScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.wrapper, { backgroundColor: palette.background }]}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <StatusBar style={appTheme === "dark" ? "light" : "dark"} />
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
 
-      <View style={[styles.topBar, { borderBottomColor: palette.border }]}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          onPress={() => nav.back()}
+          onPress={() => router.back()}
           style={[
-            styles.navBack,
+            styles.backButton,
             {
-              borderColor: palette.border,
-              backgroundColor: palette.backgroundSecondary,
+              borderColor: colors.border,
+              backgroundColor: colors.backgroundSecondary,
             },
           ]}
         >
-          <Ionicons name="chevron-back" size={20} color={palette.text} />
+          <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.topBarLabel, { color: palette.text }]}>
-          {editingMode ? "Update Medicine" : "New Medicine"}
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {editMode ? "Edit Medicine" : "Add Medicine"}
         </Text>
-        <View style={styles.emptySpace} />
+        <View style={styles.placeholder} />
       </View>
 
-      <View style={styles.progressBar}>
+      {/* Progress Bar */}
+      <View style={styles.progressContainer}>
         <View
-          style={[styles.progressFilled, { backgroundColor: palette.primary }]}
+          style={[styles.progressBar, { backgroundColor: colors.primary }]}
         />
         <View
           style={[
-            styles.progressRemaining,
-            { backgroundColor: palette.border },
+            styles.progressBackground,
+            { backgroundColor: colors.border },
           ]}
         />
       </View>
 
-      <ScrollView style={styles.mainScroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.mainContent}>
-          <View style={styles.stepMarkers}>
+      {/* Content */}
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          {/* Step Indicator */}
+          <View style={styles.stepIndicator}>
             <View
               style={[
-                styles.stepDone,
-                { backgroundColor: palette.primary },
+                styles.stepCompleted,
+                { backgroundColor: colors.primary },
               ]}
             >
-              <Ionicons name="checkmark" size={16} color="#FFF" />
+              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
             </View>
             <View
-              style={[styles.stepConnector, { backgroundColor: palette.primary }]}
+              style={[styles.stepLine, { backgroundColor: colors.primary }]}
             />
             <View
-              style={[styles.stepCurrent, { backgroundColor: palette.primary }]}
+              style={[styles.stepActive, { backgroundColor: colors.primary }]}
             >
-              <Text style={styles.stepCurrentLabel}>2</Text>
+              <Text style={styles.stepActiveText}>2</Text>
             </View>
           </View>
 
-          <View style={styles.titleSection}>
-            <Text style={[styles.mainHeading, { color: palette.text }]}>
-              Schedule & Duration
+          {/* Title */}
+          <View style={styles.section}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Frequency & Duration
             </Text>
-            <Text style={[styles.description, { color: palette.textSecondary }]}>
-              Configure timing and duration settings
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Set when and how long to take this medicine
             </Text>
           </View>
 
-          <View style={[styles.contentCard, { backgroundColor: palette.card }]}>
-            <Text style={[styles.fieldLabel, { color: palette.text }]}>
-              Schedule Pattern
+          {/* Frequency Tabs */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Frequency
             </Text>
-            <Text style={[styles.fieldHint, { color: palette.textSecondary }]}>
-              How often should this medicine be taken?
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              How often do you need to take this medicine?
             </Text>
 
-            <View style={styles.scheduleTabRow}>
-              {SCHEDULE_OPTIONS.map((opt, i) => ScheduleTab(opt, i))}
+            <View style={styles.frequencyTabContainer}>
+              {frequencyTabs.map((tab, index) =>
+                renderFrequencyTab(tab, index)
+              )}
             </View>
 
             <Text
               style={[
-                styles.scheduleDescription,
-                { color: palette.textSecondary },
+                styles.frequencyDescription,
+                { color: colors.textSecondary },
               ]}
             >
               {
-                SCHEDULE_OPTIONS.find((opt) => opt.key === selectedSchedule)
-                  ?.info
+                frequencyTabs.find((tab) => tab.id === activeFrequencyTab)
+                  ?.description
               }
             </Text>
           </View>
 
-          <View style={[styles.contentCard, { backgroundColor: palette.card }]}>
-            {displayScheduleContent()}
+          {/* Frequency Content */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            {renderTabContent()}
           </View>
 
-          <View style={[styles.contentCard, { backgroundColor: palette.card }]}>
-            <View style={styles.sectionHeader}>
+          {/* Duration Settings */}
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={styles.cardHeader}>
               <Ionicons
                 name="calendar-outline"
                 size={20}
-                color={palette.primary}
+                color={colors.primary}
               />
-              <Text style={[styles.sectionTitle, { color: palette.text }]}>
-                Treatment Period
+              <Text style={[styles.cardTitle, { color: colors.text }]}>
+                Duration
               </Text>
             </View>
 
-            <Text style={[styles.fieldHint, { color: palette.textSecondary }]}>
-              Define when to start and optionally when to stop
+            <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+              Set how long you need to take this medicine
             </Text>
 
-            <View style={styles.periodRow}>
-              <View style={styles.periodField}>
-                <Text style={[styles.periodLabel, { color: palette.text }]}>
+            <View style={styles.durationRow}>
+              <View style={styles.durationInput}>
+                <Text style={[styles.durationLabel, { color: colors.text }]}>
                   Start Date
                 </Text>
                 <DateTimePicker
-                  value={medicineInfo.period.begins}
+                  value={medicineData.duration.startDate}
                   mode="date"
-                  onChange={(e, picked) => {
-                    if (e.type === "set" && picked) {
-                      setMedicineInfo((current) => ({
-                        ...current,
-                        period: {
-                          ...current.period,
-                          begins: picked,
+                  onChange={(event, selectedDate) => {
+                    if (event.type === "set" && selectedDate) {
+                      setMedicineData((prev) => ({
+                        ...prev,
+                        duration: {
+                          ...prev.duration,
+                          startDate: selectedDate,
                         },
                       }));
                     }
                   }}
-                  textColor={palette.text}
-                  accentColor={palette.primary}
+                  textColor={colors.text}
+                  accentColor={colors.primary}
                 />
               </View>
 
-              <View style={styles.periodField}>
-                <Text style={[styles.periodLabel, { color: palette.text }]}>
+              <View style={styles.durationInput}>
+                <Text style={[styles.durationLabel, { color: colors.text }]}>
                   End Date (Optional)
                 </Text>
-                {!hasEndDate && !medicineInfo.period.ends ? (
+                {!showEndDate && !medicineData.duration.endDate ? (
                   <TouchableOpacity
                     style={[
-                      styles.addEndBtn,
+                      styles.addEndDateButton,
                       {
-                        backgroundColor: palette.backgroundSecondary,
-                        borderColor: palette.border,
+                        backgroundColor: colors.backgroundSecondary,
+                        borderColor: colors.border,
                         borderWidth: 1,
                       },
                     ]}
-                    onPress={() => setHasEndDate(true)}
+                    onPress={() => setShowEndDate(true)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="add" size={20} color={palette.primary} />
+                    <Ionicons name="add" size={20} color={colors.primary} />
                   </TouchableOpacity>
                 ) : (
-                  <View style={styles.endDateRow}>
+                  <View style={styles.endDateContainer}>
                     <DateTimePicker
-                      value={medicineInfo.period.ends || new Date()}
+                      value={medicineData.duration.endDate || new Date()}
                       mode="date"
-                      onChange={(e, picked) => {
-                        if (e.type === "set") {
-                          setMedicineInfo((current) => ({
-                            ...current,
-                            period: {
-                              ...current.period,
-                              ends: picked,
+                      onChange={(event, selectedDate) => {
+                        if (event.type === "set") {
+                          setMedicineData((prev) => ({
+                            ...prev,
+                            duration: {
+                              ...prev.duration,
+                              endDate: selectedDate,
                             },
                           }));
                         }
                       }}
-                      textColor={palette.text}
-                      accentColor={palette.primary}
-                      style={styles.endDateSelector}
+                      textColor={colors.text}
+                      accentColor={colors.primary}
+                      style={styles.endDatePicker}
                     />
                     <TouchableOpacity
                       style={[
-                        styles.removeEndBtn,
+                        styles.removeEndDateButton,
                         { backgroundColor: "#FF6B6B" },
                       ]}
                       onPress={() => {
-                        setMedicineInfo((current) => ({
-                          ...current,
-                          period: {
-                            ...current.period,
-                            ends: undefined,
+                        setMedicineData((prev) => ({
+                          ...prev,
+                          duration: {
+                            ...prev.duration,
+                            endDate: undefined,
                           },
                         }));
-                        setHasEndDate(false);
+                        setShowEndDate(false);
                       }}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="remove" size={16} color="#FFF" />
+                      <Ionicons name="remove" size={16} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -723,38 +776,40 @@ export default function MedicineScheduleScreen() {
             </View>
           </View>
 
-          <View style={styles.footerGap} />
+          {/* Bottom Space for Floating Button */}
+          <View style={styles.bottomSpace} />
         </View>
       </ScrollView>
 
+      {/* Floating Save Button */}
       <View
         style={[
-          styles.actionFooter,
-          { backgroundColor: palette.background, borderTopColor: palette.border },
+          styles.floatingButtonContainer,
+          { backgroundColor: colors.background, borderTopColor: colors.border },
         ]}
       >
         <TouchableOpacity
           style={[
-            styles.submitBtn,
+            styles.saveButton,
             {
-              backgroundColor: isSaving ? palette.border : palette.primary,
-              opacity: isSaving ? 0.7 : 1,
+              backgroundColor: loading ? colors.border : colors.primary,
+              opacity: loading ? 0.7 : 1,
             },
           ]}
-          onPress={submitMedicine}
-          disabled={isSaving}
+          onPress={handleSaveMedicine}
+          disabled={loading}
           activeOpacity={0.8}
         >
-          {isSaving ? (
-            <Text style={styles.submitBtnLabel}>
-              {editingMode ? "Saving..." : "Creating..."}
+          {loading ? (
+            <Text style={styles.saveButtonText}>
+              {editMode ? "Updating..." : "Adding..."}
             </Text>
           ) : (
             <>
-              <Text style={styles.submitBtnLabel}>
-                {editingMode ? "Save Changes" : "Create Medicine"}
+              <Text style={styles.saveButtonText}>
+                {editMode ? "Update Medicine" : "Add Medicine"}
               </Text>
-              <Ionicons name="checkmark" size={20} color="#FFF" />
+              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
             </>
           )}
         </TouchableOpacity>
@@ -764,10 +819,10 @@ export default function MedicineScheduleScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
+  container: {
     flex: 1,
   },
-  topBar: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -775,7 +830,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  navBack: {
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -783,80 +838,80 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topBarLabel: {
+  headerTitle: {
     fontSize: 18,
     fontWeight: "600",
     flex: 1,
     textAlign: "center",
     marginHorizontal: 16,
   },
-  emptySpace: {
+  placeholder: {
     width: 40,
   },
-  progressBar: {
+  progressContainer: {
     height: 3,
     position: "relative",
   },
-  progressFilled: {
+  progressBar: {
     height: "100%",
   },
-  progressRemaining: {
+  progressBackground: {
     position: "absolute",
     right: 0,
     top: 0,
     width: "50%",
     height: "100%",
   },
-  mainScroll: {
+  scrollView: {
     flex: 1,
   },
-  mainContent: {
+  content: {
     padding: 20,
   },
-  stepMarkers: {
+  stepIndicator: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 32,
   },
-  stepDone: {
+  stepCompleted: {
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepCurrent: {
+  stepActive: {
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepCurrentLabel: {
-    color: "#FFF",
+  stepActiveText: {
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },
-  stepConnector: {
+  stepLine: {
     width: 40,
     height: 2,
   },
-  titleSection: {
+  section: {
     marginBottom: 24,
   },
-  mainHeading: {
+  title: {
     fontSize: 24,
     fontWeight: "700",
     marginBottom: 8,
     textAlign: "center",
   },
-  description: {
+  subtitle: {
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
   },
-  contentCard: {
+  card: {
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -872,22 +927,22 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  fieldLabel: {
+  label: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 12,
   },
-  fieldHint: {
+  sublabel: {
     fontSize: 14,
     marginBottom: 16,
     lineHeight: 20,
   },
-  scheduleTabRow: {
+  frequencyTabContainer: {
     flexDirection: "row",
     marginBottom: 16,
     gap: 8,
   },
-  scheduleTab: {
+  frequencyTab: {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
@@ -896,57 +951,65 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  scheduleTabLabel: {
+  frequencyTabText: {
     fontSize: 14,
     fontWeight: "500",
     marginTop: 8,
   },
-  scheduleDescription: {
+  frequencyDescription: {
     fontSize: 14,
     fontStyle: "italic",
     textAlign: "center",
   },
-  scheduleContent: {
+  tabContentScroll: {
+    height: 400,
+    marginBottom: 20,
+  },
+  tabPage: {
+    width: screenWidth,
+    paddingHorizontal: 20,
+  },
+  tabContent: {
     padding: 20,
   },
-  sectionHeader: {
+  cardHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
   },
-  sectionTitle: {
+  cardTitle: {
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
   },
-  alertsList: {
+  reminderGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
     marginBottom: 12,
   },
-  alertBox: {
+  reminderItem: {
     width: "50%",
     marginBottom: 12,
   },
-  alertControls: {
+  timeRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  pickerWrapper: {
+  timePickerContainer: {
     borderRadius: 8,
     overflow: "hidden",
     flex: 1,
   },
-  deleteBtn: {
+  removeTimeButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  insertBtn: {
+  addTimeButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -954,48 +1017,66 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 8,
   },
-  insertBtnLabel: {
+  addTimeText: {
     fontSize: 14,
     fontWeight: "500",
     marginLeft: 8,
   },
-  weekdayGrid: {
+  daysGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
     marginBottom: 16,
   },
-  weekdayChip: {
-    width: 45,
-    height: 45,
-    borderRadius: 22,
+  dayPill: {
+    width: 60,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  weekdayLabel: {
-    fontSize: 14,
+  dayText: {
+    fontSize: 12,
     fontWeight: "600",
   },
-  separator: {
+  divider: {
     borderBottomWidth: 1,
     marginVertical: 16,
   },
-  periodRow: {
+  intervalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
+  },
+  intervalLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  intervalInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    width: 60,
+    textAlign: "center",
+  },
+  durationRow: {
     flexDirection: "row",
     gap: 16,
   },
-  periodField: {
+  durationInput: {
     flex: 1,
   },
-  periodLabel: {
+  durationLabel: {
     fontSize: 14,
     fontWeight: "500",
     marginLeft: -12,
     marginBottom: 8,
     textAlign: "center",
   },
-  footerGap: {
+  bottomSpace: {
     height: 100,
   },
   addEndDateButton: {
