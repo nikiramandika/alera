@@ -176,14 +176,6 @@ export default function AddHabitScreen() {
     }
   }, [isEditMode, params.habitData, params.template]);
 
-  const handleAddTime = () => {
-    const nextTime = '12:00';
-    setFrequency(prev => ({
-      ...prev,
-      times: [...prev.times, nextTime]
-    }));
-  };
-
   const handleRemoveTime = (index: number) => {
     if (frequency.times.length > 1) {
       Alert.alert(
@@ -206,6 +198,15 @@ export default function AddHabitScreen() {
     }
   };
 
+  const handleAddTime = () => {
+    const nextTime = '12:00';
+    setFrequency(prev => ({
+      ...prev,
+      times: [...prev.times, nextTime]
+    }));
+  };
+
+
   const handleToggleDay = (dayIndex: number) => {
     setFrequency(prev => ({
       ...prev,
@@ -222,21 +223,6 @@ export default function AddHabitScreen() {
       return;
     }
 
-    // Validation
-    if (!habitData.habitName.trim()) {
-      Alert.alert('Error', 'Please enter habit name');
-      return;
-    }
-
-    if (frequency.times.length === 0) {
-      Alert.alert('Error', 'Please add at least one reminder time');
-      return;
-    }
-
-    if (frequency.type === 'interval' && (!frequency.specificDays || frequency.specificDays.length === 0)) {
-      Alert.alert('Error', 'Please select at least one day');
-      return;
-    }
 
     setLoading(true);
     try {
@@ -331,41 +317,6 @@ export default function AddHabitScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Habit Type</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-          {habitTypes.map((type) => (
-            <TouchableOpacity
-              key={type.value}
-              style={[
-                styles.typePill,
-                {
-                  backgroundColor: habitData.habitType === type.value ? colors.primary : colors.backgroundSecondary,
-                  borderColor: habitData.habitType === type.value ? colors.primary : colors.border,
-                }
-              ]}
-              onPress={() => setHabitData(prev => ({
-                ...prev,
-                habitType: type.value as any,
-                icon: type.icon,
-                color: type.value === 'exercise' ? '#e74c3c' :
-                       type.value === 'water' ? '#3498db' :
-                       type.value === 'sleep' ? '#9b59b6' :
-                       type.value === 'meditation' ? '#2ecc71' :
-                       type.value === 'reading' ? '#f39c12' : habitData.color
-              }))}
-            >
-              <Text style={[
-                styles.typeText,
-                { color: habitData.habitType === type.value ? '#FFFFFF' : colors.text }
-              ]}>
-                {type.icon} {type.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Description</Text>
         <TextInput
           style={[styles.textArea, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
@@ -377,6 +328,7 @@ export default function AddHabitScreen() {
           numberOfLines={3}
         />
       </View>
+      
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Target</Text>
@@ -577,6 +529,22 @@ export default function AddHabitScreen() {
       </View>
     </View>
   );
+
+      // Validation
+    if (!habitData.habitName.trim()) {
+      Alert.alert('Error', 'Please enter habit name');
+      return;
+    }
+
+    if (frequency.times.length === 0) {
+      Alert.alert('Error', 'Please add at least one reminder time');
+      return;
+    }
+
+    if (frequency.type === 'interval' && (!frequency.specificDays || frequency.specificDays.length === 0)) {
+      Alert.alert('Error', 'Please select at least one day');
+      return;
+    }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
