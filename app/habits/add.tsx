@@ -97,8 +97,27 @@ export default function AddHabitScreen() {
     }
   };
 
+  // Time picker handlers
+  const convertTimeToDate = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  };
 
-    // Load habit data for edit mode
+  const handleTimeChangeForIndex = (event: DateTimePickerEvent, selectedTime?: Date, index?: number) => {
+    if (event.type === 'set' && selectedTime && index !== undefined) {
+      const hours = selectedTime.getHours().toString().padStart(2, '0');
+      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
+      const formattedTime = `${hours}:${minutes}`;
+
+      const newTimes = [...frequency.times];
+      newTimes[index] = formattedTime;
+      setFrequency(prev => ({ ...prev, times: newTimes }));
+    }
+  };
+
+  // Load habit data for edit mode
   useEffect(() => {
     if (isEditMode && params.habitData) {
       try {
@@ -136,13 +155,6 @@ export default function AddHabitScreen() {
         const template = JSON.parse(params.template as string);
         console.log('Loading from template:', template);
 
-        
-        setFrequency({
-          type: (template.reminderDays?.length === 7 ? 'daily' : 'interval') as 'daily' | 'interval',
-          times: template.reminderTimes || ['08:00'],
-          specificDays: template.reminderDays || [0, 1, 2, 3, 4, 5, 6],
-        });
-
         setHabitData({
           habitName: template.habitName || '',
           habitType: template.category || 'custom',
@@ -153,34 +165,24 @@ export default function AddHabitScreen() {
           isActive: true,
         });
 
+        setFrequency({
+          type: (template.reminderDays?.length === 7 ? 'daily' : 'interval') as 'daily' | 'interval',
+          times: template.reminderTimes || ['08:00'],
+          specificDays: template.reminderDays || [0, 1, 2, 3, 4, 5, 6],
+        });
       } catch (error) {
         console.error('Error parsing template:', error);
       }
     }
   }, [isEditMode, params.habitData, params.template]);
 
-
-  const handleTimeChangeForIndex = (event: DateTimePickerEvent, selectedTime?: Date, index?: number) => {
-    if (event.type === 'set' && selectedTime && index !== undefined) {
-      const hours = selectedTime.getHours().toString().padStart(2, '0');
-      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
-      const formattedTime = `${hours}:${minutes}`;
-
-      const newTimes = [...frequency.times];
-      newTimes[index] = formattedTime;
-      setFrequency(prev => ({ ...prev, times: newTimes }));
-    }
+  const handleAddTime = () => {
+    const nextTime = '12:00';
+    setFrequency(prev => ({
+      ...prev,
+      times: [...prev.times, nextTime]
+    }));
   };
-
-    // Time picker handlers
-  const convertTimeToDate = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-  };
-
-
 
   const handleRemoveTime = (index: number) => {
     if (frequency.times.length > 1) {
@@ -204,15 +206,6 @@ export default function AddHabitScreen() {
     }
   };
 
-  const handleAddTime = () => {
-    const nextTime = '12:00';
-    setFrequency(prev => ({
-      ...prev,
-      times: [...prev.times, nextTime]
-    }));
-  };
-
-
   const handleToggleDay = (dayIndex: number) => {
     setFrequency(prev => ({
       ...prev,
@@ -229,70 +222,23 @@ export default function AddHabitScreen() {
       return;
     }
 
+    // Validation
+    if (!habitData.habitName.trim()) {
+      Alert.alert('Error', 'Please enter habit name');
+      return;
+    }
 
-  const renderBasicInfo = () => (
-    <View style={[styles.card, { backgroundColor: colors.card }]}>
-      <View style={styles.cardHeader}>
-        <Ionicons name="checkmark-circle-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Basic Information</Text>
-      </View>
+    if (frequency.times.length === 0) {
+      Alert.alert('Error', 'Please add at least one reminder time');
+      return;
+    }
 
-      <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Habit Name *</Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-          value={habitData.habitName}
-          onChangeText={(text) => setHabitData(prev => ({ ...prev, habitName: text }))}
-          placeholder="e.g., Morning Exercise"
-          placeholderTextColor={colors.textSecondary}
-        />
-      </View>
+    if (frequency.type === 'interval' && (!frequency.specificDays || frequency.specificDays.length === 0)) {
+      Alert.alert('Error', 'Please select at least one day');
+      return;
+    }
 
-      <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Description</Text>
-        <TextInput
-          style={[styles.textArea, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-          value={habitData.description}
-          onChangeText={(text) => setHabitData(prev => ({ ...prev, description: text }))}
-          placeholder="e.g., 30 minutes of morning exercise to stay healthy"
-          placeholderTextColor={colors.textSecondary}
-          multiline
-          numberOfLines={3}
-        />
-      </View>
-      
-
-      <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Target</Text>
-        <View style={styles.targetRow}>
-          <TextInput
-            style={[styles.targetInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-            value={habitData.target.value.toString()}
-            onChangeText={(text) => setHabitData(prev => ({
-              ...prev,
-              target: { ...prev.target, value: parseInt(text) || 1 }
-            }))}
-            keyboardType="numeric"
-            placeholder="30"
-            placeholderTextColor={colors.textSecondary}
-          />
-          <TextInput
-            style={[styles.unitInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-            value={habitData.target.unit}
-            onChangeText={(text) => setHabitData(prev => ({
-              ...prev,
-              target: { ...prev.target, unit: text }
-            }))}
-            placeholder="minutes"
-            placeholderTextColor={colors.textSecondary}
-          />
-        </View>
-      </View>
-    </View>
-  );
-
-
-      setLoading(true);
+    setLoading(true);
     try {
       if (isEditMode && editingHabitId) {
         // Update existing habit
@@ -365,6 +311,101 @@ export default function AddHabitScreen() {
       setLoading(false);
     }
   };
+
+  const renderBasicInfo = () => (
+    <View style={[styles.card, { backgroundColor: colors.card }]}>
+      <View style={styles.cardHeader}>
+        <Ionicons name="checkmark-circle-outline" size={24} color={colors.primary} />
+        <Text style={[styles.cardTitle, { color: colors.text }]}>Basic Information</Text>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.text }]}>Habit Name *</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+          value={habitData.habitName}
+          onChangeText={(text) => setHabitData(prev => ({ ...prev, habitName: text }))}
+          placeholder="e.g., Morning Exercise"
+          placeholderTextColor={colors.textSecondary}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.text }]}>Habit Type</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
+          {habitTypes.map((type) => (
+            <TouchableOpacity
+              key={type.value}
+              style={[
+                styles.typePill,
+                {
+                  backgroundColor: habitData.habitType === type.value ? colors.primary : colors.backgroundSecondary,
+                  borderColor: habitData.habitType === type.value ? colors.primary : colors.border,
+                }
+              ]}
+              onPress={() => setHabitData(prev => ({
+                ...prev,
+                habitType: type.value as any,
+                icon: type.icon,
+                color: type.value === 'exercise' ? '#e74c3c' :
+                       type.value === 'water' ? '#3498db' :
+                       type.value === 'sleep' ? '#9b59b6' :
+                       type.value === 'meditation' ? '#2ecc71' :
+                       type.value === 'reading' ? '#f39c12' : habitData.color
+              }))}
+            >
+              <Text style={[
+                styles.typeText,
+                { color: habitData.habitType === type.value ? '#FFFFFF' : colors.text }
+              ]}>
+                {type.icon} {type.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.text }]}>Description</Text>
+        <TextInput
+          style={[styles.textArea, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+          value={habitData.description}
+          onChangeText={(text) => setHabitData(prev => ({ ...prev, description: text }))}
+          placeholder="e.g., 30 minutes of morning exercise to stay healthy"
+          placeholderTextColor={colors.textSecondary}
+          multiline
+          numberOfLines={3}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.text }]}>Target</Text>
+        <View style={styles.targetRow}>
+          <TextInput
+            style={[styles.targetInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+            value={habitData.target.value.toString()}
+            onChangeText={(text) => setHabitData(prev => ({
+              ...prev,
+              target: { ...prev.target, value: parseInt(text) || 1 }
+            }))}
+            keyboardType="numeric"
+            placeholder="30"
+            placeholderTextColor={colors.textSecondary}
+          />
+          <TextInput
+            style={[styles.unitInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+            value={habitData.target.unit}
+            onChangeText={(text) => setHabitData(prev => ({
+              ...prev,
+              target: { ...prev.target, unit: text }
+            }))}
+            placeholder="minutes"
+            placeholderTextColor={colors.textSecondary}
+          />
+        </View>
+      </View>
+    </View>
+  );
 
   const renderFrequencySettings = () => (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -537,22 +578,6 @@ export default function AddHabitScreen() {
     </View>
   );
 
-      // Validation
-    if (!habitData.habitName.trim()) {
-      Alert.alert('Error', 'Please enter habit name');
-      return;
-    }
-
-    if (frequency.times.length === 0) {
-      Alert.alert('Error', 'Please add at least one reminder time');
-      return;
-    }
-
-    if (frequency.type === 'interval' && (!frequency.specificDays || frequency.specificDays.length === 0)) {
-      Alert.alert('Error', 'Please select at least one day');
-      return;
-    }
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
@@ -595,6 +620,7 @@ export default function AddHabitScreen() {
       {/* Content Section */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
+          {renderBasicInfo()}
           {renderFrequencySettings()}
           {renderDurationSettings()}
           {renderColorSelection()}

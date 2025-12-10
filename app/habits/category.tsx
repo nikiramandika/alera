@@ -135,6 +135,11 @@ export default function HabitCategoryScreen() {
     });
   };
 
+  const handleCustomHabit = () => {
+    // Navigate to create-step1 screen without template (empty form)
+    router.push('/habits/create-step1');
+  };
+
   const renderCategoryCard = (category: typeof habitCategories[0]) => (
     <TouchableOpacity
       key={category.id}
@@ -142,6 +147,21 @@ export default function HabitCategoryScreen() {
       onPress={() => handleCategorySelect(category)}
       activeOpacity={0.8}
     >
+      <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+        <View style={[styles.iconContainer, { backgroundColor: category.color + '20' }]}>
+          <Ionicons name={category.icon} size={32} color={category.color} />
+        </View>
+        <View style={styles.headerInfo}>
+          <Text style={[styles.categoryName, { color: colors.text }]}>
+            {category.name}
+          </Text>
+          <Text style={[styles.categoryDescription, { color: colors.textSecondary }]}>
+            {category.description}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+      </View>
+
       <View style={styles.quickInfo}>
         <View style={styles.infoItem}>
           <Ionicons name="target-outline" size={16} color={colors.textSecondary} />
@@ -162,24 +182,6 @@ export default function HabitCategoryScreen() {
           </Text>
         </View>
       </View>
-
-
-      <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
-        <View style={[styles.iconContainer, { backgroundColor: category.color + '20' }]}>
-          <Ionicons name={category.icon} size={32} color={category.color} />
-        </View>
-        <View style={styles.headerInfo}>
-          <Text style={[styles.categoryName, { color: colors.text }]}>
-            {category.name}
-          </Text>
-          <Text style={[styles.categoryDescription, { color: colors.textSecondary }]}>
-            {category.description}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-      </View>
-
-
     </TouchableOpacity>
   );
 
@@ -187,21 +189,6 @@ export default function HabitCategoryScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
-
-      
-          {/* Predefined Categories */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Kategori Tersedia
-            </Text>
-            {habitCategories.map(renderCategoryCard)}
-          </View>
-
-          {/* Footer Space */}
-          <View style={styles.footerSpace} />
-        </View>
-
-        
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -229,6 +216,62 @@ export default function HabitCategoryScreen() {
             </Text>
           </View>
 
+          {/* Predefined Categories */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Kategori Tersedia
+            </Text>
+            {habitCategories.map(renderCategoryCard)}
+          </View>
+
+          {/* Custom Option */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={[styles.categoryCard, { backgroundColor: colors.card }]}
+              onPress={handleCustomHabit}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
+                  <Ionicons name="star-outline" size={32} color={colors.primary} />
+                </View>
+                <View style={styles.headerInfo}>
+                  <Text style={[styles.categoryName, { color: colors.text }]}>
+                    Buat Kebiasaan Kustom
+                  </Text>
+                  <Text style={[styles.categoryDescription, { color: colors.textSecondary }]}>
+                    Desain kebiasaan baru sesuai dengan kebutuhan pribadi
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </View>
+
+              <View style={styles.quickInfo}>
+                <View style={styles.infoItem}>
+                  <Ionicons name="create-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    Nama bebas
+                  </Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <Ionicons name="target-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    Target kustom
+                  </Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <Ionicons name="notifications-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    Pengingat fleksibel
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer Space */}
+          <View style={styles.footerSpace} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
