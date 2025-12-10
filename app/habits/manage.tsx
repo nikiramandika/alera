@@ -204,11 +204,6 @@ export default function ManageHabitScreen() {
       return;
     }
 
-    if (habitData.category === 'custom' && !habitData.customCategory.trim()) {
-      Alert.alert('Error', 'Please enter custom category name');
-      return;
-    }
-
     if (habitData.reminderTimes.length === 0) {
       Alert.alert('Error', 'Please add at least one reminder time');
       return;
@@ -368,19 +363,6 @@ export default function ManageHabitScreen() {
           ))}
         </ScrollView>
       </View>
-
-      {habitData.category === 'custom' && (
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>Custom Category Name</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-            placeholder="Enter custom category..."
-            placeholderTextColor={colors.textSecondary}
-            value={habitData.customCategory}
-            onChangeText={(text) => setHabitData(prev => ({ ...prev, customCategory: text }))}
-          />
-        </View>
-      )}
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Description</Text>
