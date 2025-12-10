@@ -177,13 +177,7 @@ export default function CreateHabitStep2Screen() {
         duration.endDate = habitData.duration.endDate;
       }
 
-      const frequencyData = {
-        type: habitData.frequency.type,
-        times: habitData.frequency.times,
-        specificDays: habitData.frequency.type === 'interval' ? habitData.frequency.selectedDays : [],
-      };
-
-      const habitPayload: any = {
+            const habitPayload: any = {
         habitName: habitData.habitName,
         habitType: habitData.habitType,
         description: habitData.description,
@@ -222,6 +216,12 @@ export default function CreateHabitStep2Screen() {
         streak: 0,
         bestStreak: 0,
         completedDates: [],
+      };
+
+      const frequencyData = {
+        type: habitData.frequency.type,
+        times: habitData.frequency.times,
+        specificDays: habitData.frequency.type === 'interval' ? habitData.frequency.selectedDays : [],
       };
 
       // Only add endDate if it exists (to avoid Firebase undefined error)
@@ -292,21 +292,7 @@ export default function CreateHabitStep2Screen() {
     }
   };
 
-  const handleTimeChange = (event: DateTimePickerEvent, selectedDate?: Date, index?: number) => {
-    if (event.type === 'set' && selectedDate && index !== undefined) {
-      const hours = selectedDate.getHours().toString().padStart(2, '0');
-      const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
-      const newTimes = [...habitData.frequency.times];
-      newTimes[index] = `${hours}:${minutes}`;
-      setHabitData(prev => ({
-        ...prev,
-        frequency: {
-          ...prev.frequency,
-          times: newTimes
-        }
-      }));
-    }
-  };
+
 
   
   const convertTimeToDate = (timeString: string) => {
@@ -325,6 +311,23 @@ export default function CreateHabitStep2Screen() {
         type: tabId as 'daily' | 'interval'
       }
     }));
+  };
+
+
+    const handleTimeChange = (event: DateTimePickerEvent, selectedDate?: Date, index?: number) => {
+    if (event.type === 'set' && selectedDate && index !== undefined) {
+      const hours = selectedDate.getHours().toString().padStart(2, '0');
+      const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
+      const newTimes = [...habitData.frequency.times];
+      newTimes[index] = `${hours}:${minutes}`;
+      setHabitData(prev => ({
+        ...prev,
+        frequency: {
+          ...prev.frequency,
+          times: newTimes
+        }
+      }));
+    }
   };
 
   return (
@@ -429,10 +432,6 @@ export default function CreateHabitStep2Screen() {
                   <Text style={[styles.cardTitle, { color: colors.text }]}>Daily Reminder Times</Text>
                 </View>
 
-                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                  When should you be reminded to do this habit?
-                </Text>
-
                 <View style={styles.reminderGrid}>
                   {habitData.frequency.times.map((time: string, index: number) => (
                     <View key={index} style={styles.reminderItem}>
@@ -460,6 +459,13 @@ export default function CreateHabitStep2Screen() {
                     </View>
                   ))}
                 </View>
+
+
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  When should you be reminded to do this habit?
+                </Text>
+
+
 
                 <TouchableOpacity
                   style={[styles.addTimeButton, { backgroundColor: colors.primary + '20' }]}
@@ -484,40 +490,8 @@ export default function CreateHabitStep2Screen() {
                   Select the days of the week when this habit should be done
                 </Text>
 
-                <View style={styles.daysGrid}>
-                  {daysOfWeek.map((day, index) => (
-                    <TouchableOpacity
-                      key={day}
-                      style={[
-                        styles.dayPill,
-                        {
-                          backgroundColor: habitData.frequency.selectedDays?.includes(index)
-                            ? colors.primary
-                            : colors.backgroundSecondary,
-                          borderColor: habitData.frequency.selectedDays?.includes(index)
-                            ? colors.primary
-                            : colors.border,
-                        }
-                      ]}
-                      onPress={() => toggleDay(index)}
-                    >
-                      <Text style={[
-                        styles.dayText,
-                        { color: habitData.frequency.selectedDays?.includes(index) ? '#FFFFFF' : colors.text }
-                      ]}>
-                        {day}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
 
-                <View style={[styles.divider, { borderBottomColor: colors.border }]} />
-
-                <Text style={[styles.subtitle, { marginTop: 16, color: colors.textSecondary }]}>
-                  Reminder times for selected days:
-                </Text>
-
-                <View style={styles.reminderGrid}>
+                              <View style={styles.reminderGrid}>
                   {habitData.frequency.times.map((time: string, index: number) => (
                     <View key={index} style={styles.reminderItem}>
                       <View style={styles.timeRow}>
@@ -545,6 +519,34 @@ export default function CreateHabitStep2Screen() {
                   ))}
                 </View>
 
+                <View style={styles.daysGrid}>
+                  {daysOfWeek.map((day, index) => (
+                    <TouchableOpacity
+                      key={day}
+                      style={[
+                        styles.dayPill,
+                        {
+                          backgroundColor: habitData.frequency.selectedDays?.includes(index)
+                            ? colors.primary
+                            : colors.backgroundSecondary,
+                          borderColor: habitData.frequency.selectedDays?.includes(index)
+                            ? colors.primary
+                            : colors.border,
+                        }
+                      ]}
+                      onPress={() => toggleDay(index)}
+                    >
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={[styles.divider, { borderBottomColor: colors.border }]} />
+
+                <Text style={[styles.subtitle, { marginTop: 16, color: colors.textSecondary }]}>
+                  Reminder times for selected days:
+                </Text>
+
+
                 <TouchableOpacity
                   style={[styles.addTimeButton, { backgroundColor: colors.primary + '20' }]}
                   onPress={addReminderTime}
@@ -556,55 +558,6 @@ export default function CreateHabitStep2Screen() {
                 </TouchableOpacity>
               </View>
             )}
-          </View>
-
-          {/* Goal Container */}
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="flag-outline" size={20} color={colors.primary} />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Goal</Text>
-            </View>
-
-            <View style={styles.goalRow}>
-              <View style={styles.goalInput}>
-                <Text style={[styles.goalLabel, { color: colors.text }]}>Target</Text>
-                <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colors.backgroundSecondary,
-                    borderColor: colors.border,
-                    color: colors.text
-                  }]}
-                  value={habitData.target.value.toString()}
-                  onChangeText={(text) => setHabitData(prev => ({
-                    ...prev,
-                    target: {
-                      ...prev.target,
-                      value: parseInt(text) || 1
-                    }
-                  }))}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={styles.goalInput}>
-                <Text style={[styles.goalLabel, { color: colors.text }]}>Unit</Text>
-                <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colors.backgroundSecondary,
-                    borderColor: colors.border,
-                    color: colors.text
-                  }]}
-                  value={habitData.target.unit}
-                  onChangeText={(text) => setHabitData(prev => ({
-                    ...prev,
-                    target: {
-                      ...prev.target,
-                      unit: text
-                    }
-                  }))}
-                  placeholder="times, minutes, etc."
-                />
-              </View>
-            </View>
           </View>
 
           {/* Duration Settings */}
