@@ -3,6 +3,7 @@
 
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, Alert, Dimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,8 +21,8 @@ export default function TaskCompleteScreen() {
   const isInitialized = useRef(false);
   const hapticTriggered = useRef(false);
   const persistentTask = useRef<any>(null); // Store task data persistently
-  const { markMedicineTaken, refreshMedicines } = useMedicine();
-  const { markHabitCompleted, refreshHabits } = useHabit();
+  const { markMedicineTaken } = useMedicine();
+  const { markHabitCompleted } = useHabit();
 
   // Color scheme
   const colorScheme = useColorScheme();
@@ -122,7 +123,7 @@ export default function TaskCompleteScreen() {
         ]
       );
     }
-  }, [params, router, markMedicineTaken, markHabitCompleted, refreshMedicines, refreshHabits]);
+  }, [params, router, markMedicineTaken, markHabitCompleted]);
 
   const slideX = useRef(new Animated.Value(0)).current;
   const [isCompleted, setIsCompleted] = useState(false);
@@ -420,33 +421,36 @@ export default function TaskCompleteScreen() {
         console.log('Task completed successfully!');
         setIsCompleted(true);
 
+        // Send signal to home screen for optimistic UI update BEFORE navigation
+        try {
+          const taskId = currentTask.type === 'medicine'
+            ? `medicine-${currentTask.id.replace('medicine-', '')}${currentTask.time ? `-${currentTask.time}` : ''}`
+            : `habit-${currentTask.id.replace('habit-', '')}${currentTask.time ? `-${currentTask.time}` : ''}`;
+
+          const signal = {
+            taskId: taskId,
+            timestamp: Date.now()
+          };
+
+          // Send signal IMMEDIATELY after successful completion
+          await AsyncStorage.setItem('taskCompletionSignal', JSON.stringify(signal));
+          console.log('📤 Sent task completion signal IMMEDIATELY:', taskId);
+        } catch (error) {
+          console.error('Error sending task completion signal:', error);
+        }
+
         // Success haptic feedback
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
-        // OPTIMIZED: Faster navigation with background data refresh
-        // Show minimal completion feedback (400ms) then navigate immediately
+        // OPTIMIZED: INSTANT navigation with immediate signal
+        // Navigate immediately after completion signal is sent
         setTimeout(() => {
-          console.log('🏠 Navigating back to home...');
-          router.replace('/(tabs)');
-        }, 400); // Reduced from 1200ms to 400ms for faster feedback
+          console.log('🏠 Instant navigation after task completion...');
+          router.replace('/(tabs)' as any);
+        }, 200); // Further reduced to 200ms for instant feedback
 
-        // OPTIMIZED: Refresh data in background without blocking UI
-        // This ensures the home screen shows updated data when user arrives
-        setTimeout(async () => {
-          console.log('🔄 Refreshing data in background...');
-          try {
-            if (currentTask.type === 'medicine') {
-              await refreshMedicines();
-              console.log('✅ Medicines refreshed in background');
-            } else if (currentTask.type === 'habit') {
-              await refreshHabits();
-              console.log('✅ Habits refreshed in background');
-            }
-          } catch (error) {
-            console.error('❌ Error refreshing data in background:', error);
-            // Even if refresh fails, user already navigated - no need to show error
-          }
-        }, 500); // Start background refresh 100ms after navigation begins
+        // NO BACKGROUND REFRESH - Data is handled by optimistic UI only
+        console.log('🚫 No background refresh needed - using optimistic UI updates');
       } else {
         console.log('Task completion failed:', result);
 

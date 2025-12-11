@@ -9,6 +9,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,6 +57,9 @@ export default function HomeScreen() {
   const [extendedHabitHistory, setExtendedHabitHistory] = useState<any[]>([]);
   const [extendedMedicineHistory, setExtendedMedicineHistory] = useState<any[]>([]);
 
+  // Track if we have valid completion data
+  const [hasCompletionData, setHasCompletionData] = useState(false);
+
   // Store stable references to refresh functions
   const refreshHabitsRef = useRef(refreshHabits);
   const refreshMedicinesRef = useRef(refreshMedicines);
@@ -63,6 +67,7 @@ export default function HomeScreen() {
   // Fetch extended habit history for calendar view
   const fetchExtendedHabitHistory = useCallback(async () => {
     try {
+      console.log('🔄 Fetching extended history for completion status...');
       const today = new Date();
       const startDate = new Date(today);
       startDate.setDate(today.getDate() - 7); // 7 days back
@@ -75,8 +80,11 @@ export default function HomeScreen() {
       ]);
       setExtendedHabitHistory(habitHist);
       setExtendedMedicineHistory(medicineHist);
+      setHasCompletionData(true);
+      console.log(`✅ Extended history loaded - Habits: ${habitHist.length}, Medicines: ${medicineHist.length}`);
     } catch (error) {
       console.error('Error fetching extended history:', error);
+      setHasCompletionData(false);
     }
   }, [getHabitHistoryForDateRange, getMedicineHistoryForDateRange]);
 
@@ -84,10 +92,13 @@ export default function HomeScreen() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        if (isInitialLoad && habits.length > 0) {
+        // Only load if we have habits/medicines but no completion data yet
+        if (isInitialLoad && (habits.length > 0 || medicines.length > 0) && !hasCompletionData) {
+          console.log('🔄 Loading initial completion data...');
           setIsLoadingTasks(true);
           await fetchExtendedHabitHistory();
           setIsInitialLoad(false); // Mark initial load as complete
+          console.log('✅ Initial completion data loaded');
         }
       } catch (error) {
         console.error('Error loading initial data:', error);
@@ -97,7 +108,7 @@ export default function HomeScreen() {
     };
 
     loadInitialData();
-  }, [habits.length, fetchExtendedHabitHistory, isInitialLoad]);
+  }, [habits.length, medicines.length, hasCompletionData, fetchExtendedHabitHistory, isInitialLoad]);
 
   // Update refs when functions change
   useEffect(() => {
@@ -105,54 +116,101 @@ export default function HomeScreen() {
     refreshMedicinesRef.current = refreshMedicines;
   }, [refreshHabits, refreshMedicines, fetchExtendedHabitHistory]);
 
-  // Refresh data when screen comes into focus - but limit frequency to prevent loops
-  const refreshTriggered = useRef(false);
-  const lastRefreshTime = useRef(0);
+  // Track task completion for optimistic UI (minimal tracking)
+  const lastTaskClickTime = useRef(0);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      const now = Date.now();
+  // Track recently completed tasks for optimistic UI updates
+  const [recentlyCompletedTasks, setRecentlyCompletedTasks] = useState<Set<string>>(new Set());
 
-      // Prevent refresh if it's been less than 3 seconds since last refresh
-      if (refreshTriggered.current && (now - lastRefreshTime.current) < 3000) {
-        console.log('⏭️ Skipping refresh - too soon since last refresh');
-        return;
-      }
+  // Function to mark a task as recently completed (for optimistic UI)
+  const markTaskAsCompleted = React.useCallback((taskId: string) => {
+    console.log('🎯 Marking task as completed for optimistic UI:', taskId);
+    setRecentlyCompletedTasks(prev => new Set([...prev, taskId]));
 
-      refreshTriggered.current = true;
-      lastRefreshTime.current = now;
+    // Remove from recently completed after 5 seconds to prevent memory leak
+    setTimeout(() => {
+      setRecentlyCompletedTasks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(taskId);
+        return newSet;
+      });
+    }, 5000);
+  }, []);
 
-      const refreshData = async () => {
-        try {
-          console.log('🔄 REFRESHING DATA ON FOCUS');
-          // Don't show loading for background refresh - let existing data show
-          // Only show loading if no data exists
-          if (habits.length === 0 && medicines.length === 0) {
-            setIsLoadingTasks(true);
+  // Check for task completion signal from AsyncStorage - AGGRESSIVE DETECTION
+  useEffect(() => {
+    const checkForTaskCompletion = async () => {
+      try {
+        const completionSignal = await AsyncStorage.getItem('taskCompletionSignal');
+        if (completionSignal) {
+          const { taskId, timestamp } = JSON.parse(completionSignal);
+          const now = Date.now();
+
+          // Only process if completion was within last 5 seconds (reduced from 10)
+          if (now - timestamp < 5000) {
+            console.log('🎯 IMMEDIATE task completion signal detected:', taskId);
+            markTaskAsCompleted(taskId);
           }
-          await Promise.all([
-            refreshHabitsRef.current(),
-            refreshMedicinesRef.current(),
-            fetchExtendedHabitHistory()
-          ]);
-          console.log('✅ DATA REFRESH COMPLETED');
-        } catch (error) {
-          console.error('❌ Error refreshing data on focus:', error);
-        } finally {
-          setIsLoadingTasks(false);
+
+          // Clear the signal immediately
+          await AsyncStorage.removeItem('taskCompletionSignal');
         }
+      } catch (error) {
+        console.error('Error checking task completion signal:', error);
+      }
+    };
+
+    // Check IMMEDIATELY when component mounts or comes into focus
+    checkForTaskCompletion();
+
+    // Set up AGGRESSIVE interval (every 200ms for 2 seconds) for instant detection
+    const interval = setInterval(() => {
+      checkForTaskCompletion();
+    }, 200);
+
+    // Clear interval after 2 seconds (faster detection window)
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+    }, 2000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [markTaskAsCompleted]);
+
+  // NO AUTO-REFRESH - Data is loaded once with completion status included
+  // Only optimistic UI updates are used for task completion
+
+  // Update task click handler - minimal tracking
+  const handleTaskClick = (task: Task) => {
+    console.log('Task clicked:', task); // Debug log
+    if (task) {
+      // Track task click time for optimistic UI
+      lastTaskClickTime.current = Date.now();
+
+      // Include selectedDate in task data for proper completion date handling
+      const taskWithDate = {
+        ...task,
+        selectedDate: selectedDate.toISOString() // Include selected date for completion
       };
 
-      refreshData();
+      const taskData = JSON.stringify(taskWithDate);
+      console.log('Task data string length:', taskData.length); // Debug log
+      console.log('Task data preview:', taskData.substring(0, 100) + '...'); // Debug log
+      console.log('Selected date sent:', selectedDate.toISOString()); // Debug log;
 
-      // Reset trigger after 5 seconds to allow next refresh
-      const timeout = setTimeout(() => {
-        refreshTriggered.current = false;
-      }, 5000);
-
-      return () => clearTimeout(timeout);
-    }, [fetchExtendedHabitHistory, isInitialLoad]) // Include dependencies
-  );
+      // Navigate to task completion screen with task data as modal
+      router.push({
+        pathname: '/tasks/complete',
+        params: {
+          taskData: taskData
+        }
+      } as any);
+    } else {
+      console.log('No task provided to handleTaskClick');
+    }
+  };
 
   
 // Generate tasks from real data - defined outside useMemo to avoid dependency issues
@@ -245,16 +303,22 @@ const generateTasksFromData = React.useCallback(() => {
     const isFutureDate = selectedDateStr > todayStr;
 
     // Check if habit was completed on selected date using habit history
-    const isCompletedOnSelectedDate = !isFutureDate && extendedHabitHistory.some((history: any) => {
-      if (history.habitId === habit.habitId) {
-        const historyDate = new Date(history.date);
-        const historyDateStr = historyDate.getFullYear() + '-' +
-          String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
-          String(historyDate.getDate()).padStart(2, '0');
-        return historyDateStr === selectedDateStr && history.completed;
-      }
-      return false;
-    });
+    const isCompletedOnSelectedDate = !isFutureDate && (
+      // First check optimistic UI updates (recently completed tasks)
+      recentlyCompletedTasks.has(`habit-${habit.habitId}`) ||
+      recentlyCompletedTasks.has(`habit-${habit.habitId}-all`) ||
+      // Then check server data
+      extendedHabitHistory.some((history: any) => {
+        if (history.habitId === habit.habitId) {
+          const historyDate = new Date(history.date);
+          const historyDateStr = historyDate.getFullYear() + '-' +
+            String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
+            String(historyDate.getDate()).padStart(2, '0');
+          return historyDateStr === selectedDateStr && history.completed;
+        }
+        return false;
+      })
+    );
 
     // Debug habit data structure
     if (__DEV__) {
@@ -327,16 +391,22 @@ const generateTasksFromData = React.useCallback(() => {
     const isFutureDate = selectedDateStr > todayStr;
 
     // Check if medicine was taken on selected date using medicine history
-    const isTakenOnSelectedDate = !isFutureDate && extendedMedicineHistory.some((history: any) => {
-      if (history.reminderId === medicine.reminderId) {
-        const historyDate = new Date(history.scheduledTime);
-        const historyDateStr = historyDate.getFullYear() + '-' +
-          String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
-          String(historyDate.getDate()).padStart(2, '0');
-        return historyDateStr === selectedDateStr && history.status === 'taken';
-      }
-      return false;
-    });
+    const isTakenOnSelectedDate = !isFutureDate && (
+      // First check optimistic UI updates (recently completed tasks)
+      recentlyCompletedTasks.has(`medicine-${medicine.reminderId}`) ||
+      recentlyCompletedTasks.has(`medicine-${medicine.reminderId}-all`) ||
+      // Then check server data
+      extendedMedicineHistory.some((history: any) => {
+        if (history.reminderId === medicine.reminderId) {
+          const historyDate = new Date(history.scheduledTime);
+          const historyDateStr = historyDate.getFullYear() + '-' +
+            String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
+            String(historyDate.getDate()).padStart(2, '0');
+          return historyDateStr === selectedDateStr && history.status === 'taken';
+        }
+        return false;
+      })
+    );
 
     if (__DEV__ && isTakenOnSelectedDate) {
       console.log(`💊 Medicine "${medicine.medicineName}" was taken on ${selectedDateStr}`);
@@ -519,21 +589,27 @@ const generateTasksFromData = React.useCallback(() => {
             const isFutureDate = selectedDateStr > todayStr;
 
             // Check if this specific habit was completed on selected date using history
-            const isCompletedOnSelectedDate = !isFutureDate && extendedHabitHistory.some((history: any) => {
-              if (history.habitId === habit.habitId) {
-                const historyDate = new Date(history.date);
-                const historyDateStr = historyDate.getFullYear() + '-' +
-                  String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
-                  String(historyDate.getDate()).padStart(2, '0');
-                const historyTime = historyDate.getHours().toString().padStart(2, '0') + ':' +
-                                  historyDate.getMinutes().toString().padStart(2, '0');
-                // For time-based habits, check if completion time matches the scheduled time
-                return historyDateStr === selectedDateStr &&
-                       historyTime === time &&
-                       history.completed;
-              }
-              return false;
-            });
+            const isCompletedOnSelectedDate = !isFutureDate && (
+              // First check optimistic UI updates (recently completed tasks)
+              recentlyCompletedTasks.has(`habit-${habit.habitId}-${time}`) ||
+              recentlyCompletedTasks.has(`habit-${habit.habitId}-all`) ||
+              // Then check server data
+              extendedHabitHistory.some((history: any) => {
+                if (history.habitId === habit.habitId) {
+                  const historyDate = new Date(history.date);
+                  const historyDateStr = historyDate.getFullYear() + '-' +
+                    String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(historyDate.getDate()).padStart(2, '0');
+                  const historyTime = historyDate.getHours().toString().padStart(2, '0') + ':' +
+                                    historyDate.getMinutes().toString().padStart(2, '0');
+                  // For time-based habits, check if completion time matches the scheduled time
+                  return historyDateStr === selectedDateStr &&
+                         historyTime === time &&
+                         history.completed;
+                }
+                return false;
+              })
+            );
 
             const toleranceTime = new Date(indonesiaReminderTime.getTime() + OVERDUE_TOLERANCE_MINUTES * 60 * 1000);
             const isOverdue = isToday && !isCompletedOnSelectedDate && now > toleranceTime;
@@ -669,18 +745,24 @@ const generateTasksFromData = React.useCallback(() => {
             const isFutureDate = selectedDateStr > todayStr;
 
             // Check if this specific medicine dose was taken using history
-            const isTakenOnSelectedDate = !isFutureDate && extendedMedicineHistory.some((history: any) => {
-              if (history.reminderId === medicine.reminderId) {
-                const historyDate = new Date(history.scheduledTime);
-                const historyDateStr = historyDate.getFullYear() + '-' +
-                  String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
-                  String(historyDate.getDate()).padStart(2, '0');
-                const historyTime = historyDate.getHours().toString().padStart(2, '0') + ':' +
-                                  historyDate.getMinutes().toString().padStart(2, '0');
-                return historyDateStr === selectedDateStr && historyTime === time && history.status === 'taken';
-              }
-              return false;
-            });
+            const isTakenOnSelectedDate = !isFutureDate && (
+              // First check optimistic UI updates (recently completed tasks)
+              recentlyCompletedTasks.has(`medicine-${medicine.reminderId}-${time}`) ||
+              recentlyCompletedTasks.has(`medicine-${medicine.reminderId}-all`) ||
+              // Then check server data
+              extendedMedicineHistory.some((history: any) => {
+                if (history.reminderId === medicine.reminderId) {
+                  const historyDate = new Date(history.scheduledTime);
+                  const historyDateStr = historyDate.getFullYear() + '-' +
+                    String(historyDate.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(historyDate.getDate()).padStart(2, '0');
+                  const historyTime = historyDate.getHours().toString().padStart(2, '0') + ':' +
+                                    historyDate.getMinutes().toString().padStart(2, '0');
+                  return historyDateStr === selectedDateStr && historyTime === time && history.status === 'taken';
+                }
+                return false;
+              })
+            );
 
             const toleranceTime = new Date(indonesiaReminderTime.getTime() + OVERDUE_TOLERANCE_MINUTES * 60 * 1000);
             const isOverdue = isToday && !isTakenOnSelectedDate && now > toleranceTime;
@@ -787,9 +869,20 @@ const generateTasksFromData = React.useCallback(() => {
     upcoming,
     timeBased: sortedTimeBased
   };
-}, [selectedDate, habits, medicines, extendedMedicineHistory, extendedHabitHistory]);
+}, [selectedDate, habits, medicines, extendedMedicineHistory, extendedHabitHistory, recentlyCompletedTasks]);
 
   const tasks = useMemo(() => generateTasksFromData(), [generateTasksFromData]);
+
+  // Determine if we should show loading state - simplified logic
+  const shouldShowLoading = React.useMemo(() => {
+    // Show loading ONLY if:
+    // 1. It's initial load AND we have habits/medicines but no completion data yet
+    // 2. Explicitly loading tasks (but never during completion)
+    const isInCompletionWindow = lastTaskClickTime.current > 0 && (Date.now() - lastTaskClickTime.current) < 5000;
+
+    return (isInitialLoad && (habits.length > 0 || medicines.length > 0) && !hasCompletionData && !isInCompletionWindow) ||
+           (isLoadingTasks && !isInCompletionWindow);
+  }, [isInitialLoad, habits.length, medicines.length, hasCompletionData, isLoadingTasks]);
 
   // Filter tasks based on search query (for search modal only)
   const filteredTasks = {
@@ -887,33 +980,6 @@ const generateTasksFromData = React.useCallback(() => {
   };
 
   const calendarDays = generateCalendarDays();
-
-  // Task detail handler - navigate to task completion screen
-  const handleTaskClick = (task: Task) => {
-    console.log('Task clicked:', task); // Debug log
-    if (task) {
-      // Include selectedDate in task data for proper completion date handling
-      const taskWithDate = {
-        ...task,
-        selectedDate: selectedDate.toISOString() // Include selected date for completion
-      };
-
-      const taskData = JSON.stringify(taskWithDate);
-      console.log('Task data string length:', taskData.length); // Debug log
-      console.log('Task data preview:', taskData.substring(0, 100) + '...'); // Debug log
-      console.log('Selected date sent:', selectedDate.toISOString()); // Debug log
-
-      // Navigate to task completion screen with task data as modal
-      router.push({
-        pathname: '/tasks/complete',
-        params: {
-          taskData: taskData
-        }
-      } as any);
-    } else {
-      console.log('No task provided to handleTaskClick');
-    }
-  };
 
   
   return (
@@ -1443,8 +1509,8 @@ const generateTasksFromData = React.useCallback(() => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.tasksContent}>
-            {/* Loading State - only show when no data exists yet */}
-            {(isLoadingTasks && habits.length === 0 && medicines.length === 0) ? (
+            {/* Loading State - show when we need to load completion status */}
+            {shouldShowLoading ? (
               <View style={styles.loadingContainer}>
                 <LoadingAnimation size="medium" />
                 <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
