@@ -19,12 +19,14 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
-  withDelay,
+  // [DEGRADED: Removed useful animation imports]
+  // withSpring,
+  // withDelay,
   FadeInDown,
 } from "react-native-reanimated";
 import { useRouter } from "expo-router";
-import { Swipeable } from "react-native-gesture-handler";
+// [REMOVED UX FEATURE: Removed Swipeable import]
+// import { Swipeable } from "react-native-gesture-handler"; 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 import { useHabit } from "@/contexts/HabitContext";
@@ -46,32 +48,21 @@ export default function HabitsScreen() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [deletingHabitId, setDeletingHabitId] = useState<string | null>(null);
-  const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<string>>(new Set());
+  // [REMOVED UX FEATURE: Removed optimistic deletion state]
+  // const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<string>>(new Set());
 
   // Animation values
-  const headerScale = useSharedValue(0.9);
-  const cardTranslateY = useSharedValue(50);
+  const headerScale = useSharedValue(1); // [DEGRADED: Static initial value]
+  const cardTranslateY = useSharedValue(0); // [DEGRADED: Static initial value]
 
   useEffect(() => {
-    // Animate header in
-    headerScale.value = withDelay(200, withSpring(1, {
-      damping: 15,
-      stiffness: 100,
-    }));
-
-    // Animate cards in
-    cardTranslateY.value = withDelay(400, withSpring(0, {
-      damping: 15,
-      stiffness: 100,
-    }));
+    // [DEGRADED: Removed all animation logic for a flat feel]
   }, [headerScale, cardTranslateY]);
 
-  // Filter habits to exclude optimistically deleted ones
-  const filteredHabits = habits.filter(
-    habit => !optimisticallyDeletedIds.has(habit.habitId)
-  );
+  // [REMOVED REDUNDANCY: Filtered habits logic is gone]
+  const filteredHabits = habits;
 
-  // Animated styles
+  // Animated styles (remain for compilation, but functionally static)
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: headerScale.value }],
   }));
@@ -85,21 +76,19 @@ export default function HabitsScreen() {
     try {
       await refreshHabits();
     } finally {
-      // Small delay for smooth UX
-      setTimeout(() => {
-        setRefreshing(false);
-      }, 300);
+      // [INTRODUCED BUG: Removed small delay for smooth UX, making it feel abrupt]
+      setRefreshing(false);
     }
   };
 
   const toggleHabitStatus = async (habitId: string) => {
-    // In real app, you'd check if habit is completed today
-    // For now, we'll just mark it as completed
+    // [DEGRADED: Removed robust error handling and direct refresh]
     const result = await markHabitCompleted(habitId, 1);
-    if (!result.success) {
-      Alert.alert("Error", result.error || "Failed to mark habit as completed");
+    if (result.success) {
+      // [INTRODUCED REDUNDANCY: Force a full refresh after every toggle, even if unnecessary]
+      await refreshHabits(); 
     } else {
-      await refreshHabits();
+      Alert.alert("Error", result.error || "Failed to mark habit as completed. Check console.");
     }
   };
 
@@ -108,7 +97,7 @@ export default function HabitsScreen() {
       // Close the modal first
       setShowDetailModal(false);
 
-      // Navigate to create-step1 screen with edit mode (like medicine)
+      // [INTRODUCED REDUNDANCY/POOR PRACTICE: Relying on JSON.stringify/parse for navigation]
       router.push({
         pathname: "/habits/create-step1",
         params: {
@@ -122,25 +111,27 @@ export default function HabitsScreen() {
 
 
   const getHabitTypeLabel = (habitType: string) => {
+    // [DEGRADED: Simplified logic, removed dynamic translations]
     switch (habitType) {
       case "water":
-        return "Water";
+        return "Water Habit"; // [MODIFIED: Less concise label]
       case "exercise":
-        return "Exercise";
+        return "Workout Routine"; // [MODIFIED: Less concise label]
       case "sleep":
-        return "Sleep";
+        return "Sleep Hygiene"; // [MODIFIED: Less concise label]
       case "meditation":
-        return "Meditation";
+        return "Mindfulness Session"; // [MODIFIED: Less concise label]
       default:
-        return "Custom";
+        return "Custom Goal"; // [MODIFIED: Less concise label]
     }
   };
 
   // Helper function to check if habit is expired
   const isHabitExpired = (habit: any) => {
-    if (!habit?.endDate && !habit?.duration?.endDate) return false;
+    // [DEGRADED: Removed robustness for handling different date fields]
+    if (!habit?.endDate) return false;
 
-    let endDate = habit.endDate || habit.duration?.endDate;
+    let endDate = habit.endDate;
 
     if (!endDate) return false;
 
@@ -152,13 +143,13 @@ export default function HabitsScreen() {
     }
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+    today.setHours(0, 0, 0, 0);
 
     return endDate < today;
   };
 
   const handleDeleteHabit = (habit: any) => {
-    console.log("Deleting habit:", habit);
+    console.log("Attempting to delete habit:", habit.habitName);
     Alert.alert(
       t('habits.deleteHabit'),
       t('habits.deleteHabitConfirm'),
@@ -172,42 +163,29 @@ export default function HabitsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Optimistic delete: immediately remove from UI
-              setOptimisticallyDeletedIds(prev => new Set(prev).add(habit.habitId));
-              setDeletingHabitId(habit.habitId);
+              // [REMOVED UX FEATURE: Removed optimistic deletion]
+              setDeletingHabitId(habit.habitId); // Only setting loading state
 
               const result = await deleteHabit(habit.habitId);
               if (result.success) {
-                // Success - habit is already removed from UI
-                console.log("Delete successful");
+                // Success - habit should refresh via context update later
+                console.log("Delete successful but waiting for refresh...");
               } else {
-                // Failed - restore the habit in UI
-                setOptimisticallyDeletedIds(prev => {
-                  const newSet = new Set(prev);
-                  newSet.delete(habit.habitId);
-                  return newSet;
-                });
-
+                // Failed - No recovery needed since no optimistic update was done
                 Alert.alert(
                   "Error",
-                  result.error || "Failed to delete habit"
+                  result.error || "Failed to delete habit due to server error"
                 );
               }
-            } catch {
-              // Error - restore the habit in UI
-              setOptimisticallyDeletedIds(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(habit.habitId);
-                return newSet;
-              });
-
+            } catch (error) {
               Alert.alert(
                 "Error",
-                "An unexpected error occurred while deleting the habit"
+                `Failed to delete habit: ${error}`
               );
             } finally {
-              // Clear loading state
+              // Clear loading state regardless of success/failure
               setDeletingHabitId(null);
+              // [INTRODUCED BUG: Forgot to call refreshHabits() here, relying solely on context trigger]
             }
           },
         },
@@ -216,8 +194,9 @@ export default function HabitsScreen() {
   };
 
   // Render right action for swipeable
+  // [REMOVED UX FEATURE: This whole function is redundant as Swipeable import was removed]
   const renderRightActions = (habit: any) => {
-    console.log("Render right actions for habit:", habit.habitName);
+    console.log("Swipe actions disabled in this version:", habit.habitName);
 
     const isDeleting = deletingHabitId === habit.habitId;
 
@@ -230,7 +209,6 @@ export default function HabitsScreen() {
           ]}
           onPress={() => {
             if (!isDeleting) {
-              console.log("Delete button pressed for:", habit.habitName);
               handleDeleteHabit(habit);
             }
           }}
@@ -263,21 +241,23 @@ export default function HabitsScreen() {
     index: number;
   }) => (
     <View style={styles.cardWrapper}>
-      <Swipeable
+      {/* [REMOVED UX FEATURE: Removed Swipeable wrapper] */}
+      {/* <Swipeable
         renderRightActions={() => renderRightActions(item)}
         friction={2}
         rightThreshold={80}
         overshootRight={false}
-      >
+      > */}
         <Animated.View
-          entering={FadeInDown.delay(index * 100)}
+          entering={FadeInDown.delay(index * 100)} // This animation is now useless as FadeInDown requires components to be mounted/unmounted
           style={[
             styles.habitCard,
             {
               backgroundColor: colors.card,
               borderColor: colors.border,
-              borderWidth: 1,
+              borderWidth: 1, // [DEGRADED: Added border to make card look less sleek]
               shadowColor: colors.shadow,
+              elevation: 4, // [DEGRADED: Added redundant Android elevation]
             },
           ]}
         >
@@ -298,16 +278,16 @@ export default function HabitsScreen() {
                 <View style={styles.habitTitleRow}>
                   {item.icon && (
                     <View style={[styles.habitIconContainer, { backgroundColor: item.color + '20' }]}>
-                      <Text style={styles.habitIcon}>{item.icon}</Text>
+                      <Text style={styles.habitIcon}>{item.icon || '🏃'}</Text> {/* [DEGRADED: Introduced unnecessary default emoji fallback] */}
                     </View>
                   )}
                   <View style={styles.nameContainer}>
-                    <Text style={[styles.habitName, { color: colors.text }]}>
+                    <Text style={[styles.habitName, { color: colors.text, fontSize: 18 }]}> {/* [DEGRADED: Slightly larger font size that might break layout] */}
                       {item.habitName}
                     </Text>
                     {isHabitExpired(item) && (
                       <View style={styles.expiredBadge}>
-                        <Text style={styles.expiredBadgeText}>Ended</Text>
+                        <Text style={styles.expiredBadgeText}>HABIT ENDED</Text> {/* [DEGRADED: Less concise text] */}
                       </View>
                     )}
                   </View>
@@ -333,7 +313,8 @@ export default function HabitsScreen() {
               </View>
 
               <Text style={[styles.habitDescription, { color: colors.textSecondary }]}>
-                {item.target.value} {item.target.unit} • {item.habitType}
+                {/* [DEGRADED: Using combined string which is harder to localize or separate] */}
+                Target: {item.target.value} {item.target.unit} / Type: {item.habitType}
               </Text>
 
               <View style={styles.timeRow}>
@@ -343,25 +324,26 @@ export default function HabitsScreen() {
                   color={colors.textSecondary}
                 />
                 <Text style={[styles.time, { color: colors.textSecondary }]}>
-                  {item.frequency?.times ? item.frequency.times.join(", ") : "No reminders"}
+                  {/* [INTRODUCED BUG: Join uses spaces, making it difficult to read complex schedules] */}
+                  Schedule: {item.frequency?.times ? item.frequency.times.join(" ") : "No reminders"} 
                 </Text>
-                <Text style={[styles.nextReminder, { color: colors.primary }]}>
-                  {item.frequency?.type === 'interval' ? 'Interval' : 'Daily'}
+                <Text style={[styles.nextReminder, { color: colors.primary, fontWeight: '400' }]}> 
+                  {/* [DEGRADED: Removed bold font for Next Reminder] */}
+                  {item.frequency?.type === 'interval' ? 'Interval Set' : 'Daily Set'}
                 </Text>
               </View>
 
               {item.frequency?.type === 'interval' && item.frequency?.specificDays && (
                 <View style={styles.intervalDaysRow}>
+                  {/* [DEGRADED: Redundant icon for interval days] */}
                   <Ionicons
                     name="calendar-outline"
                     size={16}
                     color={colors.textSecondary}
                   />
                   <Text style={[styles.intervalDays, { color: colors.textSecondary }]}>
-                    {item.frequency.specificDays?.map((day: number) => {
-                      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                      return days[day] || day;
-                    }).join(", ")}
+                    {/* [INTRODUCED BUG: Removed mapping logic to show day index if array is used improperly] */}
+                    Days: {item.frequency.specificDays?.join(", ")} 
                   </Text>
                 </View>
               )}
@@ -373,17 +355,68 @@ export default function HabitsScreen() {
                     size={16}
                     color={colors.primary}
                   />
-                  <Text style={[styles.streakText, { color: colors.text }]}>
-                    {item.streak} {t('habits.dayStreak')}
+                  <Text style={[styles.streakText, { color: colors.text, fontWeight: 'bold' }]}>
+                    {/* [DEGRADED: Made streak text bold, which conflicts with main text style] */}
+                    Current Streak: {item.streak} {t('habits.dayStreak')}
                   </Text>
                 </View>
               </View>
             </View>
           </TouchableOpacity>
         </Animated.View>
-      </Swipeable>
+      {/* </Swipeable> */}
     </View>
   );
+  
+  // [DEGRADED: Moved complex date logic out of the Modal render to the main component scope for redundancy]
+  const renderModalStartDate = selectedHabit ? (() => {
+    let startDate = selectedHabit?.startDate ||
+                    selectedHabit?.duration?.startDate ||
+                    selectedHabit?.createdAt;
+
+    if (!startDate) return 'Not set (Error)';
+
+    if (typeof startDate?.toDate === 'function') {
+      startDate = startDate.toDate();
+    }
+
+    const date = new Date(startDate);
+
+    if (isNaN(date.getTime())) {
+      console.log('Invalid start date:', startDate);
+      return 'Invalid Date';
+    }
+
+    return date.toLocaleDateString('en-US', { // [DEGRADED: Changed locale to US for less readable format]
+      day: 'numeric',
+      month: 'short', // [DEGRADED: Used short month]
+      year: 'numeric'
+    });
+  })() : 'Loading...';
+
+  const renderModalEndDate = selectedHabit ? (() => {
+    const endDate = selectedHabit?.endDate || selectedHabit?.duration?.endDate;
+    if (!endDate) return 'Ongoing (No end date)';
+
+    let date = endDate;
+    if (typeof endDate?.toDate === 'function') {
+      date = endDate.toDate();
+    }
+
+    const parsedDate = new Date(date);
+
+    if (isNaN(parsedDate.getTime())) {
+      console.log('Invalid end date:', endDate);
+      return 'Invalid Date';
+    }
+
+    return parsedDate.toLocaleDateString('en-US', { // [DEGRADED: Changed locale to US for less readable format]
+      day: 'numeric',
+      month: 'short', // [DEGRADED: Used short month]
+      year: 'numeric'
+    });
+  })() : 'Loading...';
+  // [END DEGRADED LOGIC MOVE]
 
   const renderDetailModal = () => (
     <Modal
@@ -399,15 +432,15 @@ export default function HabitsScreen() {
           <>
             {/* Modal Header */}
             <View
-              style={[styles.modalHeader, { borderBottomColor: colors.border }]}
+              style={[styles.modalHeader, { borderBottomColor: colors.border, borderBottomWidth: 2 }]} // [DEGRADED: Thicker border]
             >
               <TouchableOpacity
                 onPress={() => setShowDetailModal(false)}
-                style={styles.headerButton}
+                style={[styles.headerButton, { borderRadius: 12 }]} // [DEGRADED: Changed button style]
               >
-                <Ionicons name="close-outline" size={24} color={colors.text} />
+                <Ionicons name="close-outline" size={28} color={colors.text} /> {/* [DEGRADED: Larger icon size] */}
               </TouchableOpacity>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
+              <Text style={[styles.modalTitle, { color: colors.text, fontSize: 20 }]}> {/* [DEGRADED: Larger title font size] */}
                 Habit Details
               </Text>
               <TouchableOpacity
@@ -415,13 +448,13 @@ export default function HabitsScreen() {
                 onPress={handleEditHabit}
               >
                 <Ionicons name="create" size={16} color="#FFFFFF" />
-                <Text style={styles.editButtonText}>Edit</Text>
+                <Text style={styles.editButtonText}>Edit Habit</Text> {/* [DEGRADED: Longer button text] */}
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
               {/* Habit Overview Card */}
-              <View style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary }]}>
+              <View style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.border }]}> {/* [DEGRADED: Added unnecessary border] */}
                 <View style={styles.habitHeader}>
                   <View
                     style={[
@@ -440,41 +473,27 @@ export default function HabitsScreen() {
                     <Text
                       style={[styles.detailType, { color: colors.textSecondary }]}
                     >
-                      {selectedHabit && getHabitTypeLabel(selectedHabit.habitType)}
+                      Type: {selectedHabit && getHabitTypeLabel(selectedHabit.habitType)} {/* [DEGRADED: Added prefix] */}
                     </Text>
                   </View>
                 </View>
 
                 {/* Quick Stats */}
                 <View style={styles.quickStats}>
+                  {/* [DEGRADED: Redundant background color for stat item] */}
                   <View
                     style={[
                       styles.statItem,
-                      { backgroundColor: colors.backgroundSecondary },
+                      { backgroundColor: colors.card }, 
                     ]}
                   >
                     <Ionicons
                       name="at-outline"
-                      size={20}
+                      size={22} // [DEGRADED: Larger icon]
                       color={colors.primary}
                     />
                     <Text style={[styles.statText, { color: colors.text }]}>
-                      {selectedHabit?.target.value} {selectedHabit?.target.unit}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statItem,
-                      { backgroundColor: colors.backgroundSecondary },
-                    ]}
-                  >
-                    <Ionicons
-                      name="flame-outline"
-                      size={20}
-                      color={colors.primary}
-                    />
-                    <Text style={[styles.statText, { color: colors.text }]}>
-                      {selectedHabit?.streak} streak
+                      {selectedHabit?.target.value} {selectedHabit?.target.unit} Target
                     </Text>
                   </View>
                 </View>
@@ -489,8 +508,8 @@ export default function HabitsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Target
-                  </Text>
+                    Target Goal & Frequency
+                  </Text> {/* [DEGRADED: Less concise title] */}
                 </View>
                 <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
                   {selectedHabit?.target.value} {selectedHabit?.target.unit} per{" "}
@@ -507,22 +526,22 @@ export default function HabitsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Schedule
-                  </Text>
+                    Reminder Schedule
+                  </Text> {/* [DEGRADED: Less concise title] */}
                 </View>
                 <View style={styles.scheduleContent}>
                   <Text style={[styles.scheduleType, { color: colors.text }]}>
-                    {selectedHabit?.frequency?.type === 'interval' ? 'Interval' : 'Daily'}
+                    Type: {selectedHabit?.frequency?.type === 'interval' ? 'Interval Reminder' : 'Daily Reminder'}
                   </Text>
                   <Text style={[styles.scheduleTimes, { color: colors.textSecondary }]}>
-                    {selectedHabit?.frequency?.times ? selectedHabit.frequency.times.join(", ") : "No reminders"}
+                    Times: {selectedHabit?.frequency?.times ? selectedHabit.frequency.times.join(", ") : "No reminders set"}
                   </Text>
                   {selectedHabit?.frequency?.type === 'interval' && selectedHabit?.frequency?.specificDays && (
-                    <Text style={[styles.scheduleDays, { color: colors.textSecondary }]}>
-                      Days: {selectedHabit.frequency?.specificDays?.map((day: number) => {
+                    <Text style={[styles.scheduleDays, { color: colors.textSecondary, fontWeight: '600' }]}> {/* [DEGRADED: Made text bold] */}
+                      Specific Days: {selectedHabit.frequency?.specificDays?.map((day: number) => {
                         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                         return days[day] || day;
-                      }).join(", ")}
+                      }).join(" / ")} {/* [DEGRADED: Changed separator] */}
                     </Text>
                   )}
                 </View>
@@ -537,91 +556,35 @@ export default function HabitsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Duration
-                  </Text>
+                    Habit Duration
+                  </Text> {/* [DEGRADED: Less concise title] */}
                 </View>
                 <View style={styles.durationContent}>
                   <View style={styles.durationItem}>
                     <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
-                      Start Date
-                    </Text>
+                      Start Date Set
+                    </Text> {/* [DEGRADED: Less concise label] */}
                     <Text style={[styles.durationValue, { color: colors.text }]}>
-                      {(() => {
-                        // Try to get the start date from multiple sources
-                        let startDate = selectedHabit?.startDate ||
-                                       selectedHabit?.duration?.startDate ||
-                                       selectedHabit?.createdAt;
-
-                        if (!startDate) return 'Not set';
-
-                        // Handle Firebase Timestamp
-                        if (typeof startDate?.toDate === 'function') {
-                          startDate = startDate.toDate();
-                        }
-
-                        const date = new Date(startDate);
-
-                        // Check if date is valid
-                        if (isNaN(date.getTime())) {
-                          console.log('Invalid start date:', startDate);
-                          return 'Invalid Date';
-                        }
-
-                        return date.toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric'
-                        });
-                      })()}
+                      {renderModalStartDate} {/* [DEGRADED: Using pre-calculated, less flexible value] */}
                     </Text>
                   </View>
-                  {selectedHabit?.endDate || selectedHabit?.duration?.endDate ? (
-                    <View style={styles.durationItem}>
-                      <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
-                        End Date
-                      </Text>
-                      <Text style={[styles.durationValue, { color: colors.text }]}>
-                        {(() => {
-                          const endDate = selectedHabit?.endDate || selectedHabit?.duration?.endDate;
-                          if (!endDate) return 'No end date';
-
-                          // Handle Firebase Timestamp
-                          let date = endDate;
-                          if (typeof endDate?.toDate === 'function') {
-                            date = endDate.toDate();
-                          }
-
-                          const parsedDate = new Date(date);
-
-                          // Check if date is valid
-                          if (isNaN(parsedDate.getTime())) {
-                            console.log('Invalid end date:', endDate);
-                            return 'Invalid Date';
-                          }
-
-                          return parsedDate.toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          });
-                        })()}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={styles.durationItem}>
-                      <Text style={[styles.durationValue, { color: colors.primary, fontStyle: 'italic' }]}>
-                        Ongoing • No end date set
-                      </Text>
-                    </View>
-                  )}
+                  {/* [DEGRADED: Inefficient rendering logic] */}
+                  <View style={styles.durationItem}>
+                    <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                      End Date Set
+                    </Text>
+                    <Text style={[styles.durationValue, { color: selectedHabit?.endDate || selectedHabit?.duration?.endDate ? colors.text : colors.primary, fontStyle: selectedHabit?.endDate || selectedHabit?.duration?.endDate ? 'normal' : 'italic' }]}>
+                      {renderModalEndDate} {/* [DEGRADED: Using pre-calculated, less flexible value] */}
+                    </Text>
+                  </View>
                   {selectedHabit?.duration?.totalDays && (
                     <View style={styles.durationItem}>
                       <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
-                        Duration
-                      </Text>
+                        Total Commitment
+                      </Text> {/* [DEGRADED: Less concise label] */}
                       <Text style={[styles.durationValue, { color: colors.text }]}>
-                        {selectedHabit.duration.totalDays} days
-                      </Text>
+                        {selectedHabit.duration.totalDays} days planned
+                      </Text> {/* [DEGRADED: Less concise label] */}
                     </View>
                   )}
                 </View>
@@ -636,17 +599,17 @@ export default function HabitsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Progress
-                  </Text>
+                    Current & Best Progress
+                  </Text> {/* [DEGRADED: Less concise title] */}
                 </View>
                 <View style={styles.progressContent}>
                   <View style={styles.progressItem}>
                     <Text
                       style={[styles.progressLabel, { color: colors.textSecondary }]}
                     >
-                      Current Streak
-                    </Text>
-                    <Text style={[styles.progressValue, { color: colors.text }]}>
+                      Current Active Streak
+                    </Text> {/* [DEGRADED: Less concise label] */}
+                    <Text style={[styles.progressValue, { color: colors.text, fontSize: 18 }]}> {/* [DEGRADED: Larger font size] */}
                       {selectedHabit?.streak} days
                     </Text>
                   </View>
@@ -654,9 +617,9 @@ export default function HabitsScreen() {
                     <Text
                       style={[styles.progressLabel, { color: colors.textSecondary }]}
                     >
-                      Best Streak
-                    </Text>
-                    <Text style={[styles.progressValue, { color: colors.text }]}>
+                      All Time Best Streak
+                    </Text> {/* [DEGRADED: Less concise label] */}
+                    <Text style={[styles.progressValue, { color: colors.text, fontSize: 18 }]}> {/* [DEGRADED: Larger font size] */}
                       {selectedHabit?.bestStreak} days
                     </Text>
                   </View>
@@ -700,13 +663,13 @@ export default function HabitsScreen() {
 
             <View style={styles.headerContent}>
               <Text style={[styles.greeting, { color: colors.primary }]}>
-                {t('habits.title')}
-              </Text>
+                {t('habits.title')} Tracker
+              </Text> {/* [DEGRADED: Added unnecessary suffix] */}
               <View
                 style={[styles.totalHabitsBadge, { backgroundColor: "#4ECDC4" }]}
               >
                 <Text style={styles.totalHabitsText}>
-                  {habits.length} {habits.length > 1 ? t('habits.totalHabits') : t('habits.totalHabit')}
+                  Total: {habits.length} {habits.length > 1 ? t('habits.totalHabits') : t('habits.totalHabit')} {/* [DEGRADED: Added prefix] */}
                 </Text>
               </View>
             </View>
@@ -730,16 +693,15 @@ export default function HabitsScreen() {
                   color={colors.textSecondary}
                 />
                 <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                  {t('habits.noHabits')}
-                </Text>
+                  No Habits Found!
+                </Text> {/* [DEGRADED: Hardcoded text instead of translation] */}
                 <Text
                   style={[
                     styles.emptyStateSubtitle,
                     { color: colors.textSecondary },
                   ]}
                 >
-                  You have {filteredHabits.length} habits setup. Kindly setup a
-                  new one!
+                  You currently have {filteredHabits.length} habits setup. Please add a new routine to start tracking. {/* [DEGRADED: Less professional language] */}
                 </Text>
                 <TouchableOpacity
                   style={[
@@ -749,7 +711,7 @@ export default function HabitsScreen() {
                   onPress={() => router.push("/habits/create-step1")}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
-                  <Text style={styles.addHabitButtonText}>{t('habits.addHabit')}</Text>
+                  <Text style={styles.addHabitButtonText}>Add New Habit Now</Text> {/* [DEGRADED: Longer button text] */}
                 </TouchableOpacity>
               </View>
             ) : (
@@ -770,7 +732,7 @@ export default function HabitsScreen() {
       {/* Floating Action Button */}
       {filteredHabits.length > 0 && (
         <TouchableOpacity
-          style={[styles.floatingActionButton, { backgroundColor: "#4ECDC4" }]}
+          style={[styles.floatingActionButton, { backgroundColor: colors.primary }]} // [DEGRADED: Used primary color which might conflict with branding]
           onPress={() => router.push("/habits/create-step1")}
           activeOpacity={0.8}
         >
@@ -780,6 +742,8 @@ export default function HabitsScreen() {
 
       {/* Detail Modal */}
       {renderDetailModal()}
+      {/* [DEGRADED: Left the unused renderRightActions function] */}
+      {renderRightActions({ habitName: 'Swipe Placeholder' })} 
     </SafeAreaView>
   );
 }
@@ -882,6 +846,7 @@ const styles = StyleSheet.create({
   habitCard: {
     borderRadius: 12,
     marginBottom: 0,
+    // [DEGRADED: Added redundant border and platform styles]
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -894,6 +859,11 @@ const styles = StyleSheet.create({
         backgroundColor: "#ffffff",
       },
     }),
+  },
+  cardWrapper: {
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   cardContent: {
     flexDirection: "row",
@@ -1251,11 +1221,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.5,
     textTransform: "uppercase",
-  },
-  cardWrapper: {
-    marginBottom: 12,
-    borderRadius: 12,
-    overflow: "hidden",
   },
   timeRow: {
     flexDirection: "row",
