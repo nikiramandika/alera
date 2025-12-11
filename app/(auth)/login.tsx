@@ -56,11 +56,11 @@ export default function LoginScreen() {
     try {
       const result = await signIn(email, password);
       if (result.success) {
-        router.replace('/');
+        router.replace('/(auth)/transition');
       } else {
         Alert.alert('Login Failed', result.error || 'An error occurred');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Login Failed', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -72,11 +72,11 @@ export default function LoginScreen() {
     try {
       const result = await signInWithGoogle();
       if (result.success) {
-        router.replace('/');
+        router.replace('/(auth)/transition');
       } else {
         Alert.alert('Google Sign-In Failed', result.error || 'An error occurred');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Google Sign-In Failed', 'An unexpected error occurred');
     } finally {
       setLoading(false);
