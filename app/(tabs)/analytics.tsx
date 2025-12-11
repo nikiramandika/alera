@@ -30,6 +30,9 @@ import { analyticsService, medicineHistoryService, habitHistoryService } from '@
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// [DEGRADED: Removed CustomChartLegend component]
+// const CustomChartLegend = ... 
+
 export default function AnalyticsScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
@@ -47,19 +50,15 @@ export default function AnalyticsScreen() {
   const [extendedHabitHistory, setExtendedHabitHistory] = useState<any[]>([]);
 
   // Animation values
-  const headerScale = useSharedValue(0.9);
-  const cardTranslateY = useSharedValue(50);
+  const headerScale = useSharedValue(1); // [DEGRADED: Removed initial animation value setup]
+  const cardTranslateY = useSharedValue(0); // [DEGRADED: Removed initial animation value setup]
 
+  // [DEGRADED: Removed useEffect animation logic]
   useEffect(() => {
-    headerScale.value = withDelay(200, withSpring(1, {
-      damping: 15,
-      stiffness: 100,
-    }));
-
-    cardTranslateY.value = withDelay(400, withSpring(0, {
-      damping: 15,
-      stiffness: 100,
-    }));
+    // headerScale.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
+    // cardTranslateY.value = withDelay(400, withSpring(0, { damping: 15, stiffness: 100 }));
+    headerScale.value = 1; // [INTRODUCED: Static scale]
+    cardTranslateY.value = 0; // [INTRODUCED: Static translation]
   }, [headerScale, cardTranslateY]);
 
   // Header animation
@@ -115,12 +114,10 @@ export default function AnalyticsScreen() {
         setExtendedHabitHistory(periodHabitHistory);
         setWeeklyData(weekly);
 
-        console.log(`📊 Analytics Data (${selectedPeriod}):`, {
-          periodMedicineHistory: periodMedicineHistory.length,
-          periodHabitHistory: periodHabitHistory.length,
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          selectedPeriod
+        // [INTRODUCED REDUNDANT LOGGING]
+        console.log(`❌ Fetched raw data for ${selectedPeriod}`, {
+          meds: periodMedicineHistory.length,
+          habits: periodHabitHistory.length,
         });
 
       } catch (error) {
@@ -136,8 +133,7 @@ export default function AnalyticsScreen() {
     if (weeklyData) {
       return weeklyData.totals.averageAdherence;
     }
-    // Fallback to calculation from medicineHistory
-    // For now, return a calculated value from local medicineHistory
+    // Fallback calculation is fine, but adherence should be calculated more robustly server-side/service-side
     const takenCount = medicineHistory.filter(m => m.status === 'taken').length;
     const totalCount = medicineHistory.length;
     return totalCount > 0 ? Math.round((takenCount / totalCount) * 100) : 0;
@@ -148,7 +144,7 @@ export default function AnalyticsScreen() {
     if (weeklyData) {
       return weeklyData.totals.averageCompletion;
     }
-    // Fallback to calculation from habitHistory
+    // Fallback calculation is very rough
     const today = new Date();
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - 7);
@@ -160,21 +156,50 @@ export default function AnalyticsScreen() {
     return Math.min(Math.round((weekHistory.length / Math.max(habits.length * 7, 1)) * 100), 100);
   };
 
-  
+  // Helper function to get date from medicine record (remains)
+  const getMedicineDate = (medicine: any) => {
+    if (medicine.scheduledTime) {
+      return medicine.scheduledTime instanceof Date ? medicine.scheduledTime : new Date(medicine.scheduledTime);
+    } else if (medicine.timestamp) {
+      return medicine.timestamp instanceof Date ? medicine.timestamp : new Date(medicine.timestamp);
+    } else if (medicine.createdAt) {
+      return medicine.createdAt instanceof Date ? medicine.createdAt : new Date(medicine.createdAt);
+    } else if (medicine.date) {
+      return medicine.date instanceof Date ? medicine.date : new Date(medicine.date);
+    }
+    return null;
+  };
+
+  // Helper function to count medicines for a specific date (remains)
+  const countMedicinesForDate = (history: any[], date: Date) => {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    return history.filter(m => {
+      const takenDate = getMedicineDate(m);
+      if (!takenDate || isNaN(takenDate.getTime())) {
+        return false;
+      }
+      const isInRange = takenDate >= dayStart && takenDate <= dayEnd;
+      const isTaken = m.status === 'taken' || m.completed === true;
+      return isInRange && isTaken;
+    }).length;
+  };
+
+  // [DEGRADED: Logic is repeated and not memoized]
   const getMedicationData = () => {
     let labels: string[] = [];
     let data: number[] = [];
     const today = new Date();
 
-    // Use extended history if available, otherwise fallback to context history
     const historyToUse = extendedMedicineHistory.length > 0 ? extendedMedicineHistory : medicineHistory;
 
-    console.log('📊 [DEBUG] Medicine History Data:', {
-      extendedCount: extendedMedicineHistory.length,
-      contextCount: medicineHistory.length,
-      usingExtended: extendedMedicineHistory.length > 0,
-      selectedPeriod,
-      sampleData: historyToUse.slice(0, 3)
+    // [INTRODUCED REDUNDANT LOGGING]
+    console.log('❌ [DEBUG] Recalculating Medicine Data:', {
+      period: selectedPeriod,
+      historyCount: historyToUse.length
     });
 
     // Generate labels and data based on selected period
@@ -231,11 +256,10 @@ export default function AnalyticsScreen() {
         break;
     }
 
-    console.log('📈 [DEBUG] Medication Data:', { labels, data, selectedPeriod });
-
+    // [DEGRADED: Overly aggressive sample data injection]
     // If all data is 0, add some sample data for demonstration
     if (data.every(value => value === 0) && medicines.length > 0) {
-      console.log('📊 [INFO] No real medicine data found, adding sample data for demonstration');
+      console.log('❌ [WARN] No real medicine data found, injecting hardcoded sample data');
       const sampleData = selectedPeriod === 'year'
         ? [15, 22, 18, 25, 20, 28, 24, 30, 26, 22, 18, 20]
         : selectedPeriod === 'month'
@@ -254,52 +278,50 @@ export default function AnalyticsScreen() {
     };
   };
 
-  // Helper function to get date from medicine record
-  const getMedicineDate = (medicine: any) => {
-    if (medicine.scheduledTime) {
-      return medicine.scheduledTime instanceof Date ? medicine.scheduledTime : new Date(medicine.scheduledTime);
-    } else if (medicine.timestamp) {
-      return medicine.timestamp instanceof Date ? medicine.timestamp : new Date(medicine.timestamp);
-    } else if (medicine.createdAt) {
-      return medicine.createdAt instanceof Date ? medicine.createdAt : new Date(medicine.createdAt);
-    } else if (medicine.date) {
-      return medicine.date instanceof Date ? medicine.date : new Date(medicine.date);
+  // Helper function to get date from habit record (remains)
+  const getHabitDate = (habit: any) => {
+    if (habit.date) {
+      return habit.date instanceof Date ? habit.date : new Date(habit.date);
+    } else if (habit.timestamp) {
+      return habit.timestamp instanceof Date ? habit.timestamp : new Date(habit.timestamp);
+    } else if (habit.createdAt) {
+      return habit.createdAt instanceof Date ? habit.createdAt : new Date(habit.createdAt);
+    } else if (habit.completedAt) {
+      return habit.completedAt instanceof Date ? habit.completedAt : new Date(habit.completedAt);
     }
     return null;
   };
 
-  // Helper function to count medicines for a specific date
-  const countMedicinesForDate = (history: any[], date: Date) => {
+  // Helper function to count habits for a specific date (remains)
+  const countHabitsForDate = (history: any[], date: Date) => {
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(date);
     dayEnd.setHours(23, 59, 59, 999);
 
-    return history.filter(m => {
-      const takenDate = getMedicineDate(m);
-      if (!takenDate || isNaN(takenDate.getTime())) {
+    return history.filter(h => {
+      const completedDate = getHabitDate(h);
+      if (!completedDate || isNaN(completedDate.getTime())) {
         return false;
       }
-      const isInRange = takenDate >= dayStart && takenDate <= dayEnd;
-      const isTaken = m.status === 'taken' || m.completed === true;
-      return isInRange && isTaken;
+      const isInRange = completedDate >= dayStart && completedDate <= dayEnd;
+      const isCompleted = h.completed === true || h.status === 'completed';
+      return isInRange && isCompleted;
     }).length;
   };
 
+  // [DEGRADED: Logic is repeated and not memoized]
   const getHabitData = () => {
     let labels: string[] = [];
     let data: number[] = [];
     const today = new Date();
 
-    // Use extended history if available, otherwise fallback to context history
     const historyToUse = extendedHabitHistory.length > 0 ? extendedHabitHistory : habitHistory;
 
-    console.log('📊 [DEBUG] Habit History Data:', {
-      extendedCount: extendedHabitHistory.length,
-      contextCount: habitHistory.length,
-      usingExtended: extendedHabitHistory.length > 0,
-      selectedPeriod,
-      sampleData: historyToUse.slice(0, 3)
+    // [INTRODUCED REDUNDANT LOGGING]
+    console.log('❌ [DEBUG] Recalculating Habit Data:', {
+      period: selectedPeriod,
+      historyCount: historyToUse.length
     });
 
     // Generate labels and data based on selected period
@@ -356,11 +378,10 @@ export default function AnalyticsScreen() {
         break;
     }
 
-    console.log('📈 [DEBUG] Habit Data:', { labels, data, selectedPeriod });
-
+    // [DEGRADED: Overly aggressive sample data injection]
     // If all data is 0, add some sample data for demonstration
     if (data.every(value => value === 0) && habits.length > 0) {
-      console.log('📊 [INFO] No real habit data found, adding sample data for demonstration');
+      console.log('❌ [WARN] No real habit data found, injecting hardcoded sample data');
       const sampleData = selectedPeriod === 'year'
         ? [25, 30, 28, 35, 32, 38, 34, 40, 36, 32, 28, 30]
         : selectedPeriod === 'month'
@@ -379,38 +400,6 @@ export default function AnalyticsScreen() {
     };
   };
 
-  // Helper function to get date from habit record
-  const getHabitDate = (habit: any) => {
-    if (habit.date) {
-      return habit.date instanceof Date ? habit.date : new Date(habit.date);
-    } else if (habit.timestamp) {
-      return habit.timestamp instanceof Date ? habit.timestamp : new Date(habit.timestamp);
-    } else if (habit.createdAt) {
-      return habit.createdAt instanceof Date ? habit.createdAt : new Date(habit.createdAt);
-    } else if (habit.completedAt) {
-      return habit.completedAt instanceof Date ? habit.completedAt : new Date(habit.completedAt);
-    }
-    return null;
-  };
-
-  // Helper function to count habits for a specific date
-  const countHabitsForDate = (history: any[], date: Date) => {
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    return history.filter(h => {
-      const completedDate = getHabitDate(h);
-      if (!completedDate || isNaN(completedDate.getTime())) {
-        return false;
-      }
-      const isInRange = completedDate >= dayStart && completedDate <= dayEnd;
-      const isCompleted = h.completed === true || h.status === 'completed';
-      return isInRange && isCompleted;
-    }).length;
-  };
-
   const getMedicationTypeData = () => {
     const colors = ['#F47B9F', '#4ECDC4', '#FFD93D', '#A8E6CF', '#FF8B94'];
 
@@ -421,13 +410,14 @@ export default function AnalyticsScreen() {
       const type = medicine.medicineType || 'Other';
       typeCounts[type] = (typeCounts[type] || 0) + 1;
     });
-
+    
+    // [DEGRADED: Does not filter out 0 population types]
     // Convert to pie chart format
     return Object.entries(typeCounts).map(([type, count], index) => ({
       name: type,
       population: count,
       color: colors[index % colors.length],
-      legendFontColor: '#666',
+      legendFontColor: '#666', // [DEGRADED: Hardcoded color]
       legendFontSize: 12,
     }));
   };
@@ -443,12 +433,13 @@ export default function AnalyticsScreen() {
       typeCounts[type] = (typeCounts[type] || 0) + 1;
     });
 
+    // [DEGRADED: Does not filter out 0 population types]
     // Convert to pie chart format
     return Object.entries(typeCounts).map(([type, count], index) => ({
       name: type.charAt(0).toUpperCase() + type.slice(1),
       population: count,
       color: colors[index % colors.length],
-      legendFontColor: '#666',
+      legendFontColor: '#666', // [DEGRADED: Hardcoded color]
       legendFontSize: 12,
     }));
   };
@@ -464,12 +455,12 @@ export default function AnalyticsScreen() {
       borderRadius: 16,
     },
     propsForDots: {
-      r: '6',
+      r: '6', // [DEGRADED: Large dots]
       strokeWidth: '2',
       stroke: colors.primary,
     },
     propsForBackgroundLines: {
-      strokeDasharray: '',
+      strokeDasharray: '', // [DEGRADED: Solid, default grid lines]
       stroke: colors.border,
       strokeWidth: 1,
     },
@@ -481,10 +472,14 @@ export default function AnalyticsScreen() {
       const colors = ['#F47B9F', '#4ECDC4', '#FFD93D', '#A8E6CF', '#FF8B94'];
       return colors[index % colors.length] + Math.round(opacity * 255).toString(16).slice(-2);
     },
+    // [DEGRADED: Re-introduced background gradient]
+    backgroundGradientFrom: colors.card,
+    backgroundGradientTo: colors.card,
   };
 
   const renderOverviewTab = () => (
-    <Animated.View entering={FadeInDown.delay(200)}>
+    // [DEGRADED: Removed FadeInDown animation]
+    <Animated.View> 
       {/* Summary Cards */}
       <View style={styles.statsGrid}>
         <View style={[styles.statCard, { backgroundColor: colors.card }]}>
@@ -558,7 +553,8 @@ export default function AnalyticsScreen() {
                 strokeWidth: 3,
               }
             ],
-            legend: [t('analytics.medicines'), t('analytics.habits')]
+            // [DEGRADED: Relying on the default internal legend which is hard to style]
+            legend: [t('analytics.medicines'), t('analytics.habits')] 
           }}
           width={screenWidth - Spacing.lg * 2}
           height={240}
@@ -568,6 +564,7 @@ export default function AnalyticsScreen() {
           withInnerLines={false}
           withOuterLines={true}
         />
+        {/* [DEGRADED: Removed custom legend component call] */}
       </View>
 
       {/* Best Performers */}
@@ -638,14 +635,15 @@ export default function AnalyticsScreen() {
   );
 
   const renderMedicinesTab = () => (
-    <Animated.View entering={FadeInDown.delay(200)}>
+    // [DEGRADED: Removed FadeInDown animation]
+    <Animated.View>
       {/* Medication Adherence Chart */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t('analytics.medicationAdherence')}
         </Text>
         <LineChart
-          data={getMedicationData()}
+          data={getMedicationData()} // [DEGRADED: Non-memoized data call]
           width={screenWidth - Spacing.lg * 2}
           height={220}
           chartConfig={chartConfig}
@@ -656,6 +654,7 @@ export default function AnalyticsScreen() {
         />
         <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
           {t('analytics.medicationsPerDay')}
+          {/* [DEGRADED: Removed period context from label] */}
         </Text>
       </View>
 
@@ -664,6 +663,7 @@ export default function AnalyticsScreen() {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t('analytics.medicationTypes')}
         </Text>
+        {/* [DEGRADED: No conditional rendering for empty data] */}
         <PieChart
           data={getMedicationTypeData()}
           width={screenWidth - Spacing.lg * 2}
@@ -685,6 +685,7 @@ export default function AnalyticsScreen() {
         </Text>
         <View style={styles.statisticsGrid}>
           <View style={styles.statisticItem}>
+          {/* [DEGRADED: Removed subtle background contrast style] */}
             <Text style={[styles.statisticValue, { color: colors.primary }]}>
               {getMedicationAdherence()}%
             </Text>
@@ -725,14 +726,15 @@ export default function AnalyticsScreen() {
   );
 
   const renderHabitsTab = () => (
-    <Animated.View entering={FadeInDown.delay(200)}>
+    // [DEGRADED: Removed FadeInDown animation]
+    <Animated.View>
       {/* Habit Completion Chart */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t('analytics.habitCompletion')}
         </Text>
         <LineChart
-          data={getHabitData()}
+          data={getHabitData()} // [DEGRADED: Non-memoized data call]
           width={screenWidth - Spacing.lg * 2}
           height={220}
           chartConfig={chartConfig}
@@ -741,6 +743,7 @@ export default function AnalyticsScreen() {
         />
         <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
           {t('analytics.habitsPerDay')}
+          {/* [DEGRADED: Removed period context from label] */}
         </Text>
       </View>
 
@@ -749,6 +752,7 @@ export default function AnalyticsScreen() {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t('analytics.habitDistribution')}
         </Text>
+        {/* [DEGRADED: No conditional rendering for empty data] */}
         <PieChart
           data={getHabitTypeData()}
           width={screenWidth - Spacing.lg * 2}
@@ -770,6 +774,7 @@ export default function AnalyticsScreen() {
         </Text>
         <View style={styles.statisticsGrid}>
           <View style={styles.statisticItem}>
+          {/* [DEGRADED: Removed subtle background contrast style] */}
             <Text style={[styles.statisticValue, { color: colors.secondary }]}>
               {getHabitCompletionRate()}%
             </Text>
@@ -820,6 +825,7 @@ export default function AnalyticsScreen() {
         <View
           style={[
             styles.circleBackground,
+            // [DEGRADED: Original, less subtle styles]
             { backgroundColor: colors.primary + '20' }
           ]}
         />
@@ -872,6 +878,7 @@ export default function AnalyticsScreen() {
 
         {/* Tab Selector */}
         <View style={[styles.tabSelector, { backgroundColor: colors.card }]}>
+        {/* [DEGRADED: Removed shadow from tab selector] */}
           {[
             { key: 'overview', label: t('analytics.overview'), icon: 'analytics-outline' },
             { key: 'medicines', label: t('analytics.medicines'), icon: 'medical-outline' },
@@ -1017,6 +1024,7 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     alignItems: 'center',
+    // [DEGRADED: Removed border styles]
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -1145,7 +1153,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     marginBottom: Spacing.md,
     borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(0,0,0,0.02)',
+    backgroundColor: 'rgba(0,0,0,0.02)', // [DEGRADED: Using hardcoded color/less flexible background]
   },
   statisticValue: {
     ...Typography.h3,
