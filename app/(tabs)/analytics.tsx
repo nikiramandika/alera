@@ -1,926 +1,752 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
-  Dimensions,
+  Modal,
   Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
-import { LineChart, PieChart } from 'react-native-chart-kit';
-import { Ionicons } from '@expo/vector-icons';
+  ScrollView,
+  RefreshControl,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withDelay,
   FadeInDown,
-} from 'react-native-reanimated';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
-import { useMedicine } from '@/contexts/MedicineContext';
-import { useHabit } from '@/contexts/HabitContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTranslation } from 'react-i18next';
-import { analyticsService, medicineHistoryService, habitHistoryService } from '@/services';
+} from "react-native-reanimated";
+import { useRouter } from "expo-router";
+// [REMOVED UX FEATURE: Removed Swipeable import]
+// import { Swipeable } from "react-native-gesture-handler"; 
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Colors } from "@/constants/theme";
+import { useHabit } from "@/contexts/HabitContext";
+import { useTranslation } from "react-i18next";
 
-const { width: screenWidth } = Dimensions.get('window');
-
-// [DEGRADED: Removed CustomChartLegend component]
-// const CustomChartLegend = ... 
-
-export default function AnalyticsScreen() {
+export default function HabitsScreen() {
+  const router = useRouter();
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuth();
-  const { medicines, medicineHistory } = useMedicine();
-  const { habits, habitHistory } = useHabit();
+  const colors = Colors[colorScheme ?? "light"];
+  const {
+    habits,
+    refreshHabits,
+    markHabitCompleted,
+    deleteHabit,
+  } = useHabit();
 
-  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('week');
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'medicines' | 'habits'>('overview');
-  const [weeklyData, setWeeklyData] = useState<any>(null);
-
-  // Local state for extended history (for analytics)
-  const [extendedMedicineHistory, setExtendedMedicineHistory] = useState<any[]>([]);
-  const [extendedHabitHistory, setExtendedHabitHistory] = useState<any[]>([]);
+  const [selectedHabit, setSelectedHabit] = useState<any>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [deletingHabitId, setDeletingHabitId] = useState<string | null>(null);
+  // [REMOVED UX FEATURE: Removed optimistic deletion state]
+  // const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<string>>(new Set());
 
   // Animation values
-  const headerScale = useSharedValue(1); // [DEGRADED: Removed initial animation value setup]
-  const cardTranslateY = useSharedValue(0); // [DEGRADED: Removed initial animation value setup]
+  const headerScale = useSharedValue(1); // [DEGRADED: Static initial value]
+  const cardTranslateY = useSharedValue(0); // [DEGRADED: Static initial value]
 
-  // [DEGRADED: Removed useEffect animation logic]
   useEffect(() => {
+    // [DEGRADED: Removed all animation logic for a flat feel]
+    // Animate header in
     // headerScale.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
+    // Animate cards in
     // cardTranslateY.value = withDelay(400, withSpring(0, { damping: 15, stiffness: 100 }));
-    headerScale.value = 1; // [INTRODUCED: Static scale]
-    cardTranslateY.value = 0; // [INTRODUCED: Static translation]
   }, [headerScale, cardTranslateY]);
 
-  // Header animation
+  // [REMOVED REDUNDANCY: Filtered habits logic is gone]
+  const filteredHabits = habits;
+
+  // Animated styles (remain for compilation, but functionally static)
   const headerAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: headerScale.value }]
+    transform: [{ scale: headerScale.value }],
   }));
 
-  // Cards animation
   const cardsAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: cardTranslateY.value }]
+    transform: [{ translateY: cardTranslateY.value }],
   }));
 
-  // Fetch analytics data
-  useEffect(() => {
-    const fetchAnalyticsData = async () => {
-      if (!user) {
-        return;
-      }
-
-      try {
-        const today = new Date();
-        let startDate = new Date(today);
-        let endDate = new Date(today);
-
-        // Set date range based on selected period
-        switch (selectedPeriod) {
-          case 'week':
-            startDate.setDate(today.getDate() - today.getDay() + 1); // Monday
-            endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + 6); // Sunday
-            break;
-          case 'month':
-            startDate.setDate(1); // First day of month
-            endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of month
-            break;
-          case 'year':
-            startDate.setMonth(0, 1); // January 1st
-            endDate.setMonth(11, 31); // December 31st
-            break;
-        }
-
-        endDate.setHours(23, 59, 59, 999);
-
-        // Get history for the selected period
-        const [periodMedicineHistory, periodHabitHistory, weekly] = await Promise.all([
-          medicineHistoryService.getMedicineHistoryForDateRange(user.userId, startDate, endDate),
-          habitHistoryService.getHabitHistoryForDateRange(user.userId, startDate, endDate),
-          analyticsService.getWeeklyAnalytics(user.userId)
-        ]);
-
-        // Store extended history locally for charts
-        setExtendedMedicineHistory(periodMedicineHistory);
-        setExtendedHabitHistory(periodHabitHistory);
-        setWeeklyData(weekly);
-
-        // [INTRODUCED REDUNDANT LOGGING]
-        console.log(`❌ Fetched raw data for ${selectedPeriod}`, {
-          meds: periodMedicineHistory.length,
-          habits: periodHabitHistory.length,
-        });
-
-      } catch (error) {
-        console.error('Error fetching analytics data:', error);
-      }
-    };
-
-    fetchAnalyticsData();
-  }, [user, selectedPeriod]);
-
-  // Get real adherence data
-  const getMedicationAdherence = () => {
-    if (weeklyData) {
-      return weeklyData.totals.averageAdherence;
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshHabits();
+    } finally {
+      // [INTRODUCED BUG: Removed small delay for smooth UX, making it feel abrupt]
+      setRefreshing(false);
     }
-    // Fallback calculation is fine, but adherence should be calculated more robustly server-side/service-side
-    const takenCount = medicineHistory.filter(m => m.status === 'taken').length;
-    const totalCount = medicineHistory.length;
-    return totalCount > 0 ? Math.round((takenCount / totalCount) * 100) : 0;
   };
 
-  // Get real habit completion rate
-  const getHabitCompletionRate = () => {
-    if (weeklyData) {
-      return weeklyData.totals.averageCompletion;
+  const toggleHabitStatus = async (habitId: string) => {
+    // [DEGRADED: Removed robust error handling and direct refresh]
+    const result = await markHabitCompleted(habitId, 1);
+    if (result.success) {
+      // [INTRODUCED REDUNDANCY: Force a full refresh after every toggle, even if unnecessary]
+      await refreshHabits(); 
+    } else {
+      Alert.alert("Error", result.error || "Failed to mark habit as completed. Check console.");
     }
-    // Fallback calculation is very rough
-    const today = new Date();
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - 7);
+  };
 
-    const weekHistory = habitHistory.filter(log =>
-      log.date >= weekStart && log.completed
+  const handleEditHabit = () => {
+    if (selectedHabit) {
+      // Close the modal first
+      setShowDetailModal(false);
+
+      // [INTRODUCED REDUNDANCY/POOR PRACTICE: Relying on JSON.stringify/parse for navigation]
+      router.push({
+        pathname: "/habits/create-step1",
+        params: {
+          editMode: 'true',
+          habitId: selectedHabit.habitId,
+          habitData: JSON.stringify(selectedHabit)
+        }
+      } as any);
+    }
+  };
+
+
+  const getHabitTypeLabel = (habitType: string) => {
+    // [DEGRADED: Simplified logic, removed dynamic translations]
+    switch (habitType) {
+      case "water":
+        return "Water Habit"; // [MODIFIED: Less concise label]
+      case "exercise":
+        return "Workout Routine"; // [MODIFIED: Less concise label]
+      case "sleep":
+        return "Sleep Hygiene"; // [MODIFIED: Less concise label]
+      case "meditation":
+        return "Mindfulness Session"; // [MODIFIED: Less concise label]
+      default:
+        return "Custom Goal"; // [MODIFIED: Less concise label]
+    }
+  };
+
+  // Helper function to check if habit is expired
+  const isHabitExpired = (habit: any) => {
+    // [DEGRADED: Removed robustness for handling different date fields]
+    if (!habit?.endDate) return false;
+
+    let endDate = habit.endDate;
+
+    if (!endDate) return false;
+
+    // Handle Firebase Timestamp
+    if (typeof endDate?.toDate === 'function') {
+      endDate = endDate.toDate();
+    } else if (typeof endDate === 'string' || typeof endDate === 'number') {
+      endDate = new Date(endDate);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return endDate < today;
+  };
+
+  const handleDeleteHabit = (habit: any) => {
+    console.log("Attempting to delete habit:", habit.habitName);
+    Alert.alert(
+      t('habits.deleteHabit'),
+      t('habits.deleteHabitConfirm'),
+      [
+        {
+          text: t('common.cancel'),
+          style: "cancel",
+        },
+        {
+          text: t('common.delete'),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // [REMOVED UX FEATURE: Removed optimistic deletion]
+              setDeletingHabitId(habit.habitId); // Only setting loading state
+
+              const result = await deleteHabit(habit.habitId);
+              if (result.success) {
+                // Success - habit should refresh via context update later
+                console.log("Delete successful but waiting for refresh...");
+              } else {
+                // Failed - No recovery needed since no optimistic update was done
+                Alert.alert(
+                  "Error",
+                  result.error || "Failed to delete habit due to server error"
+                );
+              }
+            } catch (error) {
+              Alert.alert(
+                "Error",
+                `Failed to delete habit: ${error}`
+              );
+            } finally {
+              // Clear loading state regardless of success/failure
+              setDeletingHabitId(null);
+              // [INTRODUCED BUG: Forgot to call refreshHabits() here, relying solely on context trigger]
+            }
+          },
+        },
+      ]
     );
-
-    return Math.min(Math.round((weekHistory.length / Math.max(habits.length * 7, 1)) * 100), 100);
   };
 
-  // Helper function to get date from medicine record (remains)
-  const getMedicineDate = (medicine: any) => {
-    if (medicine.scheduledTime) {
-      return medicine.scheduledTime instanceof Date ? medicine.scheduledTime : new Date(medicine.scheduledTime);
-    } else if (medicine.timestamp) {
-      return medicine.timestamp instanceof Date ? medicine.timestamp : new Date(medicine.timestamp);
-    } else if (medicine.createdAt) {
-      return medicine.createdAt instanceof Date ? medicine.createdAt : new Date(medicine.createdAt);
-    } else if (medicine.date) {
-      return medicine.date instanceof Date ? medicine.date : new Date(medicine.date);
-    }
-    return null;
-  };
+  // Render right action for swipeable
+  // [REMOVED UX FEATURE: This whole function is redundant as Swipeable import was removed]
+  const renderRightActions = (habit: any) => {
+    console.log("Swipe actions disabled in this version:", habit.habitName);
 
-  // Helper function to count medicines for a specific date (remains)
-  const countMedicinesForDate = (history: any[], date: Date) => {
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
+    const isDeleting = deletingHabitId === habit.habitId;
 
-    return history.filter(m => {
-      const takenDate = getMedicineDate(m);
-      if (!takenDate || isNaN(takenDate.getTime())) {
-        return false;
-      }
-      const isInRange = takenDate >= dayStart && takenDate <= dayEnd;
-      const isTaken = m.status === 'taken' || m.completed === true;
-      return isInRange && isTaken;
-    }).length;
-  };
-
-  // [DEGRADED: Logic is repeated and not memoized]
-  const getMedicationData = () => {
-    let labels: string[] = [];
-    let data: number[] = [];
-    const today = new Date();
-
-    const historyToUse = extendedMedicineHistory.length > 0 ? extendedMedicineHistory : medicineHistory;
-
-    // [INTRODUCED REDUNDANT LOGGING]
-    console.log('❌ [DEBUG] Recalculating Medicine Data:', {
-      period: selectedPeriod,
-      historyCount: historyToUse.length
-    });
-
-    // Generate labels and data based on selected period
-    switch (selectedPeriod) {
-      case 'week':
-        labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay() + 1);
-
-        data = labels.map((_, index) => {
-          const currentDate = new Date(startOfWeek);
-          currentDate.setDate(startOfWeek.getDate() + index);
-          return countMedicinesForDate(historyToUse, currentDate);
-        });
-        break;
-
-      case 'month':
-        // Show weekly data for month
-        const weeksInMonth = Math.ceil(today.getDate() / 7);
-        for (let i = 1; i <= weeksInMonth; i++) {
-          labels.push(`Week ${i}`);
-        }
-
-        for (let i = 0; i < weeksInMonth; i++) {
-          const weekStart = new Date(today.getFullYear(), today.getMonth(), i * 7 + 1);
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
-
-          const weekCount = historyToUse.filter(m => {
-            const takenDate = getMedicineDate(m);
-            if (!takenDate) return false;
-            return takenDate >= weekStart && takenDate <= weekEnd && (m.status === 'taken' || m.completed === true);
-          }).length;
-          data.push(weekCount);
-        }
-        break;
-
-      case 'year':
-        // Show monthly data for year
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        labels = months;
-
-        for (let month = 0; month < 12; month++) {
-          const monthStart = new Date(today.getFullYear(), month, 1);
-          const monthEnd = new Date(today.getFullYear(), month + 1, 0);
-
-          const monthCount = historyToUse.filter(m => {
-            const takenDate = getMedicineDate(m);
-            if (!takenDate) return false;
-            return takenDate >= monthStart && takenDate <= monthEnd && (m.status === 'taken' || m.completed === true);
-          }).length;
-          data.push(monthCount);
-        }
-        break;
-    }
-
-    // [DEGRADED: Overly aggressive sample data injection]
-    // If all data is 0, add some sample data for demonstration
-    if (data.every(value => value === 0) && medicines.length > 0) {
-      console.log('❌ [WARN] No real medicine data found, injecting hardcoded sample data');
-      const sampleData = selectedPeriod === 'year'
-        ? [15, 22, 18, 25, 20, 28, 24, 30, 26, 22, 18, 20]
-        : selectedPeriod === 'month'
-        ? [8, 12, 15, 10]
-        : [3, 4, 2, 5, 3, 4, 2];
-      data = sampleData;
-    }
-
-    return {
-      labels,
-      datasets: [{
-        data,
-        color: (opacity = 1) => `rgba(244, 123, 159, ${opacity})`,
-        strokeWidth: 2,
-      }]
-    };
-  };
-
-  // Helper function to get date from habit record (remains)
-  const getHabitDate = (habit: any) => {
-    if (habit.date) {
-      return habit.date instanceof Date ? habit.date : new Date(habit.date);
-    } else if (habit.timestamp) {
-      return habit.timestamp instanceof Date ? habit.timestamp : new Date(habit.timestamp);
-    } else if (habit.createdAt) {
-      return habit.createdAt instanceof Date ? habit.createdAt : new Date(habit.createdAt);
-    } else if (habit.completedAt) {
-      return habit.completedAt instanceof Date ? habit.completedAt : new Date(habit.completedAt);
-    }
-    return null;
-  };
-
-  // Helper function to count habits for a specific date (remains)
-  const countHabitsForDate = (history: any[], date: Date) => {
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    return history.filter(h => {
-      const completedDate = getHabitDate(h);
-      if (!completedDate || isNaN(completedDate.getTime())) {
-        return false;
-      }
-      const isInRange = completedDate >= dayStart && completedDate <= dayEnd;
-      const isCompleted = h.completed === true || h.status === 'completed';
-      return isInRange && isCompleted;
-    }).length;
-  };
-
-  // [DEGRADED: Logic is repeated and not memoized]
-  const getHabitData = () => {
-    let labels: string[] = [];
-    let data: number[] = [];
-    const today = new Date();
-
-    const historyToUse = extendedHabitHistory.length > 0 ? extendedHabitHistory : habitHistory;
-
-    // [INTRODUCED REDUNDANT LOGGING]
-    console.log('❌ [DEBUG] Recalculating Habit Data:', {
-      period: selectedPeriod,
-      historyCount: historyToUse.length
-    });
-
-    // Generate labels and data based on selected period
-    switch (selectedPeriod) {
-      case 'week':
-        labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay() + 1);
-
-        data = labels.map((_, index) => {
-          const currentDate = new Date(startOfWeek);
-          currentDate.setDate(startOfWeek.getDate() + index);
-          return countHabitsForDate(historyToUse, currentDate);
-        });
-        break;
-
-      case 'month':
-        // Show weekly data for month
-        const weeksInMonth = Math.ceil(today.getDate() / 7);
-        for (let i = 1; i <= weeksInMonth; i++) {
-          labels.push(`Week ${i}`);
-        }
-
-        for (let i = 0; i < weeksInMonth; i++) {
-          const weekStart = new Date(today.getFullYear(), today.getMonth(), i * 7 + 1);
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
-
-          const weekCount = historyToUse.filter(h => {
-            const completedDate = getHabitDate(h);
-            if (!completedDate) return false;
-            return completedDate >= weekStart && completedDate <= weekEnd && (h.completed === true || h.status === 'completed');
-          }).length;
-          data.push(weekCount);
-        }
-        break;
-
-      case 'year':
-        // Show monthly data for year
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        labels = months;
-
-        for (let month = 0; month < 12; month++) {
-          const monthStart = new Date(today.getFullYear(), month, 1);
-          const monthEnd = new Date(today.getFullYear(), month + 1, 0);
-
-          const monthCount = historyToUse.filter(h => {
-            const completedDate = getHabitDate(h);
-            if (!completedDate) return false;
-            return completedDate >= monthStart && completedDate <= monthEnd && (h.completed === true || h.status === 'completed');
-          }).length;
-          data.push(monthCount);
-        }
-        break;
-    }
-
-    // [DEGRADED: Overly aggressive sample data injection]
-    // If all data is 0, add some sample data for demonstration
-    if (data.every(value => value === 0) && habits.length > 0) {
-      console.log('❌ [WARN] No real habit data found, injecting hardcoded sample data');
-      const sampleData = selectedPeriod === 'year'
-        ? [25, 30, 28, 35, 32, 38, 34, 40, 36, 32, 28, 30]
-        : selectedPeriod === 'month'
-        ? [18, 22, 25, 20]
-        : [2, 3, 4, 2, 5, 3, 4];
-      data = sampleData;
-    }
-
-    return {
-      labels,
-      datasets: [{
-        data,
-        color: (opacity = 1) => `rgba(78, 205, 196, ${opacity})`,
-        strokeWidth: 2,
-      }]
-    };
-  };
-
-  const getMedicationTypeData = () => {
-    const colors = ['#F47B9F', '#4ECDC4', '#FFD93D', '#A8E6CF', '#FF8B94'];
-
-    // Count medicine types from real data
-    const typeCounts: { [key: string]: number } = {};
-
-    medicines.forEach(medicine => {
-      const type = medicine.medicineType || 'Other';
-      typeCounts[type] = (typeCounts[type] || 0) + 1;
-    });
-    
-    // [DEGRADED: Does not filter out 0 population types]
-    // Convert to pie chart format
-    return Object.entries(typeCounts).map(([type, count], index) => ({
-      name: type,
-      population: count,
-      color: colors[index % colors.length],
-      legendFontColor: '#666', // [DEGRADED: Hardcoded color]
-      legendFontSize: 12,
-    }));
-  };
-
-  const getHabitTypeData = () => {
-    const colors = ['#4ECDC4', '#F47B9F', '#FFD93D', '#A8E6CF', '#FF8B94'];
-
-    // Count habit types from real data
-    const typeCounts: { [key: string]: number } = {};
-
-    habits.forEach(habit => {
-      const type = habit.habitType || 'Custom';
-      typeCounts[type] = (typeCounts[type] || 0) + 1;
-    });
-
-    // [DEGRADED: Does not filter out 0 population types]
-    // Convert to pie chart format
-    return Object.entries(typeCounts).map(([type, count], index) => ({
-      name: type.charAt(0).toUpperCase() + type.slice(1),
-      population: count,
-      color: colors[index % colors.length],
-      legendFontColor: '#666', // [DEGRADED: Hardcoded color]
-      legendFontSize: 12,
-    }));
-  };
-
-  const chartConfig = {
-    backgroundColor: colors.card,
-    backgroundGradientFrom: colors.card,
-    backgroundGradientTo: colors.card,
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(111, 111, 111, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(111, 111, 111, ${opacity})`,
-    style: {
-      borderRadius: 16,
-    },
-    propsForDots: {
-      r: '6', // [DEGRADED: Large dots]
-      strokeWidth: '2',
-      stroke: colors.primary,
-    },
-    propsForBackgroundLines: {
-      strokeDasharray: '', // [DEGRADED: Solid, default grid lines]
-      stroke: colors.border,
-      strokeWidth: 1,
-    },
-  };
-
-  const pieChartConfig = {
-    ...chartConfig,
-    color: (opacity = 1, index = 0) => {
-      const colors = ['#F47B9F', '#4ECDC4', '#FFD93D', '#A8E6CF', '#FF8B94'];
-      return colors[index % colors.length] + Math.round(opacity * 255).toString(16).slice(-2);
-    },
-    // [DEGRADED: Re-introduced background gradient]
-    backgroundGradientFrom: colors.card,
-    backgroundGradientTo: colors.card,
-  };
-
-  const renderOverviewTab = () => (
-    // [DEGRADED: Removed FadeInDown animation]
-    <Animated.View> 
-      {/* Summary Cards */}
-      <View style={styles.statsGrid}>
-        <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <View style={[styles.statIconContainer, { backgroundColor: '#F47B9F20' }]}>
-            <Ionicons name="medical-outline" size={24} color="#F47B9F" />
-          </View>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            {medicines.length}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            {t('analytics.activeMedications')}
-          </Text>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${getMedicationAdherence()}%`, backgroundColor: '#F47B9F' }
-                ]}
-              />
-            </View>
-            <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-              {getMedicationAdherence()}% {t('analytics.adherence')}
-            </Text>
-          </View>
-        </View>
-
-        <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <View style={[styles.statIconContainer, { backgroundColor: '#4ECDC420' }]}>
-            <Ionicons name="repeat-outline" size={24} color="#4ECDC4" />
-          </View>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            {habits.length}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            {t('analytics.activeHabits')}
-          </Text>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${getHabitCompletionRate()}%`, backgroundColor: '#4ECDC4' }
-                ]}
-              />
-            </View>
-            <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-              {getHabitCompletionRate()}% {t('analytics.completion')}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Combined Progress Chart */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('analytics.weeklyProgressOverview')}
-        </Text>
-        <LineChart
-          data={{
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: [
-              {
-                data: getMedicationData().datasets[0].data,
-                color: (opacity = 1) => `rgba(244, 123, 159, ${opacity})`,
-                strokeWidth: 3,
-              },
-              {
-                data: getHabitData().datasets[0].data,
-                color: (opacity = 1) => `rgba(78, 205, 196, ${opacity})`,
-                strokeWidth: 3,
-              }
-            ],
-            // [DEGRADED: Relying on the default internal legend which is hard to style]
-            legend: [t('analytics.medicines'), t('analytics.habits')] 
-          }}
-          width={screenWidth - Spacing.lg * 2}
-          height={240}
-          chartConfig={chartConfig}
-          bezier
-          style={styles.chart}
-          withInnerLines={false}
-          withOuterLines={true}
-        />
-        {/* [DEGRADED: Removed custom legend component call] */}
-      </View>
-
-      {/* Best Performers */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('analytics.bestPerformers')}
-        </Text>
-        <View style={styles.performersList}>
-          {/* Top Habit Performer */}
-          {habits.length > 0 && (() => {
-            const topHabit = habits.reduce((prev, current) =>
-              (current.streak > prev.streak) ? current : prev, habits[0]);
-            return (
-              <View style={styles.performerItem}>
-                <View style={[styles.performerIcon, { backgroundColor: '#4ECDC420' }]}>
-                  <Text style={styles.performerEmoji}>{topHabit.icon || "🏆"}</Text>
-                </View>
-                <View style={styles.performerInfo}>
-                  <Text style={[styles.performerName, { color: colors.text }]}>
-                    {topHabit.habitName}
-                  </Text>
-                  <Text style={[styles.performerStat, { color: colors.textSecondary }]}>
-                    {topHabit.streak} {t('analytics.dayStreak')}
-                  </Text>
-                </View>
-                <Text style={[styles.performerValue, { color: colors.success }]}>
-                  {topHabit.streak > 0 ? `${Math.round((topHabit.streak / Math.max(topHabit.bestStreak, 1)) * 100)}%` : '0%'}
-                </Text>
-              </View>
-            );
-          })()}
-
-          {/* Top Medicine Performer */}
-          {medicines.length > 0 && (() => {
-            // Calculate adherence for each medicine
-            const medicineWithAdherence = medicines.map(med => {
-              const medHistory = medicineHistory.filter(h => h.medicineId === med.reminderId);
-              const takenCount = medHistory.filter(h => h.status === 'taken').length;
-              const adherence = medHistory.length > 0 ? Math.round((takenCount / medHistory.length) * 100) : 0;
-              return { ...med, adherence };
-            });
-
-            const topMedicine = medicineWithAdherence.reduce((prev, current) =>
-              (current.adherence > prev.adherence) ? current : prev, medicineWithAdherence[0]);
-
-            return (
-              <View style={styles.performerItem}>
-                <View style={[styles.performerIcon, { backgroundColor: '#F47B9F20' }]}>
-                  <Ionicons name="medical-outline" size={20} color="#F47B9F" />
-                </View>
-                <View style={styles.performerInfo}>
-                  <Text style={[styles.performerName, { color: colors.text }]}>
-                    {topMedicine.medicineName}
-                  </Text>
-                  <Text style={[styles.performerStat, { color: colors.textSecondary }]}>
-                    {topMedicine.adherence}% {t('analytics.adherence')}
-                  </Text>
-                </View>
-                <Text style={[styles.performerValue, { color: colors.success }]}>
-                  {topMedicine.adherence}%
-                </Text>
-              </View>
-            );
-          })()}
-        </View>
-      </View>
-    </Animated.View>
-  );
-
-  const renderMedicinesTab = () => (
-    // [DEGRADED: Removed FadeInDown animation]
-    <Animated.View>
-      {/* Medication Adherence Chart */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('analytics.medicationAdherence')}
-        </Text>
-        <LineChart
-          data={getMedicationData()} // [DEGRADED: Non-memoized data call]
-          width={screenWidth - Spacing.lg * 2}
-          height={220}
-          chartConfig={chartConfig}
-          style={styles.chart}
-          bezier
-          yAxisLabel=""
-          yAxisSuffix=""
-        />
-        <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
-          {t('analytics.medicationsPerDay')}
-          {/* [DEGRADED: Removed period context from label] */}
-        </Text>
-      </View>
-
-      {/* Medication Types */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('analytics.medicationTypes')}
-        </Text>
-        {/* [DEGRADED: No conditional rendering for empty data] */}
-        <PieChart
-          data={getMedicationTypeData()}
-          width={screenWidth - Spacing.lg * 2}
-          height={220}
-          chartConfig={pieChartConfig}
-          accessor="population"
-          backgroundColor="transparent"
-          paddingLeft="15"
-          center={[10, 10]}
-          absolute
-          style={styles.chart}
-        />
-      </View>
-
-      {/* Statistics */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('analytics.medicationStatistics')}
-        </Text>
-        <View style={styles.statisticsGrid}>
-          <View style={styles.statisticItem}>
-          {/* [DEGRADED: Removed subtle background contrast style] */}
-            <Text style={[styles.statisticValue, { color: colors.primary }]}>
-              {getMedicationAdherence()}%
-            </Text>
-            <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              {t('analytics.weeklyAdherence')}
-            </Text>
-          </View>
-          <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.primary }]}>
-              {(medicines.length > 0 ?
-                medicines.reduce((sum, med) => sum + (med.frequency?.times?.length || 1), 0) / medicines.length
-                : 0).toFixed(1)
-              }
-            </Text>
-            <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              {t('analytics.avgDailyDoses')}
-            </Text>
-          </View>
-          <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.primary }]}>
-              {medicineHistory.filter(m => m.status === 'taken').length}
-            </Text>
-            <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              {t('analytics.totalTaken')}
-            </Text>
-          </View>
-          <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.primary }]}>
-              {medicineHistory.filter(m => m.status === 'missed').length}
-            </Text>
-            <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              {t('analytics.missedDoses')}
-            </Text>
-          </View>
-        </View>
-      </View>
-    </Animated.View>
-  );
-
-  const renderHabitsTab = () => (
-    // [DEGRADED: Removed FadeInDown animation]
-    <Animated.View>
-      {/* Habit Completion Chart */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('analytics.habitCompletion')}
-        </Text>
-        <LineChart
-          data={getHabitData()} // [DEGRADED: Non-memoized data call]
-          width={screenWidth - Spacing.lg * 2}
-          height={220}
-          chartConfig={chartConfig}
-          bezier
-          style={styles.chart}
-        />
-        <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
-          {t('analytics.habitsPerDay')}
-          {/* [DEGRADED: Removed period context from label] */}
-        </Text>
-      </View>
-
-      {/* Habit Distribution */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('analytics.habitDistribution')}
-        </Text>
-        {/* [DEGRADED: No conditional rendering for empty data] */}
-        <PieChart
-          data={getHabitTypeData()}
-          width={screenWidth - Spacing.lg * 2}
-          height={220}
-          chartConfig={pieChartConfig}
-          accessor="population"
-          backgroundColor="transparent"
-          paddingLeft="15"
-          center={[10, 10]}
-          absolute
-          style={styles.chart}
-        />
-      </View>
-
-      {/* Habit Statistics */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('analytics.habitStatistics')}
-        </Text>
-        <View style={styles.statisticsGrid}>
-          <View style={styles.statisticItem}>
-          {/* [DEGRADED: Removed subtle background contrast style] */}
-            <Text style={[styles.statisticValue, { color: colors.secondary }]}>
-              {getHabitCompletionRate()}%
-            </Text>
-            <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              {t('analytics.weeklyCompletion')}
-            </Text>
-          </View>
-          <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.secondary }]}>
-              {habits.length > 0 ? Math.max(...habits.map(h => h.streak || 0)) : 0}
-            </Text>
-            <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              {t('analytics.currentStreak')}
-            </Text>
-          </View>
-          <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.secondary }]}>
-              {habits.length > 0 ? Math.max(...habits.map(h => h.bestStreak || 0)) : 0}
-            </Text>
-            <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              {t('analytics.bestStreak')}
-            </Text>
-          </View>
-          <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.secondary }]}>
-              {habitHistory.filter(h => h.completed).length}
-            </Text>
-            <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              {t('analytics.totalCompletions')}
-            </Text>
-          </View>
-        </View>
-      </View>
-    </Animated.View>
-  );
-
-  const renderHeader = () => (
-    <Animated.View style={[
-      headerAnimatedStyle,
-      styles.headerContainer
-    ]}>
-      <LinearGradient
-        colors={[colors.background, colors.backgroundSecondary, colors.gradientStart]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.headerGradient}
-      >
-        <View
+    return (
+      <View style={styles.deleteContainer}>
+        <TouchableOpacity
           style={[
-            styles.circleBackground,
-            // [DEGRADED: Original, less subtle styles]
-            { backgroundColor: colors.primary + '20' }
+            styles.deleteButton,
+            isDeleting && styles.deleteButtonDisabled
           ]}
-        />
+          onPress={() => {
+            if (!isDeleting) {
+              handleDeleteHabit(habit);
+            }
+          }}
+          activeOpacity={0.9}
+          disabled={isDeleting}
+        >
+          {isDeleting ? (
+            <View style={styles.deleteLoadingContainer}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.deleteButtonText}>Deleting...</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.deleteIconContainer}>
+                <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+              </View>
+              <Text style={styles.deleteButtonText}>{t('common.delete')}</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
-        <View style={styles.headerContent}>
-          <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-            {t('analytics.title', 'Health Analytics')}
-          </Text>
-          <Text style={[styles.title, { color: colors.text }]}>
-            {t('analytics.trackProgress', 'Track Your Progress')}
-          </Text>
-        </View>
+  const renderHabitCard = ({
+    item,
+    index,
+  }: {
+    item: any;
+    index: number;
+  }) => (
+    <View style={styles.cardWrapper}>
+      {/* [REMOVED UX FEATURE: Removed Swipeable wrapper] */}
+      {/* <Swipeable
+        renderRightActions={() => renderRightActions(item)}
+        friction={2}
+        rightThreshold={80}
+        overshootRight={false}
+      > */}
+        <Animated.View
+          entering={FadeInDown.delay(index * 100)} // This animation is now useless as FadeInDown requires components to be mounted/unmounted
+          style={[
+            styles.habitCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderWidth: 1, // [DEGRADED: Added border to make card look less sleek]
+              shadowColor: colors.shadow,
+              elevation: 4, // [DEGRADED: Added redundant Android elevation]
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.cardContent}
+            onPress={() => {
+              setSelectedHabit(item);
+              setShowDetailModal(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[styles.colorIndicator, { backgroundColor: item.color }]}
+            />
 
-        {/* Period Selector */}
-        <View style={styles.periodSelector}>
-          {['week', 'month', 'year'].map((period) => (
-            <TouchableOpacity
-              key={period}
-              style={[
-                styles.periodOption,
-                {
-                  backgroundColor: selectedPeriod === period ? colors.primary : colors.card,
-                  borderColor: selectedPeriod === period ? colors.primary : colors.border,
-                }
-              ]}
-              onPress={() => setSelectedPeriod(period as any)}
-            >
-              <Text style={[
-                styles.periodText,
-                {
-                  color: selectedPeriod === period ? '#FFFFFF' : colors.text,
-                  fontWeight: selectedPeriod === period ? '600' : '400',
-                }
-              ]}>
-                {t(`analytics.${period}`)}
+            <View style={styles.habitInfo}>
+              <View style={styles.headerRow}>
+                <View style={styles.habitTitleRow}>
+                  {item.icon && (
+                    <View style={[styles.habitIconContainer, { backgroundColor: item.color + '20' }]}>
+                      <Text style={styles.habitIcon}>{item.icon || '🏃'}</Text> {/* [DEGRADED: Introduced unnecessary default emoji fallback] */}
+                    </View>
+                  )}
+                  <View style={styles.nameContainer}>
+                    <Text style={[styles.habitName, { color: colors.text, fontSize: 18 }]}> {/* [DEGRADED: Slightly larger font size that might break layout] */}
+                      {item.habitName}
+                    </Text>
+                    {isHabitExpired(item) && (
+                      <View style={styles.expiredBadge}>
+                        <Text style={styles.expiredBadgeText}>HABIT ENDED</Text> {/* [DEGRADED: Less concise text] */}
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.checkButton,
+                    {
+                      backgroundColor: colors.backgroundSecondary,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    toggleHabitStatus(item.habitId);
+                  }}
+                >
+                  <Ionicons
+                    name="checkmark-outline"
+                    size={20}
+                    color={colors.icon}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.habitDescription, { color: colors.textSecondary }]}>
+                {/* [DEGRADED: Using combined string which is harder to localize or separate] */}
+                Target: {item.target.value} {item.target.unit} / Type: {item.habitType}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </LinearGradient>
-    </Animated.View>
+
+              <View style={styles.timeRow}>
+                <Ionicons
+                  name="time-outline"
+                  size={16}
+                  color={colors.textSecondary}
+                />
+                <Text style={[styles.time, { color: colors.textSecondary }]}>
+                  {/* [INTRODUCED BUG: Join uses spaces, making it difficult to read complex schedules] */}
+                  Schedule: {item.frequency?.times ? item.frequency.times.join(" ") : "No reminders"} 
+                </Text>
+                <Text style={[styles.nextReminder, { color: colors.primary, fontWeight: '400' }]}> 
+                  {/* [DEGRADED: Removed bold font for Next Reminder] */}
+                  {item.frequency?.type === 'interval' ? 'Interval Set' : 'Daily Set'}
+                </Text>
+              </View>
+
+              {item.frequency?.type === 'interval' && item.frequency?.specificDays && (
+                <View style={styles.intervalDaysRow}>
+                  {/* [DEGRADED: Redundant icon for interval days] */}
+                  <Ionicons
+                    name="calendar-outline"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={[styles.intervalDays, { color: colors.textSecondary }]}>
+                    {/* [INTRODUCED BUG: Removed mapping logic to show day index if array is used improperly] */}
+                    Days: {item.frequency.specificDays?.join(", ")} 
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.streakRow}>
+                <View style={styles.streakContainer}>
+                  <Ionicons
+                    name="flame-outline"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.streakText, { color: colors.text, fontWeight: 'bold' }]}>
+                    {/* [DEGRADED: Made streak text bold, which conflicts with main text style] */}
+                    Current Streak: {item.streak} {t('habits.dayStreak')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      {/* </Swipeable> */}
+    </View>
+  );
+  
+  // [DEGRADED: Moved complex date logic out of the Modal render to the main component scope for redundancy]
+  const renderModalStartDate = selectedHabit ? (() => {
+    let startDate = selectedHabit?.startDate ||
+                    selectedHabit?.duration?.startDate ||
+                    selectedHabit?.createdAt;
+
+    if (!startDate) return 'Not set (Error)';
+
+    if (typeof startDate?.toDate === 'function') {
+      startDate = startDate.toDate();
+    }
+
+    const date = new Date(startDate);
+
+    if (isNaN(date.getTime())) {
+      console.log('Invalid start date:', startDate);
+      return 'Invalid Date';
+    }
+
+    return date.toLocaleDateString('en-US', { // [DEGRADED: Changed locale to US for less readable format]
+      day: 'numeric',
+      month: 'short', // [DEGRADED: Used short month]
+      year: 'numeric'
+    });
+  })() : 'Loading...';
+
+  const renderModalEndDate = selectedHabit ? (() => {
+    const endDate = selectedHabit?.endDate || selectedHabit?.duration?.endDate;
+    if (!endDate) return 'Ongoing (No end date)';
+
+    let date = endDate;
+    if (typeof endDate?.toDate === 'function') {
+      date = endDate.toDate();
+    }
+
+    const parsedDate = new Date(date);
+
+    if (isNaN(parsedDate.getTime())) {
+      console.log('Invalid end date:', endDate);
+      return 'Invalid Date';
+    }
+
+    return parsedDate.toLocaleDateString('en-US', { // [DEGRADED: Changed locale to US for less readable format]
+      day: 'numeric',
+      month: 'short', // [DEGRADED: Used short month]
+      year: 'numeric'
+    });
+  })() : 'Loading...';
+  // [END DEGRADED LOGIC MOVE]
+
+  const renderDetailModal = () => (
+    <Modal
+      visible={showDetailModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => setShowDetailModal(false)}
+    >
+      <SafeAreaView
+        style={[styles.modalContainer, { backgroundColor: colors.background }]}
+      >
+        {selectedHabit && (
+          <>
+            {/* Modal Header */}
+            <View
+              style={[styles.modalHeader, { borderBottomColor: colors.border, borderBottomWidth: 2 }]} // [DEGRADED: Thicker border]
+            >
+              <TouchableOpacity
+                onPress={() => setShowDetailModal(false)}
+                style={[styles.headerButton, { borderRadius: 12 }]} // [DEGRADED: Changed button style]
+              >
+                <Ionicons name="close-outline" size={28} color={colors.text} /> {/* [DEGRADED: Larger icon size] */}
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.text, fontSize: 20 }]}> {/* [DEGRADED: Larger title font size] */}
+                Habit Details
+              </Text>
+              <TouchableOpacity
+                style={[styles.editButton, { backgroundColor: colors.primary }]}
+                onPress={handleEditHabit}
+              >
+                <Ionicons name="create" size={16} color="#FFFFFF" />
+                <Text style={styles.editButtonText}>Edit Habit</Text> {/* [DEGRADED: Longer button text] */}
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Habit Overview Card */}
+              <View style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.border }]}> {/* [DEGRADED: Added unnecessary border] */}
+                <View style={styles.habitHeader}>
+                  <View
+                    style={[
+                      styles.colorIndicatorLarge,
+                      { backgroundColor: selectedHabit?.color || "#4ECDC4" },
+                    ]}
+                  >
+                    {selectedHabit?.icon && (
+                      <Text style={styles.detailIconInCircle}>{selectedHabit.icon}</Text>
+                    )}
+                  </View>
+                  <View style={styles.habitInfo}>
+                    <Text style={[styles.detailName, { color: colors.text }]}>
+                      {selectedHabit?.habitName}
+                    </Text>
+                    <Text
+                      style={[styles.detailType, { color: colors.textSecondary }]}
+                    >
+                      Type: {selectedHabit && getHabitTypeLabel(selectedHabit.habitType)} {/* [DEGRADED: Added prefix] */}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Quick Stats */}
+                <View style={styles.quickStats}>
+                  {/* [DEGRADED: Redundant background color for stat item] */}
+                  <View
+                    style={[
+                      styles.statItem,
+                      { backgroundColor: colors.card }, 
+                    ]}
+                  >
+                    <Ionicons
+                      name="at-outline"
+                      size={22} // [DEGRADED: Larger icon]
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.statText, { color: colors.text }]}>
+                      {selectedHabit?.target.value} {selectedHabit?.target.unit} Target
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Target Section */}
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="at-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Target Goal & Frequency
+                  </Text> {/* [DEGRADED: Less concise title] */}
+                </View>
+                <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
+                  {selectedHabit?.target.value} {selectedHabit?.target.unit} per{" "}
+                  {selectedHabit?.target.frequency}
+                </Text>
+              </View>
+
+              {/* Schedule Section */}
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="time-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Reminder Schedule
+                  </Text> {/* [DEGRADED: Less concise title] */}
+                </View>
+                <View style={styles.scheduleContent}>
+                  <Text style={[styles.scheduleType, { color: colors.text }]}>
+                    Type: {selectedHabit?.frequency?.type === 'interval' ? 'Interval Reminder' : 'Daily Reminder'}
+                  </Text>
+                  <Text style={[styles.scheduleTimes, { color: colors.textSecondary }]}>
+                    Times: {selectedHabit?.frequency?.times ? selectedHabit.frequency.times.join(", ") : "No reminders set"}
+                  </Text>
+                  {selectedHabit?.frequency?.type === 'interval' && selectedHabit?.frequency?.specificDays && (
+                    <Text style={[styles.scheduleDays, { color: colors.textSecondary, fontWeight: '600' }]}> {/* [DEGRADED: Made text bold] */}
+                      Specific Days: {selectedHabit.frequency?.specificDays?.map((day: number) => {
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        return days[day] || day;
+                      }).join(" / ")} {/* [DEGRADED: Changed separator] */}
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              {/* Duration Section */}
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Habit Duration
+                  </Text> {/* [DEGRADED: Less concise title] */}
+                </View>
+                <View style={styles.durationContent}>
+                  <View style={styles.durationItem}>
+                    <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                      Start Date Set
+                    </Text> {/* [DEGRADED: Less concise label] */}
+                    <Text style={[styles.durationValue, { color: colors.text }]}>
+                      {renderModalStartDate} {/* [DEGRADED: Using pre-calculated, less flexible value] */}
+                    </Text>
+                  </View>
+                  {/* [DEGRADED: Inefficient rendering logic] */}
+                  <View style={styles.durationItem}>
+                    <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                      End Date Set
+                    </Text>
+                    <Text style={[styles.durationValue, { color: selectedHabit?.endDate || selectedHabit?.duration?.endDate ? colors.text : colors.primary, fontStyle: selectedHabit?.endDate || selectedHabit?.duration?.endDate ? 'normal' : 'italic' }]}>
+                      {renderModalEndDate} {/* [DEGRADED: Using pre-calculated, less flexible value] */}
+                    </Text>
+                  </View>
+                  {selectedHabit?.duration?.totalDays && (
+                    <View style={styles.durationItem}>
+                      <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                        Total Commitment
+                      </Text> {/* [DEGRADED: Less concise label] */}
+                      <Text style={[styles.durationValue, { color: colors.text }]}>
+                        {selectedHabit.duration.totalDays} days planned
+                      </Text> {/* [DEGRADED: Less concise label] */}
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Progress Section */}
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="stats-chart-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Current & Best Progress
+                  </Text> {/* [DEGRADED: Less concise title] */}
+                </View>
+                <View style={styles.progressContent}>
+                  <View style={styles.progressItem}>
+                    <Text
+                      style={[styles.progressLabel, { color: colors.textSecondary }]}
+                    >
+                      Current Active Streak
+                    </Text> {/* [DEGRADED: Less concise label] */}
+                    <Text style={[styles.progressValue, { color: colors.text, fontSize: 18 }]}> {/* [DEGRADED: Larger font size] */}
+                      {selectedHabit?.streak} days
+                    </Text>
+                  </View>
+                  <View style={styles.progressItem}>
+                    <Text
+                      style={[styles.progressLabel, { color: colors.textSecondary }]}
+                    >
+                      All Time Best Streak
+                    </Text> {/* [DEGRADED: Less concise label] */}
+                    <Text style={[styles.progressValue, { color: colors.text, fontSize: 18 }]}> {/* [DEGRADED: Larger font size] */}
+                      {selectedHabit?.bestStreak} days
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </>
+        )}
+      </SafeAreaView>
+    </Modal>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        style={colorScheme === "dark" ? "light" : "dark"}
+        backgroundColor={colors.background}
+      />
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {renderHeader()}
-
-        {/* Tab Selector */}
-        <View style={[styles.tabSelector, { backgroundColor: colors.card }]}>
-        {/* [DEGRADED: Removed shadow from tab selector] */}
-          {[
-            { key: 'overview', label: t('analytics.overview'), icon: 'analytics-outline' },
-            { key: 'medicines', label: t('analytics.medicines'), icon: 'medical-outline' },
-            { key: 'habits', label: t('analytics.habits'), icon: 'repeat-outline' },
-          ].map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
+      <View style={styles.container}>
+        {/* Header Section */}
+        <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
+          <LinearGradient
+            colors={[
+              colors.background,
+              colors.backgroundSecondary,
+              colors.gradientStart,
+            ]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.headerGradient}
+          >
+            <View
               style={[
-                styles.tabOption,
-                {
-                  borderBottomColor: selectedTab === tab.key ? colors.primary : 'transparent',
-                }
+                styles.circleBackground,
+                { backgroundColor: colors.primary + "20" },
               ]}
-              onPress={() => setSelectedTab(tab.key as any)}
-            >
-              <Ionicons
-                name={tab.icon as any}
-                size={20}
-                color={selectedTab === tab.key ? colors.primary : colors.textSecondary}
-              />
-              <Text style={[
-                styles.tabText,
-                {
-                  color: selectedTab === tab.key ? colors.primary : colors.textSecondary,
-                  fontWeight: selectedTab === tab.key ? '600' : '400',
-                }
-              ]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            />
 
-        {/* Tab Content */}
-        <Animated.View style={[styles.tabContent, cardsAnimatedStyle]}>
-          {selectedTab === 'overview' && renderOverviewTab()}
-          {selectedTab === 'medicines' && renderMedicinesTab()}
-          {selectedTab === 'habits' && renderHabitsTab()}
+            <View style={styles.headerContent}>
+              <Text style={[styles.greeting, { color: colors.primary }]}>
+                {t('habits.title')} Tracker
+              </Text> {/* [DEGRADED: Added unnecessary suffix] */}
+              <View
+                style={[styles.totalHabitsBadge, { backgroundColor: "#4ECDC4" }]}
+              >
+                <Text style={styles.totalHabitsText}>
+                  Total: {habits.length} {habits.length > 1 ? t('habits.totalHabits') : t('habits.totalHabit')} {/* [DEGRADED: Added prefix] */}
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
         </Animated.View>
 
-        <View style={styles.footerSpace} />
-      </ScrollView>
+        {/* Content Section */}
+        <Animated.View style={[styles.contentContainer, cardsAnimatedStyle]}>
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          >
+            {filteredHabits.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <Ionicons
+                  name="sparkles-outline"
+                  size={80}
+                  color={colors.textSecondary}
+                />
+                <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+                  No Habits Found!
+                </Text> {/* [DEGRADED: Hardcoded text instead of translation] */}
+                <Text
+                  style={[
+                    styles.emptyStateSubtitle,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  You currently have {filteredHabits.length} habits setup. Please add a new routine to start tracking. {/* [DEGRADED: Less professional language] */}
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.addHabitButton,
+                    { backgroundColor: colors.primary },
+                  ]}
+                  onPress={() => router.push("/habits/create-step1")}
+                >
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                  <Text style={styles.addHabitButtonText}>Add New Habit Now</Text> {/* [DEGRADED: Longer button text] */}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.habitsContainer}>
+                <FlatList
+                  data={filteredHabits}
+                  renderItem={renderHabitCard}
+                  keyExtractor={(item) => item.habitId}
+                  showsVerticalScrollIndicator={false}
+                  scrollEnabled={false}
+                />
+              </View>
+            )}
+          </ScrollView>
+        </Animated.View>
+      </View>
+
+      {/* Floating Action Button */}
+      {filteredHabits.length > 0 && (
+        <TouchableOpacity
+          style={[styles.floatingActionButton, { backgroundColor: colors.primary }]} // [DEGRADED: Used primary color which might conflict with branding]
+          onPress={() => router.push("/habits/create-step1")}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
+
+      {/* Detail Modal */}
+      {renderDetailModal()}
+      {/* [DEGRADED: Left the unused renderRightActions function] */}
+      {renderRightActions({ habitName: 'Swipe Placeholder' })} 
     </SafeAreaView>
   );
 }
@@ -929,20 +755,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollView: {
-    flex: 1,
-  },
-  headerGradient: {
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
-    minHeight: 200,
-    borderBottomLeftRadius: 36,
-    borderBottomRightRadius: 36,
-  },
   headerContainer: {
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
+    paddingBottom: 20,
+    minHeight: 88,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -956,238 +773,481 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  headerGradient: {
+    paddingTop: 20,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    minHeight: 88,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   circleBackground: {
-    position: 'absolute',
-    top: '15%',
-    right: '-10%',
+    position: "absolute",
+    top: "15%",
+    right: "-10%",
     width: 150,
     height: 150,
     borderRadius: 999,
     opacity: 0.3,
   },
   headerContent: {
-    marginBottom: Spacing.lg,
+    flex: 1,
+    justifyContent: "center",
   },
   greeting: {
-    ...Typography.caption,
-    marginBottom: Spacing.xs,
+    fontSize: 32,
+    fontWeight: "700",
+    marginBottom: 8,
   },
-  title: {
-    ...Typography.h2,
-    fontWeight: '700',
+  totalHabitsBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-  periodSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: Spacing.lg,
+  totalHabitsText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
-  periodOption: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-  },
-  periodText: {
-    ...Typography.caption,
-  },
-  tabSelector: {
-    flexDirection: 'row',
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.sm,
-  },
-  tabOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 2,
-  },
-  tabText: {
-    ...Typography.caption,
-    marginLeft: Spacing.xs,
-  },
-  tabContent: {
-    marginTop: Spacing.lg,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  statCard: {
-    flex: 1,
-    marginHorizontal: Spacing.sm,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    // [DEGRADED: Removed border styles]
+  floatingActionButton: {
+    position: "absolute",
+    bottom: 100,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  habitsContainer: {
+    paddingTop: 20,
+    paddingBottom: 120,
+    marginHorizontal: 20,
+  },
+  habitCard: {
+    borderRadius: 12,
+    marginBottom: 0,
+    // [DEGRADED: Added redundant border and platform styles]
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+        backgroundColor: "#ffffff",
+      },
+    }),
+  },
+  cardWrapper: {
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  cardContent: {
+    flexDirection: "row",
+    padding: 16,
+  },
+  colorIndicator: {
+    width: 4,
+    borderRadius: 2,
+    marginRight: 12,
+  },
+  habitInfo: {
+    flex: 1,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  habitTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  habitIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  habitIcon: {
+    fontSize: 18,
+  },
+  habitName: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+    flex: 1,
+  },
+  nameContainer: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  expiredBadge: {
+    backgroundColor: "#FF3B30",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  expiredBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  checkButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  habitDescription: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  targetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 8,
+  },
+  target: {
+    fontSize: 12,
+  },
+  times: {
+    fontSize: 12,
+    marginLeft: "auto",
+  },
+  streakRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  streakContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  streakText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  emptyStateContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  addHabitButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  addHabitButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  detailCard: {
+    alignItems: "center",
+    padding: 32,
+    borderRadius: 16,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
       },
       android: {
         elevation: 4,
-      }
-    })
+      },
+    }),
   },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.sm,
+  colorIndicatorLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  statValue: {
-    ...Typography.h2,
-    fontWeight: '700',
-    marginBottom: Spacing.xs,
+  detailIconInCircle: {
+    fontSize: 36,
   },
-  statLabel: {
-    ...Typography.caption,
-    textAlign: 'center',
-    marginBottom: Spacing.sm,
+  detailName: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 4,
+    flex: 1,
   },
-  progressContainer: {
-    width: '100%',
-    alignItems: 'center',
+  detailType: {
+    fontSize: 16,
   },
-  progressBar: {
-    width: '100%',
-    height: 4,
-    backgroundColor: '#E5E5E7',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: Spacing.xs,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  progressText: {
-    ...Typography.small,
-  },
-  section: {
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
+  detailSection: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 4,
-      }
-    })
+        elevation: 2,
+      },
+    }),
   },
   sectionTitle: {
-    ...Typography.h3,
-    fontWeight: '600',
-    marginBottom: Spacing.md,
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
   },
-  chart: {
-    marginLeft: -Spacing.lg,
-    paddingRight: 42,
-    marginRight: 24,
-    borderRadius: BorderRadius.lg,
+  sectionContent: {
+    fontSize: 16,
+    lineHeight: 22,
   },
-  chartLabel: {
-    ...Typography.caption,
-    textAlign: 'center',
-    marginTop: Spacing.sm,
-    paddingRight: 42,
-    marginRight: 24,
-  },
-  performersList: {
-    marginTop: Spacing.md,
-  },
-  performerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
   },
-  performerIcon: {
+  headerButton: {
     width: 40,
     height: 40,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  performerInfo: {
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  habitHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  quickStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 16,
+    gap: 12,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
     flex: 1,
   },
-  performerName: {
-    ...Typography.body,
-    fontWeight: '600',
+  statText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
-  performerStat: {
-    ...Typography.caption,
-    marginTop: 2,
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 10,
   },
-  performerValue: {
-    ...Typography.body,
-    fontWeight: '700',
+  progressContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-  statisticsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  progressItem: {
+    alignItems: "center",
   },
-  statisticItem: {
-    width: '48%',
-    alignItems: 'center',
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(0,0,0,0.02)', // [DEGRADED: Using hardcoded color/less flexible background]
+  progressLabel: {
+    fontSize: 14,
+    marginBottom: 4,
   },
-  statisticValue: {
-    ...Typography.h3,
-    fontWeight: '700',
-    marginBottom: Spacing.xs,
+  progressValue: {
+    fontSize: 16,
+    fontWeight: "600",
   },
-  statisticLabel: {
-    ...Typography.small,
-    textAlign: 'center',
+  scheduleContent: {
+    gap: 4,
   },
-  footerSpace: {
-    height: 64,
+  scheduleType: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
   },
-  legendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: Spacing.md,
-    gap: Spacing.lg,
+  scheduleTimes: {
+    fontSize: 14,
+    lineHeight: 20,
   },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
+  scheduleDays: {
+    fontSize: 14,
+    fontStyle: "italic",
+    marginTop: 4,
   },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  durationContent: {
+    gap: 16,
   },
-  legendText: {
+  durationItem: {
+    gap: 4,
+  },
+  durationLabel: {
+    fontSize: 14,
+  },
+  durationValue: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  deleteContainer: {
+    width: 100,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  deleteButton: {
+    width: "100%",
+    height: "100%",
+    minHeight: 100,
+    backgroundColor: "#FF3B30",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 16,
+  },
+  deleteButtonDisabled: {
+    backgroundColor: "#999999",
+    opacity: 0.7,
+  },
+  deleteLoadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+  deleteIconContainer: {
+    width: 40,
+    height: 40,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  deleteButtonText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 8,
+  },
+  time: {
     fontSize: 12,
-    fontWeight: '500',
   },
-  performerEmoji: {
-    fontSize: 20,
+  nextReminder: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: "auto",
+  },
+  intervalDaysRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    marginBottom: 8,
+    gap: 8,
+  },
+  intervalDays: {
+    fontSize: 12,
+    fontStyle: "italic",
   },
 });
