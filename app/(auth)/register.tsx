@@ -15,9 +15,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { signUp, signInWithGoogle, user } = useAuth();
@@ -213,7 +215,7 @@ export default function RegisterScreen() {
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.signUpButtonText}>Sign Up</Text>
+                <Text style={styles.signUpButtonText}>{t('auth.signUp')}</Text>
               )}
             </TouchableOpacity>
 

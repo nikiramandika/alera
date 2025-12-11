@@ -28,9 +28,11 @@ import { Swipeable } from "react-native-gesture-handler";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 import { useHabit } from "@/contexts/HabitContext";
+import { useTranslation } from "react-i18next";
 
 export default function HabitsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const {
@@ -158,15 +160,15 @@ export default function HabitsScreen() {
   const handleDeleteHabit = (habit: any) => {
     console.log("Deleting habit:", habit);
     Alert.alert(
-      "Delete Habit",
-      `Are you sure you want to delete "${habit.habitName}"? This action cannot be undone.`,
+      t('habits.deleteHabit'),
+      t('habits.deleteHabitConfirm'),
       [
         {
-          text: "Cancel",
+          text: t('common.cancel'),
           style: "cancel",
         },
         {
-          text: "Delete",
+          text: t('common.delete'),
           style: "destructive",
           onPress: async () => {
             try {
@@ -245,7 +247,7 @@ export default function HabitsScreen() {
               <View style={styles.deleteIconContainer}>
                 <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
               </View>
-              <Text style={styles.deleteButtonText}>Delete</Text>
+              <Text style={styles.deleteButtonText}>{t('common.delete')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -372,7 +374,7 @@ export default function HabitsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.streakText, { color: colors.text }]}>
-                    {item.streak} day streak
+                    {item.streak} {t('habits.dayStreak')}
                   </Text>
                 </View>
               </View>
@@ -698,13 +700,13 @@ export default function HabitsScreen() {
 
             <View style={styles.headerContent}>
               <Text style={[styles.greeting, { color: colors.primary }]}>
-                My Habits
+                {t('habits.title')}
               </Text>
               <View
                 style={[styles.totalHabitsBadge, { backgroundColor: "#4ECDC4" }]}
               >
                 <Text style={styles.totalHabitsText}>
-                  {habits.length} Total Habit{habits.length !== 1 ? "s" : ""}
+                  {habits.length} {habits.length > 1 ? t('habits.totalHabits') : t('habits.totalHabit')}
                 </Text>
               </View>
             </View>
@@ -728,7 +730,7 @@ export default function HabitsScreen() {
                   color={colors.textSecondary}
                 />
                 <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                  No Habits Yet!
+                  {t('habits.noHabits')}
                 </Text>
                 <Text
                   style={[
@@ -747,7 +749,7 @@ export default function HabitsScreen() {
                   onPress={() => router.push("/habits/create-step1")}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
-                  <Text style={styles.addHabitButtonText}>Add Habit</Text>
+                  <Text style={styles.addHabitButtonText}>{t('habits.addHabit')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (

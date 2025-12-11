@@ -7,9 +7,11 @@ import React from "react";
 import { ActivityIndicator } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 export default function TabLayout() {
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
 
   // Only show loading state while checking auth
   if (loading) {
@@ -29,23 +31,23 @@ export default function TabLayout() {
   return (
       <NativeTabs>
         <NativeTabs.Trigger name="index">
-          <Label>Home</Label>
+          <Label>{t('navigation.home')}</Label>
           <Icon sf={"house.fill"} />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="medicine">
-          <Label>Medicine</Label>
+          <Label>{t('navigation.medicine')}</Label>
           <Icon sf={"pills.fill"} />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="habits">
-          <Label>Habits</Label>
+          <Label>{t('navigation.habits')}</Label>
           <Icon sf={"heart.fill"} />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="analytics">
-          <Label>Analytics</Label>
+          <Label>{t('navigation.analytics')}</Label>
           <Icon sf={"chart.bar.fill"} />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="profile">
-          <Label>Profile</Label>
+          <Label>{t('navigation.profile')}</Label>
           <Icon sf={"person.fill"} />
         </NativeTabs.Trigger>
       </NativeTabs>

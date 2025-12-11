@@ -25,11 +25,13 @@ import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { useMedicine } from '@/contexts/MedicineContext';
 import { useHabit } from '@/contexts/HabitContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { analyticsService, medicineHistoryService, habitHistoryService } from '@/services';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function AnalyticsScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
@@ -493,7 +495,7 @@ export default function AnalyticsScreen() {
             {medicines.length}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Active Medications
+            {t('analytics.activeMedications')}
           </Text>
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
@@ -505,7 +507,7 @@ export default function AnalyticsScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-              {getMedicationAdherence()}% adherence
+              {getMedicationAdherence()}% {t('analytics.adherence')}
             </Text>
           </View>
         </View>
@@ -518,7 +520,7 @@ export default function AnalyticsScreen() {
             {habits.length}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Active Habits
+            {t('analytics.activeHabits')}
           </Text>
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
@@ -530,7 +532,7 @@ export default function AnalyticsScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-              {getHabitCompletionRate()}% completion
+              {getHabitCompletionRate()}% {t('analytics.completion')}
             </Text>
           </View>
         </View>
@@ -539,7 +541,7 @@ export default function AnalyticsScreen() {
       {/* Combined Progress Chart */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Weekly Progress Overview
+          {t('analytics.weeklyProgressOverview')}
         </Text>
         <LineChart
           data={{
@@ -556,7 +558,7 @@ export default function AnalyticsScreen() {
                 strokeWidth: 3,
               }
             ],
-            legend: ['Medications', 'Habits']
+            legend: [t('analytics.medicines'), t('analytics.habits')]
           }}
           width={screenWidth - Spacing.lg * 2}
           height={240}
@@ -571,7 +573,7 @@ export default function AnalyticsScreen() {
       {/* Best Performers */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Best Performers
+          {t('analytics.bestPerformers')}
         </Text>
         <View style={styles.performersList}>
           {/* Top Habit Performer */}
@@ -588,7 +590,7 @@ export default function AnalyticsScreen() {
                     {topHabit.habitName}
                   </Text>
                   <Text style={[styles.performerStat, { color: colors.textSecondary }]}>
-                    {topHabit.streak} day streak 🔥
+                    {topHabit.streak} {t('analytics.dayStreak')}
                   </Text>
                 </View>
                 <Text style={[styles.performerValue, { color: colors.success }]}>
@@ -621,7 +623,7 @@ export default function AnalyticsScreen() {
                     {topMedicine.medicineName}
                   </Text>
                   <Text style={[styles.performerStat, { color: colors.textSecondary }]}>
-                    {topMedicine.adherence}% adherence
+                    {topMedicine.adherence}% {t('analytics.adherence')}
                   </Text>
                 </View>
                 <Text style={[styles.performerValue, { color: colors.success }]}>
@@ -640,7 +642,7 @@ export default function AnalyticsScreen() {
       {/* Medication Adherence Chart */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Medication Adherence
+          {t('analytics.medicationAdherence')}
         </Text>
         <LineChart
           data={getMedicationData()}
@@ -653,14 +655,14 @@ export default function AnalyticsScreen() {
           yAxisSuffix=""
         />
         <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
-          Medications taken per day
+          {t('analytics.medicationsPerDay')}
         </Text>
       </View>
 
       {/* Medication Types */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Medication Types
+          {t('analytics.medicationTypes')}
         </Text>
         <PieChart
           data={getMedicationTypeData()}
@@ -679,7 +681,7 @@ export default function AnalyticsScreen() {
       {/* Statistics */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Medication Statistics
+          {t('analytics.medicationStatistics')}
         </Text>
         <View style={styles.statisticsGrid}>
           <View style={styles.statisticItem}>
@@ -687,7 +689,7 @@ export default function AnalyticsScreen() {
               {getMedicationAdherence()}%
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              Weekly Adherence
+              {t('analytics.weeklyAdherence')}
             </Text>
           </View>
           <View style={styles.statisticItem}>
@@ -698,7 +700,7 @@ export default function AnalyticsScreen() {
               }
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              Avg Daily Doses
+              {t('analytics.avgDailyDoses')}
             </Text>
           </View>
           <View style={styles.statisticItem}>
@@ -706,7 +708,7 @@ export default function AnalyticsScreen() {
               {medicineHistory.filter(m => m.status === 'taken').length}
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              Total Taken
+              {t('analytics.totalTaken')}
             </Text>
           </View>
           <View style={styles.statisticItem}>
@@ -714,7 +716,7 @@ export default function AnalyticsScreen() {
               {medicineHistory.filter(m => m.status === 'missed').length}
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              Missed Doses
+              {t('analytics.missedDoses')}
             </Text>
           </View>
         </View>
@@ -727,7 +729,7 @@ export default function AnalyticsScreen() {
       {/* Habit Completion Chart */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Habit Completion
+          {t('analytics.habitCompletion')}
         </Text>
         <LineChart
           data={getHabitData()}
@@ -738,14 +740,14 @@ export default function AnalyticsScreen() {
           style={styles.chart}
         />
         <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
-          Habits completed per day
+          {t('analytics.habitsPerDay')}
         </Text>
       </View>
 
       {/* Habit Distribution */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Habit Distribution
+          {t('analytics.habitDistribution')}
         </Text>
         <PieChart
           data={getHabitTypeData()}
@@ -764,7 +766,7 @@ export default function AnalyticsScreen() {
       {/* Habit Statistics */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Habit Statistics
+          {t('analytics.habitStatistics')}
         </Text>
         <View style={styles.statisticsGrid}>
           <View style={styles.statisticItem}>
@@ -772,7 +774,7 @@ export default function AnalyticsScreen() {
               {getHabitCompletionRate()}%
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              Weekly Completion
+              {t('analytics.weeklyCompletion')}
             </Text>
           </View>
           <View style={styles.statisticItem}>
@@ -780,7 +782,7 @@ export default function AnalyticsScreen() {
               {habits.length > 0 ? Math.max(...habits.map(h => h.streak || 0)) : 0}
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              Current Streak
+              {t('analytics.currentStreak')}
             </Text>
           </View>
           <View style={styles.statisticItem}>
@@ -788,7 +790,7 @@ export default function AnalyticsScreen() {
               {habits.length > 0 ? Math.max(...habits.map(h => h.bestStreak || 0)) : 0}
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              Best Streak
+              {t('analytics.bestStreak')}
             </Text>
           </View>
           <View style={styles.statisticItem}>
@@ -796,7 +798,7 @@ export default function AnalyticsScreen() {
               {habitHistory.filter(h => h.completed).length}
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
-              Total Completions
+              {t('analytics.totalCompletions')}
             </Text>
           </View>
         </View>
@@ -821,10 +823,10 @@ export default function AnalyticsScreen() {
 
         <View style={styles.headerContent}>
           <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-            Health Analytics
+            {t('analytics.title', 'Health Analytics')}
           </Text>
           <Text style={[styles.title, { color: colors.text }]}>
-            Track Your Progress
+            {t('analytics.trackProgress', 'Track Your Progress')}
           </Text>
         </View>
 
@@ -849,7 +851,7 @@ export default function AnalyticsScreen() {
                   fontWeight: selectedPeriod === period ? '600' : '400',
                 }
               ]}>
-                {period.charAt(0).toUpperCase() + period.slice(1)}
+                {t(`analytics.${period}`)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -868,9 +870,9 @@ export default function AnalyticsScreen() {
         {/* Tab Selector */}
         <View style={[styles.tabSelector, { backgroundColor: colors.card }]}>
           {[
-            { key: 'overview', label: 'Overview', icon: 'analytics-outline' },
-            { key: 'medicines', label: 'Medicines', icon: 'medical-outline' },
-            { key: 'habits', label: 'Habits', icon: 'repeat-outline' },
+            { key: 'overview', label: t('analytics.overview'), icon: 'analytics-outline' },
+            { key: 'medicines', label: t('analytics.medicines'), icon: 'medical-outline' },
+            { key: 'habits', label: t('analytics.habits'), icon: 'repeat-outline' },
           ].map((tab) => (
             <TouchableOpacity
               key={tab.key}

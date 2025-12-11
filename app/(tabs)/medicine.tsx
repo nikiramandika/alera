@@ -29,9 +29,11 @@ import { Swipeable } from "react-native-gesture-handler";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 import { useMedicine } from "@/contexts/MedicineContext";
+import { useTranslation } from 'react-i18next';
 
 export default function MedicationScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const {
@@ -150,15 +152,15 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
   const handleDeleteMedicine = (medicine: any) => {
     console.log('Deleting medicine:', medicine); // Debug log
     Alert.alert(
-      "Delete Medicine",
-      `Are you sure you want to delete "${medicine.medicineName}"? This action cannot be undone.`,
+      t('medicine.deleteMedicine'),
+      t('medicine.deleteMedicineConfirm'),
       [
         {
-          text: "Cancel",
+          text: t('common.cancel'),
           style: "cancel",
         },
         {
-          text: "Delete",
+          text: t('common.delete'),
           style: "destructive",
           onPress: async () => {
             try {
@@ -446,14 +448,14 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                 <Ionicons name="close-outline" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Medicine Details
+                {t('medicine.medicineDetails')}
               </Text>
               <TouchableOpacity
                 onPress={handleEditMedication}
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
               >
                 <Ionicons name="create" size={16} color="#FFFFFF" />
-                <Text style={styles.editButtonText}>Edit</Text>
+                <Text style={styles.editButtonText}>{t('common.edit')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -650,7 +652,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Description
+                      {t('medicine.description')}
                     </Text>
                   </View>
                   <Text
@@ -679,7 +681,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Take With Meal
+                      {t('medicine.takeWithMeal')}
                     </Text>
                   </View>
                   <Text
@@ -688,7 +690,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       { color: colors.textSecondary },
                     ]}
                   >
-                    {selectedMedication.takeWithMeal === 'before' ? 'Before meals' : 'After meals'}
+                    {selectedMedication.takeWithMeal === 'before' ? t('medicine.beforeMeals') : t('medicine.afterMeals')}
                   </Text>
                 </View>
               )}
@@ -708,7 +710,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Medicine Photo
+                      {t('medicine.photo')}
                     </Text>
                   </View>
                   <Image
@@ -733,7 +735,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Duration
+                    {t('medicine.duration')}
                   </Text>
                 </View>
                 <View style={styles.durationContent}>
@@ -811,7 +813,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
 
             <View style={styles.headerContent}>
               <Text style={[styles.greeting, { color: colors.primary }]}>
-                My Medications
+                {t('medicine.myMedications')}
               </Text>
               <View
                 style={[
@@ -820,8 +822,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                 ]}
               >
                 <Text style={styles.totalMedicationsText}>
-                  {medicines.length} Total Medication
-                  {medicines.length !== 1 ? "s" : ""}
+                  {medicines.length} {medicines.length > 1 ? t('medicine.totalMedications') : t('medicine.totalMedication')}
                 </Text>
               </View>
             </View>

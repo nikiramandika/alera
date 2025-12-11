@@ -20,6 +20,7 @@ import { Colors } from '@/constants/theme';
 import { useHabit } from '@/contexts/HabitContext';
 import { useMedicine } from '@/contexts/MedicineContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import LoadingAnimation from '@/components/LoadingAnimation';
 
 interface Task {
@@ -36,6 +37,7 @@ interface Task {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1011,7 +1013,7 @@ const generateTasksFromData = React.useCallback(() => {
               <Ionicons name="search" size={20} color={colors.textSecondary} />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Search tasks..."
+                placeholder={t('tasks.search')}
                 placeholderTextColor={colors.textSecondary}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -1514,7 +1516,7 @@ const generateTasksFromData = React.useCallback(() => {
               <View style={styles.loadingContainer}>
                 <LoadingAnimation size="medium" />
                 <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                  Loading your tasks...
+                  {t('tasks.loading')}
                 </Text>
               </View>
             ) : (
@@ -1682,8 +1684,8 @@ const generateTasksFromData = React.useCallback(() => {
                  Object.keys(tasks.timeBased).length === 0 && (
                   <View style={styles.emptyState}>
                     <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
-                    <Text style={[styles.emptyStateText, { color: colors.text }]}>No tasks found</Text>
-                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>Try adjusting your search</Text>
+                    <Text style={[styles.emptyStateText, { color: colors.text }]}>{t('tasks.noTasks')}</Text>
+                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>{t('tasks.tryAdjustSearch', 'Try adjusting your search')}</Text>
                   </View>
                 )}
               </>

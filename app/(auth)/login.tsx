@@ -15,9 +15,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { signIn, signInWithGoogle, user } = useAuth();
@@ -54,7 +56,7 @@ export default function LoginScreen() {
     try {
       const result = await signIn(email, password);
       if (result.success) {
-        router.replace('/(auth)/transition');
+        router.replace('/');
       } else {
         Alert.alert('Login Failed', result.error || 'An error occurred');
       }
@@ -70,7 +72,7 @@ export default function LoginScreen() {
     try {
       const result = await signInWithGoogle();
       if (result.success) {
-        router.replace('/(auth)/transition');
+        router.replace('/');
       } else {
         Alert.alert('Google Sign-In Failed', result.error || 'An error occurred');
       }
@@ -111,7 +113,7 @@ export default function LoginScreen() {
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                placeholder="Email address"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 value={email}
                 onChangeText={setEmail}
@@ -124,7 +126,7 @@ export default function LoginScreen() {
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                placeholder="Password"
+                placeholder={t('auth.passwordPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 value={password}
                 onChangeText={setPassword}
@@ -154,13 +156,13 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={styles.signInButtonText}>{t('auth.signIn')}</Text>
               )}
             </TouchableOpacity>
 
             {/* Forgot Password */}
             <TouchableOpacity style={styles.forgotPasswordButton}>
-              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot Password?</Text>
+              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>{t('auth.forgotPassword', 'Forgot Password?')}</Text>
             </TouchableOpacity>
 
             {/* Divider */}

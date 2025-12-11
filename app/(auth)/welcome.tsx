@@ -7,11 +7,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
+import { useAppTranslation } from '../../src/i18n/utils';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useAppTranslation();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -34,10 +36,10 @@ export default function WelcomeScreen() {
             resizeMode="contain"
           />
           <Text style={[styles.title, { color: colors.text }]}>
-            Welcome to Alera
+            {t('app.welcome')}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Your personal health companion for medication reminders and habit tracking
+            {t('app.description')}
           </Text>
         </View>
 
@@ -49,10 +51,10 @@ export default function WelcomeScreen() {
             </View>
             <View style={styles.featureContent}>
               <Text style={[styles.featureTitle, { color: colors.text }]}>
-                Smart Reminders
+                {t('auth.smartReminders')}
               </Text>
               <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
-                Never miss your medication with timely notifications
+                {t('auth.smartRemindersDesc')}
               </Text>
             </View>
           </View>
@@ -63,10 +65,10 @@ export default function WelcomeScreen() {
             </View>
             <View style={styles.featureContent}>
               <Text style={[styles.featureTitle, { color: colors.text }]}>
-                Habit Tracking
+                {t('auth.habitTracking')}
               </Text>
               <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
-                Build and maintain healthy daily routines
+                {t('auth.habitTrackingDesc')}
               </Text>
             </View>
           </View>
@@ -77,10 +79,10 @@ export default function WelcomeScreen() {
             </View>
             <View style={styles.featureContent}>
               <Text style={[styles.featureTitle, { color: colors.text }]}>
-                Health Analytics
+                {t('auth.healthAnalytics')}
               </Text>
               <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
-                Monitor your progress and stay motivated
+                {t('auth.healthAnalyticsDesc')}
               </Text>
             </View>
           </View>
@@ -94,7 +96,7 @@ export default function WelcomeScreen() {
             style={[styles.getStartedButton, { backgroundColor: colors.primary }]}
             onPress={() => router.push("/(auth)/register")}
           >
-            <Text style={styles.getStartedButtonText}>Get Started</Text>
+            <Text style={styles.getStartedButtonText}>{t('auth.getStarted')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
 
@@ -103,7 +105,7 @@ export default function WelcomeScreen() {
             onPress={() => router.push("/(auth)/login")}
           >
             <Text style={[styles.loginButtonText, { color: colors.primary }]}>
-              Sign In
+              {t('auth.signIn')}
             </Text>
           </TouchableOpacity>
         </View>

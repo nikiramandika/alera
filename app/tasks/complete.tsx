@@ -11,9 +11,11 @@ import * as Haptics from 'expo-haptics';
 import { useMedicine } from '@/contexts/MedicineContext';
 import { useHabit } from '@/contexts/HabitContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
 
 export default function TaskCompleteScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
   const [task, setTask] = useState<any>(null);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -79,7 +81,7 @@ export default function TaskCompleteScreen() {
         if (parsedTask.completed === true) {
           console.log('⚠️ Task already completed, redirecting back...');
           Alert.alert(
-            'Already Completed',
+            t('tasks.alreadyCompleted', 'Already Completed'),
             'This task has already been completed.',
             [
               {
@@ -511,7 +513,7 @@ export default function TaskCompleteScreen() {
   const mappedTask = {
     ...task, // include all backend fields
     title: task.name || task.title || 'Task',
-    subtitle: task.description || task.subtitle || 'Complete your task',
+    subtitle: task.description || task.subtitle || t('tasks.completeTask', 'Complete your task'),
     icon: task.type === 'medicine' ? '💊' : (task.icon || task.emoji || '⭐'),
   };
 
@@ -526,7 +528,7 @@ export default function TaskCompleteScreen() {
         <View style={styles.completionOverlay}>
           <View style={styles.completionContent}>
             <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
-            <Text style={styles.completionText}>Task Completed!</Text>
+            <Text style={styles.completionText}>{t('tasks.taskCompleted', 'Task Completed!')}</Text>
             <Text style={styles.completionSubtext}>Great job! 🎉</Text>
           </View>
         </View>
@@ -602,7 +604,7 @@ export default function TaskCompleteScreen() {
         </Animated.View>
 
         <Text style={[styles.sliderText, { color: taskColors.text }]}>
-          {isCompleted ? 'Task completed!' : isCompleting ? 'Completing...' : 'Swap to finish the task'}
+          {isCompleted ? t('tasks.completedStatus', 'Task completed!') : isCompleting ? t('tasks.completing', 'Completing...') : t('tasks.swapToFinish', 'Swap to finish the task')}
         </Text>
 
         {/* Gesture Area - Larger touch area */}

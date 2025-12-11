@@ -26,12 +26,14 @@ import Animated, {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppTranslation } from '../../src/i18n/utils';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user, signOut, updateUserProfile, updateProfilePhoto } = useAuth();
   const router = useRouter();
+  const { t, changeLanguage, currentLanguage } = useAppTranslation();
 
   const [loading, setLoading] = useState(false);
 
@@ -61,19 +63,19 @@ export default function ProfileScreen() {
 
   const handleSignOut = () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
+      t('profile.logout'),
+      t('profile.logoutConfirm'),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Sign Out',
+          text: t('profile.logout'),
           style: 'destructive',
           onPress: async () => {
             await signOut();
-            router.replace('/(auth)/login');
+            router.replace('/(auth)/welcome');
           },
         },
       ]
@@ -84,29 +86,29 @@ export default function ProfileScreen() {
     try {
       const result = await updateUserProfile(updatedData);
       if (!result.success) {
-        Alert.alert('Error', result.error || 'Failed to update profile');
+        Alert.alert(t('profile.error'), result.error || t('profile.failedToUpdateProfile'));
       }
       // Settings changes update silently
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert(t('profile.error'), t('profile.unexpectedError'));
     }
   };
 
   const handleChoosePhoto = async () => {
     Alert.alert(
-      'Profile Photo',
-      'Choose a photo for your profile',
+      t('profile.profilePhoto'),
+      t('profile.choosePhoto'),
       [
         {
-          text: 'Cancel',
+          text: t('profile.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Take Photo',
+          text: t('profile.takePhoto'),
           onPress: () => takePhoto(),
         },
         {
-          text: 'Choose from Gallery',
+          text: t('profile.chooseFromGallery'),
           onPress: () => pickImage(),
         },
       ]
@@ -118,7 +120,7 @@ export default function ProfileScreen() {
       // Request camera permissions
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission required', 'Camera permission is required to take photos');
+        Alert.alert(t('profile.permissionRequired'), t('profile.cameraPermission'));
         return;
       }
 
@@ -135,7 +137,7 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo');
+      Alert.alert(t('profile.error'), t('profile.failedToTakePhoto'));
     }
   };
 
@@ -144,7 +146,7 @@ export default function ProfileScreen() {
       // Request media library permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission required', 'Gallery permission is required to select photos');
+        Alert.alert(t('profile.permissionRequired'), t('profile.galleryPermission'));
         return;
       }
 
@@ -161,7 +163,7 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to select photo');
+      Alert.alert(t('profile.error'), t('profile.failedToSelectPhoto'));
     }
   };
 
@@ -170,13 +172,13 @@ export default function ProfileScreen() {
       setLoading(true);
       const result = await updateProfilePhoto(photoURI);
       if (!result.success) {
-        Alert.alert('Error', result.error || 'Failed to update profile photo');
+        Alert.alert(t('profile.error'), result.error || t('profile.failedToUpdateProfile'));
       } else {
-        Alert.alert('Success', 'Profile photo updated successfully!');
+        Alert.alert(t('common.success'), t('profile.photoUpdatedSuccess'));
       }
     } catch (error) {
       console.error('Error uploading photo:', error);
-      Alert.alert('Error', 'Failed to upload photo');
+      Alert.alert(t('profile.error'), t('profile.failedToUploadPhoto'));
     } finally {
       setLoading(false);
     }
@@ -232,7 +234,7 @@ export default function ProfileScreen() {
           >
             <Ionicons name="create-outline" size={20} color={colors.primary} />
             <Text style={[styles.editProfileText, { color: colors.primary }]}>
-              Edit Profile
+              {t('profile.editProfile')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -246,7 +248,7 @@ export default function ProfileScreen() {
       style={styles.sectionContainer}
     >
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Profile Information
+        {t('profile.profileInformation')}
       </Text>
 
       <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
@@ -257,10 +259,10 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                Gender
+                {t('profile.gender')}
               </Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
-                {user?.profile?.gender ? user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1) : 'Not set'}
+                {user?.profile?.gender ? user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1) : t('profile.notSet')}
               </Text>
             </View>
           </View>
@@ -273,10 +275,10 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                Weight
+                {t('profile.weight')}
               </Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
-                {user?.profile?.weight ? `${user.profile.weight} kg` : 'Not set'}
+                {user?.profile?.weight ? `${user.profile.weight} ${t('profile.kg')}` : t('profile.notSet')}
               </Text>
             </View>
           </View>
@@ -289,10 +291,10 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                Age
+                {t('profile.age')}
               </Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
-                {user?.profile?.age ? `${user.profile.age} years` : 'Not set'}
+                {user?.profile?.age ? `${user.profile.age} ${t('profile.years')}` : t('profile.notSet')}
               </Text>
             </View>
           </View>
@@ -305,24 +307,18 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                Member Since
+                {t('profile.memberSince')}
               </Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
                 {user?.createdAt ? (() => {
                   const createdDate = new Date(user.createdAt);
-                  console.log('DEBUG: raw createdAt:', user.createdAt);
-                  console.log('DEBUG: createdDate object:', createdDate);
-                  console.log('DEBUG: formatted date:', createdDate.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }));
-                  return createdDate.toLocaleDateString('en-US', {
+                  const locale = currentLanguage === 'id' ? 'id-ID' : 'en-US';
+                  return createdDate.toLocaleDateString(locale, {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
                   });
-                })() : 'Unknown'}
+                })() : t('profile.unknown')}
               </Text>
             </View>
           </View>
@@ -337,7 +333,7 @@ export default function ProfileScreen() {
       style={styles.sectionContainer}
     >
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Settings
+        {t('profile.settingsSection')}
       </Text>
 
       <View style={[styles.settingsCard, { backgroundColor: colors.card }]}>
@@ -348,10 +344,10 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.settingContent}>
               <Text style={[styles.settingText, { color: colors.text }]}>
-                Notifications
+                {t('profile.notifications')}
               </Text>
               <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                Receive push notifications
+                {t('profile.receivePushNotifications')}
               </Text>
             </View>
           </View>
@@ -372,10 +368,10 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.settingContent}>
               <Text style={[styles.settingText, { color: colors.text }]}>
-                Notification Sound
+                {t('profile.notificationSound')}
               </Text>
               <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                Play sound for notifications
+                {t('profile.playSoundForNotifications')}
               </Text>
             </View>
           </View>
@@ -396,10 +392,10 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.settingContent}>
               <Text style={[styles.settingText, { color: colors.text }]}>
-                Vibration
+                {t('profile.vibration')}
               </Text>
               <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                Vibrate for notifications
+                {t('profile.vibrateForNotifications')}
               </Text>
             </View>
           </View>
@@ -415,12 +411,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.settingItem}
-          onPress={() => handleUpdateProfile({
-            settings: {
-              ...user?.settings,
-              language: user?.settings?.language === 'id' ? 'en' : 'id'
-            }
-          })}
+          onPress={() => changeLanguage(currentLanguage === 'id' ? 'en' : 'id')}
         >
           <View style={styles.settingLeft}>
             <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
@@ -428,10 +419,10 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.settingContent}>
               <Text style={[styles.settingText, { color: colors.text }]}>
-                Language
+                {t('profile.language')}
               </Text>
               <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                {user?.settings?.language === 'id' ? 'Indonesian' : 'English'}
+                {currentLanguage === 'id' ? 'Bahasa Indonesia' : 'English'}
               </Text>
             </View>
           </View>
@@ -455,10 +446,10 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.settingContent}>
               <Text style={[styles.settingText, { color: colors.text }]}>
-                Theme
+                {t('profile.theme')}
               </Text>
               <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                {user?.settings?.theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+                {user?.settings?.theme === 'dark' ? t('profile.darkMode') : t('profile.lightMode')}
               </Text>
             </View>
           </View>
@@ -474,7 +465,7 @@ export default function ProfileScreen() {
       style={styles.sectionContainer}
     >
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Quick Actions
+        {t('profile.quickActions')}
       </Text>
 
       <View style={styles.quickActionsGrid}>
@@ -484,7 +475,7 @@ export default function ProfileScreen() {
         >
           <Ionicons name="refresh-outline" size={24} color={colors.primary} />
           <Text style={[styles.actionText, { color: colors.text }]}>
-            Re-run Onboarding
+            {t('profile.rerunOnboarding')}
           </Text>
         </TouchableOpacity>
 
@@ -494,7 +485,7 @@ export default function ProfileScreen() {
         >
           <Ionicons name="download-outline" size={24} color={colors.primary} />
           <Text style={[styles.actionText, { color: colors.text }]}>
-            Export Data
+            {t('profile.exportData')}
           </Text>
         </TouchableOpacity>
 
@@ -504,7 +495,7 @@ export default function ProfileScreen() {
         >
           <Ionicons name="shield-outline" size={24} color={colors.primary} />
           <Text style={[styles.actionText, { color: colors.text }]}>
-            Privacy Policy
+            {t('profile.privacyPolicy')}
           </Text>
         </TouchableOpacity>
 
@@ -514,7 +505,7 @@ export default function ProfileScreen() {
         >
           <Ionicons name="document-text-outline" size={24} color={colors.primary} />
           <Text style={[styles.actionText, { color: colors.text }]}>
-            Terms of Service
+            {t('profile.termsOfService')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -532,7 +523,7 @@ export default function ProfileScreen() {
       >
         <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
         <Text style={styles.signOutText}>
-          Sign Out
+          {t('profile.signOut')}
         </Text>
       </TouchableOpacity>
     </Animated.View>
