@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Animated } from 'react-native';
 import {
   View,
   StyleSheet,
@@ -8,13 +9,14 @@ import {
   ScrollView,
   Modal,
   Platform,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useHabit } from '@/contexts/HabitContext';
@@ -47,6 +49,78 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarMonth, setCalendarMonth] = useState(new Date());
 
+  // Check if selected date is today
+  const isViewingToday = () => {
+    const todayIndonesia = getIndonesiaTimeForCalendar();
+    return selectedDate.toDateString() === todayIndonesia.toDateString();
+  };
+
+  // Animated value for Today button
+  const todayButtonOpacity = useRef(new Animated.Value(0)).current;
+  const todayButtonScale = useRef(new Animated.Value(0.8)).current;
+
+  // Animate Today button based on whether viewing today
+  useEffect(() => {
+    const shouldShow = !isViewingToday();
+
+    if (shouldShow) {
+      // Show button with animation
+      Animated.parallel([
+        Animated.timing(todayButtonOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(todayButtonScale, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Hide button with animation
+      Animated.parallel([
+        Animated.timing(todayButtonOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(todayButtonScale, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [selectedDate, todayButtonOpacity, todayButtonScale, isViewingToday]); // Trigger when selected date changes
+
+  // Function to go back to today
+  const goToToday = () => {
+    const today = new Date();
+    setSelectedDate(today);
+
+    // Debug log (only in development)
+    if (__DEV__) {
+      console.log('📅 Today button pressed - Returning to:', today.toISOString());
+    }
+  };
+
+  // Ref for date selector ScrollView
+  const dateSelectorRef = useRef<ScrollView>(null);
+
+  // State for screen dimensions to handle orientation changes
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+
+  // Listen for dimension changes (orientation changes)
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenWidth(window.width);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
@@ -59,9 +133,7 @@ export default function HomeScreen() {
   const [extendedHabitHistory, setExtendedHabitHistory] = useState<any[]>([]);
   const [extendedMedicineHistory, setExtendedMedicineHistory] = useState<any[]>([]);
 
-  // Track if we have valid completion data
-  const [hasCompletionData, setHasCompletionData] = useState(false);
-
+  
   // Store stable references to refresh functions
   const refreshHabitsRef = useRef(refreshHabits);
   const refreshMedicinesRef = useRef(refreshMedicines);
@@ -82,11 +154,9 @@ export default function HomeScreen() {
       ]);
       setExtendedHabitHistory(habitHist);
       setExtendedMedicineHistory(medicineHist);
-      setHasCompletionData(true);
       console.log(`✅ Extended history loaded - Habits: ${habitHist.length}, Medicines: ${medicineHist.length}`);
     } catch (error) {
       console.error('Error fetching extended history:', error);
-      setHasCompletionData(false);
     }
   }, [getHabitHistoryForDateRange, getMedicineHistoryForDateRange]);
 
@@ -948,15 +1018,25 @@ const generateTasksFromData = React.useCallback(() => {
     return indonesiaTime;
   };
 
-  // Generate calendar days (3 days backward + today + 3 days forward)
+  // Generate calendar days with simple consistent 8-day display centered around selected date
   const generateCalendarDays = () => {
-    const todayIndonesia = getIndonesiaTimeForCalendar();
     const days = [];
-    const startOffset = -3; // 3 days before today
 
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(todayIndonesia);
-      date.setDate(todayIndonesia.getDate() + startOffset + i);
+    // Simple logic: Always show 4 days before + selected date + 3 days after
+    const startDate = new Date(selectedDate);
+    startDate.setDate(selectedDate.getDate() - 4); // 4 days before selected date
+
+    const todayIndonesia = getIndonesiaTimeForCalendar();
+
+    // Debug log (only in development)
+    if (__DEV__) {
+      console.log(`📅 Date Selector: 8 days centered around selected date`);
+    }
+
+    // Generate days (always exactly 8 days)
+    for (let i = 0; i < 8; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
       // Reset to midnight to avoid timezone issues
       date.setHours(0, 0, 0, 0);
 
@@ -982,7 +1062,54 @@ const generateTasksFromData = React.useCallback(() => {
 
   const calendarDays = generateCalendarDays();
 
-  
+  // Auto-scroll date selector to keep selected date visible (supports dynamic day count)
+  useEffect(() => {
+    const scrollToSelectedDate = () => {
+      if (dateSelectorRef.current) {
+        // Find the index of selected date in calendarDays
+        const selectedIndex = calendarDays.findIndex(day => day.isSelected);
+
+        if (selectedIndex !== -1) {
+          // Calculate scroll position
+          const dateCardWidth = 70; // Width of each date card
+          const dateCardMargin = 12; // Margin between cards
+          const padding = 20; // Left padding
+          const scrollPosition = selectedIndex * (dateCardWidth + dateCardMargin);
+
+          // Use dynamic screen width with better centering logic
+          const centerOffset = (screenWidth - dateCardWidth) / 2;
+
+          // Calculate target scroll position
+          let targetScrollX = scrollPosition - centerOffset + padding;
+
+          // Ensure we don't scroll past the beginning
+          targetScrollX = Math.max(0, targetScrollX);
+
+          // Handle dynamic day count for proper boundary calculation
+          const totalContentWidth = calendarDays.length * (dateCardWidth + dateCardMargin) + padding * 2;
+          const maxScrollX = Math.max(0, totalContentWidth - screenWidth);
+          targetScrollX = Math.min(targetScrollX, maxScrollX);
+
+          // Debug log (only in development)
+          if (__DEV__) {
+            console.log(`🔄 Auto-scroll: Index ${selectedIndex} of ${calendarDays.length} days, TargetX ${targetScrollX}`);
+          }
+
+          // Scroll to position with smooth animation
+          setTimeout(() => {
+            dateSelectorRef.current?.scrollTo({
+              x: targetScrollX,
+              animated: true,
+            });
+          }, 200); // Consistent timing for smooth transitions
+        }
+      }
+    };
+
+    scrollToSelectedDate();
+  }, [selectedDate, calendarDays, screenWidth]); // Add screenWidth as dependency
+
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background} />
@@ -1361,7 +1488,9 @@ const generateTasksFromData = React.useCallback(() => {
                         style={[
                           styles.dayButton,
                           {
-                            backgroundColor: isSelected ? colors.primary : (isTodayIndonesia ? colors.primary + '20' : 'transparent')
+                            backgroundColor: isSelected ? colors.primary : (isTodayIndonesia ? colors.primary + '20' : 'transparent'),
+                            borderWidth: isSelected ? 2 : 1,
+                            borderColor: isSelected ? colors.primary : colors.border
                           }
                         ]}
                         onPress={() => {
@@ -1372,7 +1501,8 @@ const generateTasksFromData = React.useCallback(() => {
                         <Text style={[
                           styles.dayButtonText,
                           {
-                            color: isSelected ? '#FFFFFF' : (isTodayIndonesia ? colors.primary : colors.text)
+                            color: isSelected ? '#FFFFFF' : (isTodayIndonesia ? colors.primary : colors.text),
+                            fontWeight: isSelected ? '700' : '600'
                           }
                         ]}>
                           {dayNumber}
@@ -1406,7 +1536,11 @@ const generateTasksFromData = React.useCallback(() => {
 
             <View style={styles.headerContent}>
               {/* Left side - Greeting */}
-              <Text style={[styles.greeting, { color: colors.primary }]}>
+              <Text
+                style={[styles.greeting, { color: colors.primary }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 Hi, {(() => {
                   const displayName = user?.displayName || 'User';
                   const words = displayName.trim().split(' ');
@@ -1458,8 +1592,45 @@ const generateTasksFromData = React.useCallback(() => {
             }
           ]}
         >
+          {/* Animated Today Button - Only shows when not viewing today */}
+          {!isViewingToday() && (
+            <Animated.View style={[
+              styles.compactTodayButton,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.primary,
+                shadowColor: colors.shadow,
+                opacity: todayButtonOpacity,
+                transform: [{ scale: todayButtonScale }],
+              }
+            ]}>
+              <TouchableOpacity
+                style={styles.compactTodayButtonInner}
+                onPress={goToToday}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="today"
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.compactTodayButtonText,
+                    {
+                      color: colors.primary
+                    }
+                  ]}
+                >
+                  Today
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
           <View style={styles.dateSelectorSection}>
             <ScrollView
+              ref={dateSelectorRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.dateScrollContainer}
@@ -1473,8 +1644,9 @@ const generateTasksFromData = React.useCallback(() => {
                     styles.dateCard,
                     {
                       backgroundColor: day.isSelected ? colors.primary : (day.isToday ? colors.primary + '15' : colors.card),
-                      borderColor: day.isSelected || day.isToday ? colors.primary : colors.border,
+                      borderColor: day.isSelected ? colors.primary : (day.isToday ? colors.primary : colors.border),
                       shadowColor: colors.shadow,
+                      borderWidth: day.isSelected ? 2 : 1,
                     }
                   ]}
                   onPress={() => setSelectedDate(day.date)}
@@ -1491,7 +1663,7 @@ const generateTasksFromData = React.useCallback(() => {
                     styles.dateNumber,
                     {
                       color: day.isSelected ? '#FFFFFF' : (day.isToday ? colors.primary : colors.text),
-                      fontWeight: day.isToday ? '800' : '700'
+                      fontWeight: day.isSelected ? '800' : (day.isToday ? '700' : '600')
                     }
                   ]}>
                     {day.dayNumber}
@@ -1740,6 +1912,8 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     justifyContent: 'center',
+    maxWidth: '60%', // Prevent text from taking too much space
+    marginRight: 10, // Add some spacing from right buttons
   },
   greeting: {
     fontSize: 32,
@@ -1795,9 +1969,43 @@ const styles = StyleSheet.create({
   },
   dateSelectorSection: {
     paddingTop: 20,
-    paddingBottom: 24,
+    paddingBottom: 48,
   },
   dateScrollContainer: {
+  },
+  compactTodayButton: {
+    position: 'absolute',
+    bottom: 8,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+    zIndex: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 3,
+      }
+    })
+  },
+  compactTodayButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  compactTodayButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   dateCard: {
     width: 70,
@@ -1805,7 +2013,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     marginRight: 12, // Increased gap
     ...Platform.select({
       ios: {
@@ -1823,7 +2031,7 @@ const styles = StyleSheet.create({
     width: 20,
   },
   datePaddingRight: {
-    width: 20,
+    width: 16,
   },
   dateDay: {
     fontSize: 12,
@@ -2219,6 +2427,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
   },
   dayButtonText: {
     fontSize: 16,
