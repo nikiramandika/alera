@@ -185,7 +185,10 @@ export default function ProfileScreen() {
   };
 
   const renderProfileHeader = () => (
-    <Animated.View style={[headerAnimatedStyle]}>
+    <Animated.View style={[
+      headerAnimatedStyle,
+      styles.headerContainer
+    ]}>
       <LinearGradient
         colors={[colors.background, colors.backgroundSecondary, colors.gradientStart]}
         start={{ x: 0.5, y: 0 }}
@@ -340,54 +343,6 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.settingItem}>
           <View style={styles.settingLeft}>
             <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingText, { color: colors.text }]}>
-                {t('profile.notifications')}
-              </Text>
-              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                {t('profile.receivePushNotifications')}
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={user?.settings?.notifications || false}
-            onValueChange={(value) => handleUpdateProfile({
-              settings: { ...user?.settings, notifications: value }
-            })}
-          />
-        </TouchableOpacity>
-
-        <View style={[styles.settingBorder, { borderBottomColor: colors.border }]} />
-
-        <TouchableOpacity style={styles.settingItem}>
-          <View style={styles.settingLeft}>
-            <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="volume-high-outline" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingText, { color: colors.text }]}>
-                {t('profile.notificationSound')}
-              </Text>
-              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                {t('profile.playSoundForNotifications')}
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={user?.settings?.notificationSound || false}
-            onValueChange={(value) => handleUpdateProfile({
-              settings: { ...user?.settings, notificationSound: value }
-            })}
-          />
-        </TouchableOpacity>
-
-        <View style={[styles.settingBorder, { borderBottomColor: colors.border }]} />
-
-        <TouchableOpacity style={styles.settingItem}>
-          <View style={styles.settingLeft}>
-            <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.settingContent}>
@@ -428,33 +383,6 @@ export default function ProfileScreen() {
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
-
-        <View style={[styles.settingBorder, { borderBottomColor: colors.border }]} />
-
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => handleUpdateProfile({
-            settings: {
-              ...user?.settings,
-              theme: user?.settings?.theme === 'dark' ? 'light' : 'dark'
-            }
-          })}
-        >
-          <View style={styles.settingLeft}>
-            <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="moon-outline" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingText, { color: colors.text }]}>
-                {t('profile.theme')}
-              </Text>
-              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                {user?.settings?.theme === 'dark' ? t('profile.darkMode') : t('profile.lightMode')}
-              </Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
-        </TouchableOpacity>
       </View>
     </Animated.View>
   );
@@ -469,26 +397,6 @@ export default function ProfileScreen() {
       </Text>
 
       <View style={styles.quickActionsGrid}>
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.card }]}
-          onPress={() => router.push('/(auth)/onboarding')}
-        >
-          <Ionicons name="refresh-outline" size={24} color={colors.primary} />
-          <Text style={[styles.actionText, { color: colors.text }]}>
-            {t('profile.rerunOnboarding')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.card }]}
-          onPress={() => {/* Export data functionality */}}
-        >
-          <Ionicons name="download-outline" size={24} color={colors.primary} />
-          <Text style={[styles.actionText, { color: colors.text }]}>
-            {t('profile.exportData')}
-          </Text>
-        </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.actionCard, { backgroundColor: colors.card }]}
           onPress={() => {/* Privacy policy */}}
@@ -551,6 +459,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    
   },
   scrollView: {
     flex: 1,
@@ -562,6 +471,22 @@ const styles = StyleSheet.create({
     minHeight: 320,
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
+  },
+  headerContainer: {
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1.5,
+      },
+      android: {
+        elevation: 6,
+        backgroundColor: "#ffffff",
+      },
+    }),
   },
   circleBackground: {
     position: 'absolute',

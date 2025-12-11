@@ -93,24 +93,23 @@ export default function HomeScreen() {
   // Fetch extended history when component mounts or habits change
   useEffect(() => {
     const loadInitialData = async () => {
-      try {
-        // Only load if we have habits/medicines but no completion data yet
-        if (isInitialLoad && (habits.length > 0 || medicines.length > 0) && !hasCompletionData) {
+      if (isInitialLoad) {
+        try {
           console.log('🔄 Loading initial completion data...');
           setIsLoadingTasks(true);
           await fetchExtendedHabitHistory();
           setIsInitialLoad(false); // Mark initial load as complete
           console.log('✅ Initial completion data loaded');
+        } catch (error) {
+          console.error('Error loading initial data:', error);
+        } finally {
+          setIsLoadingTasks(false);
         }
-      } catch (error) {
-        console.error('Error loading initial data:', error);
-      } finally {
-        setIsLoadingTasks(false);
       }
     };
 
     loadInitialData();
-  }, [habits.length, medicines.length, hasCompletionData, fetchExtendedHabitHistory, isInitialLoad]);
+  }, [isInitialLoad, fetchExtendedHabitHistory]);
 
   // Update refs when functions change
   useEffect(() => {
@@ -877,14 +876,14 @@ const generateTasksFromData = React.useCallback(() => {
 
   // Determine if we should show loading state - simplified logic
   const shouldShowLoading = React.useMemo(() => {
-    // Show loading ONLY if:
-    // 1. It's initial load AND we have habits/medicines but no completion data yet
+    // Show loading if:
+    // 1. It's initial load (regardless of whether we have data yet)
     // 2. Explicitly loading tasks (but never during completion)
     const isInCompletionWindow = lastTaskClickTime.current > 0 && (Date.now() - lastTaskClickTime.current) < 5000;
 
-    return (isInitialLoad && (habits.length > 0 || medicines.length > 0) && !hasCompletionData && !isInCompletionWindow) ||
+    return (isInitialLoad && !isInCompletionWindow) ||
            (isLoadingTasks && !isInCompletionWindow);
-  }, [isInitialLoad, habits.length, medicines.length, hasCompletionData, isLoadingTasks]);
+  }, [isInitialLoad, isLoadingTasks]);
 
   // Filter tasks based on search query (for search modal only)
   const filteredTasks = {

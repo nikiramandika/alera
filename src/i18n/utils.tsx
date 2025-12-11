@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 export const useAppTranslation = () => {
   const { t, i18n } = useTranslation();
-  const { user, updateUserSettings } = useAuth();
+  const { user, updateUserProfile } = useAuth();
 
   // Change language and update user settings
   const changeLanguage = async (lang: 'en' | 'id') => {
@@ -14,9 +14,11 @@ export const useAppTranslation = () => {
 
       // Update user settings if user is logged in
       if (user) {
-        await updateUserSettings({
-          ...user.settings,
-          language: lang
+        await updateUserProfile({
+          settings: {
+            ...user.settings,
+            language: lang
+          }
         });
       }
     } catch (error) {

@@ -807,7 +807,10 @@ export default function AnalyticsScreen() {
   );
 
   const renderHeader = () => (
-    <Animated.View style={[headerAnimatedStyle]}>
+    <Animated.View style={[
+      headerAnimatedStyle,
+      styles.headerContainer
+    ]}>
       <LinearGradient
         colors={[colors.background, colors.backgroundSecondary, colors.gradientStart]}
         start={{ x: 0.5, y: 0 }}
@@ -929,6 +932,22 @@ const styles = StyleSheet.create({
     minHeight: 200,
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
+  },
+  headerContainer: {
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1.5,
+      },
+      android: {
+        elevation: 6,
+        backgroundColor: "#ffffff",
+      },
+    }),
   },
   circleBackground: {
     position: 'absolute',
