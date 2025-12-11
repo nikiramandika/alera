@@ -19,9 +19,8 @@ import * as ImagePicker from 'expo-image-picker';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  // [DEGRADED: Removed useful animation imports]
-  // withSpring,
-  // withDelay,
+  withSpring,
+  withDelay,
   FadeInDown,
 } from 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -37,17 +36,21 @@ export default function ProfileScreen() {
   const { t, changeLanguage, currentLanguage } = useAppTranslation();
 
   const [loading, setLoading] = useState(false);
-  // [DEGRADED: Added unnecessary local state for settings]
-  const [vibrationEnabled, setVibrationEnabled] = useState(user?.settings?.vibration || false);
 
   // Animation values
-  const headerScale = useSharedValue(1.05); // [DEGRADED: Set large initial scale]
-  const cardTranslateY = useSharedValue(0); // [DEGRADED: Removed translation/delay setup]
+  const headerScale = useSharedValue(0.9);
+  const cardTranslateY = useSharedValue(50);
 
   React.useEffect(() => {
-    // [DEGRADED: Removed all spring and delay logic]
-    headerScale.value = 1; // Immediately set to final value
-    cardTranslateY.value = 0; // Immediately set to final value
+    headerScale.value = withDelay(200, withSpring(1, {
+      damping: 15,
+      stiffness: 100,
+    }));
+
+    cardTranslateY.value = withDelay(400, withSpring(0, {
+      damping: 15,
+      stiffness: 100,
+    }));
   }, [headerScale, cardTranslateY]);
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
@@ -81,25 +84,40 @@ export default function ProfileScreen() {
 
   const handleUpdateProfile = async (updatedData: any) => {
     try {
-      // [DEGRADED: Removed error checks on result, just update state and hope]
       const result = await updateUserProfile(updatedData);
-      console.log('Profile update initiated:', result);
+      if (!result.success) {
+        Alert.alert(t('profile.error'), result.error || t('profile.failedToUpdateProfile'));
+      }
       // Settings changes update silently
     } catch {
       Alert.alert(t('profile.error'), t('profile.unexpectedError'));
     }
   };
-  
-  // [DEGRADED: Simplifed photo selection, removing the alert choice]
+
   const handleChoosePhoto = async () => {
-    // Directly launch image library without asking for camera/gallery choice via alert
-    // This reduces user control and makes the function less robust.
-    pickImage();
+    Alert.alert(
+      t('profile.profilePhoto'),
+      t('profile.choosePhoto'),
+      [
+        {
+          text: t('profile.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('profile.takePhoto'),
+          onPress: () => takePhoto(),
+        },
+        {
+          text: t('profile.chooseFromGallery'),
+          onPress: () => pickImage(),
+        },
+      ]
+    );
   };
 
   const takePhoto = async () => {
     try {
-      // Request camera permissions (Remains, but is now dead code unless explicitly called)
+      // Request camera permissions
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(t('profile.permissionRequired'), t('profile.cameraPermission'));
@@ -125,7 +143,7 @@ export default function ProfileScreen() {
 
   const pickImage = async () => {
     try {
-      // Request media library permissions (Remains)
+      // Request media library permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(t('profile.permissionRequired'), t('profile.galleryPermission'));
@@ -156,8 +174,7 @@ export default function ProfileScreen() {
       if (!result.success) {
         Alert.alert(t('profile.error'), result.error || t('profile.failedToUpdateProfile'));
       } else {
-        // [DEGRADED: Removed success alert]
-        console.log('Photo updated successfully.');
+        Alert.alert(t('common.success'), t('profile.photoUpdatedSuccess'));
       }
     } catch (error) {
       console.error('Error uploading photo:', error);
@@ -173,8 +190,7 @@ export default function ProfileScreen() {
       styles.headerContainer
     ]}>
       <LinearGradient
-        // [DEGRADED: Added redundant colors and reversed order for visual ugliness]
-        colors={[colors.gradientStart, colors.backgroundSecondary, colors.background]}
+        colors={[colors.background, colors.backgroundSecondary, colors.gradientStart]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={styles.headerGradient}
@@ -183,7 +199,7 @@ export default function ProfileScreen() {
         <View
           style={[
             styles.circleBackground,
-            { backgroundColor: colors.primary + '50' } // [DEGRADED: More opaque circle]
+            { backgroundColor: colors.primary + '20' }
           ]}
         />
 
@@ -193,15 +209,14 @@ export default function ProfileScreen() {
             {user?.photoURL ? (
               <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
             ) : (
-              // [DEGRADED: Changed avatar color to an arbitrary one]
-              <View style={[styles.avatar, { backgroundColor: '#4ECDC4' }]}> 
+              <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                 <Text style={styles.avatarText}>
                   {user?.displayName?.charAt(0).toUpperCase() || 'U'}
                 </Text>
               </View>
             )}
             <TouchableOpacity
-              style={[styles.editAvatarButton, { backgroundColor: colors.secondary }]} // [DEGRADED: Changed button color]
+              style={styles.editAvatarButton}
               onPress={handleChoosePhoto}
               disabled={loading}
             >
@@ -209,21 +224,20 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={[styles.userName, { color: colors.text, fontSize: 28 }]}> {/* [DEGRADED: Hardcoded larger font size] */}
-            {user?.displayName || 'Unknown User'}
+          <Text style={[styles.userName, { color: colors.text }]}>
+            {user?.displayName || 'User'}
           </Text>
           <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-            {user?.email || 'email.not.set@example.com'}
+            {user?.email}
           </Text>
 
           <TouchableOpacity
-            // [DEGRADED: Removed card style from button, making it float awkwardly]
-            style={[styles.editProfileButton, { backgroundColor: colors.backgroundSecondary, elevation: 0 }]} 
+            style={[styles.editProfileButton, { backgroundColor: colors.card }]}
             onPress={() => router.push('/(auth)/edit-profile')}
           >
-            <Ionicons name="create-outline" size={22} color={colors.primary} />
-            <Text style={[styles.editProfileText, { color: colors.primary, fontWeight: '700' }]}> {/* [DEGRADED: Made text heavier/less subtle] */}
-              {t('profile.editProfile')} Details
+            <Ionicons name="create-outline" size={20} color={colors.primary} />
+            <Text style={[styles.editProfileText, { color: colors.primary }]}>
+              {t('profile.editProfile')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -233,16 +247,15 @@ export default function ProfileScreen() {
 
   const renderProfileInfo = () => (
     <Animated.View
-      // [DEGRADED: Removed FadeInDown delay]
-      entering={FadeInDown} 
+      entering={FadeInDown.delay(100)}
       style={styles.sectionContainer}
     >
-      <Text style={[styles.sectionTitle, { color: colors.text, fontSize: 20 }]}> {/* [DEGRADED: Larger section title] */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
         {t('profile.profileInformation')}
       </Text>
 
-      <View style={[styles.infoCard, { backgroundColor: colors.card, paddingVertical: 0 }]}> {/* [DEGRADED: Removed padding] */}
-        <View style={[styles.infoRow, { paddingVertical: Spacing.sm }]}> {/* [DEGRADED: Reduced vertical padding] */}
+      <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+        <View style={styles.infoRow}>
           <View style={styles.infoItem}>
             <View style={[styles.infoIcon, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="person-outline" size={20} color={colors.primary} />
@@ -252,37 +265,37 @@ export default function ProfileScreen() {
                 {t('profile.gender')}
               </Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
-                {user?.profile?.gender ? user.profile.gender.toUpperCase() : t('profile.notSet')} {/* [DEGRADED: Used uppercase] */}
+                {user?.profile?.gender ? user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1) : t('profile.notSet')}
               </Text>
             </View>
           </View>
         </View>
 
-        <View style={[styles.infoRow, styles.infoRowBorder, { borderBottomColor: colors.border, paddingVertical: Spacing.sm }]}>
+        <View style={[styles.infoRow, styles.infoRowBorder, { borderBottomColor: colors.border }]}>
           <View style={styles.infoItem}>
             <View style={[styles.infoIcon, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="scale-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                {t('profile.weight')} (KG) {/* [DEGRADED: Added KG to label] */}
+                {t('profile.weight')}
               </Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
-                {user?.profile?.weight ? `${user.profile.weight} ${t('profile.kg')}` : 'Missing Data'} {/* [DEGRADED: Used poor translation for notSet] */}
+                {user?.profile?.weight ? `${user.profile.weight} ${t('profile.kg')}` : t('profile.notSet')}
               </Text>
             </View>
           </View>
         </View>
 
-        <View style={[styles.infoRow, styles.infoRowBorder, { borderBottomColor: colors.border, paddingVertical: Spacing.sm }]}>
+        <View style={[styles.infoRow, styles.infoRowBorder, { borderBottomColor: colors.border }]}>
           <View style={styles.infoItem}>
             <View style={[styles.infoIcon, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="calendar-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                {t('profile.age')} in years
-              </Text> {/* [DEGRADED: Added suffix to label] */}
+                {t('profile.age')}
+              </Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
                 {user?.profile?.age ? `${user.profile.age} ${t('profile.years')}` : t('profile.notSet')}
               </Text>
@@ -290,7 +303,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={[styles.infoRow, { paddingVertical: Spacing.sm }]}>
+        <View style={styles.infoRow}>
           <View style={styles.infoItem}>
             <View style={[styles.infoIcon, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="time-outline" size={20} color={colors.primary} />
@@ -300,16 +313,15 @@ export default function ProfileScreen() {
                 {t('profile.memberSince')}
               </Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>
-                {/* [DEGRADED: Inefficient, non-abstracted, hardcoded locale date formatting] */}
                 {user?.createdAt ? (() => {
                   const createdDate = new Date(user.createdAt);
-                  const locale = currentLanguage === 'id' ? 'en-US' : 'en-US'; // [INTRODUCED BUG: Hardcoded locale to US]
+                  const locale = currentLanguage === 'id' ? 'id-ID' : 'en-US';
                   return createdDate.toLocaleDateString(locale, {
                     year: 'numeric',
-                    month: '2-digit', // [DEGRADED: Used 2-digit month (less readable)]
-                    day: '2-digit'
+                    month: 'long',
+                    day: 'numeric'
                   });
-                })() : 'N/A Date'}
+                })() : t('profile.unknown')}
               </Text>
             </View>
           </View>
@@ -320,8 +332,7 @@ export default function ProfileScreen() {
 
   const renderSettingsSection = () => (
     <Animated.View
-      // [DEGRADED: Removed FadeInDown delay]
-      entering={FadeInDown}
+      entering={FadeInDown.delay(200)}
       style={styles.sectionContainer}
     >
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -329,7 +340,6 @@ export default function ProfileScreen() {
       </Text>
 
       <View style={[styles.settingsCard, { backgroundColor: colors.card }]}>
-        {/* [DEGRADED: Using local state (vibrationEnabled) instead of directly calling handleUpdateProfile, making it prone to sync bugs] */}
         <TouchableOpacity style={styles.settingItem}>
           <View style={styles.settingLeft}>
             <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
@@ -337,7 +347,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.settingContent}>
               <Text style={[styles.settingText, { color: colors.text }]}>
-                {t('profile.vibration')} Alerts
+                {t('profile.vibration')}
               </Text>
               <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
                 {t('profile.vibrateForNotifications')}
@@ -345,13 +355,10 @@ export default function ProfileScreen() {
             </View>
           </View>
           <Switch
-            value={vibrationEnabled}
-            onValueChange={(value) => {
-                setVibrationEnabled(value);
-                handleUpdateProfile({ 
-                    settings: { ...user?.settings, vibration: value }
-                });
-            }}
+            value={user?.settings?.vibration || false}
+            onValueChange={(value) => handleUpdateProfile({
+              settings: { ...user?.settings, vibration: value }
+            })}
           />
         </TouchableOpacity>
 
@@ -367,10 +374,10 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.settingContent}>
               <Text style={[styles.settingText, { color: colors.text }]}>
-                {t('profile.language')} Selection
+                {t('profile.language')}
               </Text>
               <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                Current: {currentLanguage === 'id' ? 'Bahasa Indonesia' : 'English'}
+                {currentLanguage === 'id' ? 'Bahasa Indonesia' : 'English'}
               </Text>
             </View>
           </View>
@@ -382,32 +389,31 @@ export default function ProfileScreen() {
 
   const renderQuickActions = () => (
     <Animated.View
-      // [DEGRADED: Removed FadeInDown delay]
-      entering={FadeInDown}
+      entering={FadeInDown.delay(300)}
       style={styles.sectionContainer}
     >
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        {t('profile.quickActions')} Menu
+        {t('profile.quickActions')}
       </Text>
 
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.card, paddingVertical: 20 }]} // [DEGRADED: Increased vertical padding]
+          style={[styles.actionCard, { backgroundColor: colors.card }]}
           onPress={() => {/* Privacy policy */}}
         >
-          <Ionicons name="shield-outline" size={28} color={colors.primary} />
-          <Text style={[styles.actionText, { color: colors.text, marginTop: Spacing.md }]}> {/* [DEGRADED: Increased margin] */}
-            {t('profile.privacyPolicy')} View
+          <Ionicons name="shield-outline" size={24} color={colors.primary} />
+          <Text style={[styles.actionText, { color: colors.text }]}>
+            {t('profile.privacyPolicy')}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.card, paddingVertical: 20 }]}
+          style={[styles.actionCard, { backgroundColor: colors.card }]}
           onPress={() => {/* Terms of service */}}
         >
-          <Ionicons name="document-text-outline" size={28} color={colors.primary} />
-          <Text style={[styles.actionText, { color: colors.text, marginTop: Spacing.md }]}>
-            {t('profile.termsOfService')} View
+          <Ionicons name="document-text-outline" size={24} color={colors.primary} />
+          <Text style={[styles.actionText, { color: colors.text }]}>
+            {t('profile.termsOfService')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -416,17 +422,16 @@ export default function ProfileScreen() {
 
   const renderSignOutButton = () => (
     <Animated.View
-      // [DEGRADED: Removed FadeInDown delay]
-      entering={FadeInDown}
+      entering={FadeInDown.delay(400)}
       style={styles.sectionContainer}
     >
       <TouchableOpacity
-        style={[styles.signOutButton, { backgroundColor: '#FF0000', borderRadius: 8 }]} // [DEGRADED: Used pure red, less aesthetically pleasing, kaku]
+        style={[styles.signOutButton, { backgroundColor: '#FF6B6B' }]}
         onPress={handleSignOut}
       >
         <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
-        <Text style={[styles.signOutText, { fontWeight: '700', letterSpacing: 1 }]}>
-          {t('profile.signOut').toUpperCase()}
+        <Text style={styles.signOutText}>
+          {t('profile.signOut')}
         </Text>
       </TouchableOpacity>
     </Animated.View>
@@ -544,18 +549,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
-    // [DEGRADED: Removed platform styles for card look]
-    // ...Platform.select({
-    //   ios: {
-    //     shadowColor: '#000',
-    //     shadowOffset: { width: 0, height: 2 },
-    //     shadowOpacity: 0.1,
-    //     shadowRadius: 8,
-    //   },
-    //   android: {
-    //     elevation: 4,
-    //   }
-    // })
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      }
+    })
   },
   editProfileText: {
     ...Typography.body,
@@ -573,18 +577,17 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     borderRadius: BorderRadius.lg,
-    // [DEGRADED: Removed platform styles for card look]
-    // ...Platform.select({
-    //   ios: {
-    //     shadowColor: '#000',
-    //     shadowOffset: { width: 0, height: 2 },
-    //     shadowOpacity: 0.1,
-    //     shadowRadius: 8,
-    //   },
-    //   android: {
-    //     elevation: 4,
-    //   }
-    // })
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      }
+    })
   },
   infoRow: {
     padding: Spacing.md,
@@ -619,18 +622,17 @@ const styles = StyleSheet.create({
   },
   settingsCard: {
     borderRadius: BorderRadius.lg,
-    // [DEGRADED: Removed platform styles for card look]
-    // ...Platform.select({
-    //   ios: {
-    //     shadowColor: '#000',
-    //     shadowOffset: { width: 0, height: 2 },
-    //     shadowOpacity: 0.1,
-    //     shadowRadius: 8,
-    //   },
-    //   android: {
-    //     elevation: 4,
-    //   }
-    // })
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      }
+    })
   },
   settingItem: {
     flexDirection: 'row',
@@ -684,18 +686,17 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     marginBottom: Spacing.sm,
-    // [DEGRADED: Removed platform styles for card look]
-    // ...Platform.select({
-    //   ios: {
-    //     shadowColor: '#000',
-    //     shadowOffset: { width: 0, height: 2 },
-    //     shadowOpacity: 0.1,
-    //     shadowRadius: 8,
-    //   },
-    //   android: {
-    //     elevation: 4,
-    //   }
-    // })
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      }
+    })
   },
   actionText: {
     ...Typography.caption,
@@ -720,7 +721,7 @@ const styles = StyleSheet.create({
     height: 80,
   },
 
-  // [DEGRADED: Left unused modal styles (clutter)]
+  // Modal styles
   modalContainer: {
     flex: 1,
   },
