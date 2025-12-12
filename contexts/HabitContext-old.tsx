@@ -47,9 +47,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [habitHistory, setHabitHistory] = useState<HabitHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ---------------------------------------------
-  // Predefined Habit Templates
-  // ---------------------------------------------
+  // Predefined habit templates
   const habitTemplates = [
     {
       habitName: 'Drink Water',
@@ -89,38 +87,32 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     },
   ];
 
-  // ---------------------------------------------
-  // Fetch Habits
-  // ---------------------------------------------
+  // Fetch habits from Firestore
   const fetchHabits = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-
       const habitsQuery = query(
         collection(db, 'users', user.userId, 'habits'),
         where('isActive', '==', true),
         orderBy('createdAt', 'desc')
       );
 
-      const snapshot = await getDocs(habitsQuery);
+      const querySnapshot = await getDocs(habitsQuery);
+      const habitsData: Habit[] = [];
 
-      const habitsData = snapshot.docs.map(doc => {
+      querySnapshot.forEach((doc) => {
         const data = doc.data();
-        return {
+        habitsData.push({
           ...data,
           habitId: doc.id,
           userId: user.userId,
           createdAt: data.createdAt instanceof Date ? data.createdAt : data.createdAt.toDate(),
           updatedAt: data.updatedAt instanceof Date ? data.updatedAt : data.updatedAt.toDate(),
           startDate: data.startDate instanceof Date ? data.startDate : data.startDate.toDate(),
-          endDate: data.endDate
-            ? data.endDate instanceof Date
-              ? data.endDate
-              : data.endDate.toDate()
-            : null,
-        } as Habit;
+          endDate: data.endDate ? (data.endDate instanceof Date ? data.endDate : data.endDate.toDate()) : null,
+        } as Habit);
       });
 
       setHabits(habitsData);
@@ -131,9 +123,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // ---------------------------------------------
-  // Fetch Habit History
-  // ---------------------------------------------
+  // Fetch habit history from Firestore
   const fetchHabitHistory = async () => {
     if (!user) return;
 
@@ -143,22 +133,19 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         orderBy('date', 'desc')
       );
 
-      const snapshot = await getDocs(historyQuery);
+      const querySnapshot = await getDocs(historyQuery);
+      const historyData: HabitHistory[] = [];
 
-      const historyData = snapshot.docs.map(doc => {
+      querySnapshot.forEach((doc) => {
         const data = doc.data();
-        return {
+        historyData.push({
           ...data,
           logId: doc.id,
           userId: user.userId,
           date: data.date instanceof Date ? data.date : data.date.toDate(),
-          completedAt: data.completedAt
-            ? data.completedAt instanceof Date
-              ? data.completedAt
-              : data.completedAt.toDate()
-            : null,
+          completedAt: data.completedAt ? (data.completedAt instanceof Date ? data.completedAt : data.completedAt.toDate()) : null,
           createdAt: data.createdAt instanceof Date ? data.createdAt : data.createdAt.toDate(),
-        } as HabitHistory;
+        } as HabitHistory);
       });
 
       setHabitHistory(historyData);
@@ -167,12 +154,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Refresh all data
+  // Refresh all habit data
   const refreshHabits = async () => {
     await Promise.all([fetchHabits(), fetchHabitHistory()]);
   };
 
-  // Auto-fetch when user changes
   useEffect(() => {
     if (user) {
       refreshHabits();
@@ -183,10 +169,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [user]);
 
-  // -------------------------------------------------
-  // Add Habit
-  // -------------------------------------------------
-  const addHabit = async (habit: Omit<Habit, 'habitId' | 'userId' | 'createdAt' | 'updatedAt' | 'streak' | 'bestStreak'>) => {
+  // Add new habit
+  const addHabit = async (habit: Omit<Habit, 'habitId' | 'userId' | 'createdAt' | 'updatedAt' | 'streak' | 'bestStreak'>): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'No user logged in' };
 
     try {
@@ -201,8 +185,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         endDate: habit.endDate ? Timestamp.fromDate(habit.endDate) : null,
       };
 
-      await addDoc(collection(db, 'users', user.userId, 'habits'), habitData);
+      const docRef = await addDoc(collection(db, 'users', user.userId, 'habits'), habitData);
 
+      // Refresh habits list
       await fetchHabits();
 
       return { success: true };
@@ -211,15 +196,12 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // -------------------------------------------------
-  // Update Habit
-  // -------------------------------------------------
-  const updateHabit = async (id: string, habit: Partial<Habit>) => {
+  // Update habit
+  const updateHabit = async (id: string, habit: Partial<Habit>): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'No user logged in' };
 
     try {
       const habitRef = doc(db, 'users', user.userId, 'habits', id);
-
       const updateData = {
         ...habit,
         updatedAt: serverTimestamp(),
@@ -228,6 +210,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
 
       await updateDoc(habitRef, updateData);
+
+      // Refresh habits list
       await fetchHabits();
 
       return { success: true };
@@ -236,14 +220,15 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // -------------------------------------------------
-  // Delete Habit
-  // -------------------------------------------------
-  const deleteHabit = async (id: string) => {
+  // Delete habit
+  const deleteHabit = async (id: string): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'No user logged in' };
 
     try {
-      await deleteDoc(doc(db, 'users', user.userId, 'habits', id));
+      const habitRef = doc(db, 'users', user.userId, 'habits', id);
+      await deleteDoc(habitRef);
+
+      // Refresh habits list
       await fetchHabits();
 
       return { success: true };
@@ -252,42 +237,49 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // -------------------------------------------------
-  // Mark Habit Completed
-  // -------------------------------------------------
-  const markHabitCompleted = async (habitId: string, progressValue: number) => {
+  // Mark habit as completed
+  const markHabitCompleted = async (habitId: string, progressValue: number): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'No user logged in' };
 
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const existingLog = habitHistory.find(
-        log => log.habitId === habitId && log.date.getTime() === today.getTime()
+      // Check if already logged for today
+      const existingLog = habitHistory.find(log =>
+        log.habitId === habitId &&
+        log.date.getTime() === today.getTime()
       );
 
       if (existingLog) {
-        await updateDoc(doc(db, 'users', user.userId, 'habitHistory', existingLog.logId), {
+        // Update existing log
+        const logRef = doc(db, 'users', user.userId, 'habitHistory', existingLog.logId);
+        await updateDoc(logRef, {
           completed: true,
           progress: { value: progressValue },
           completedAt: serverTimestamp(),
         });
       } else {
+        // Create new log
         const habit = habits.find(h => h.habitId === habitId);
-
-        await addDoc(collection(db, 'users', user.userId, 'habitHistory'), {
+        const historyData = {
           habitId,
           userId: user.userId,
-          habitName: habit?.habitName ?? 'Unknown Habit',
+          habitName: habit?.habitName || 'Unknown Habit',
           date: Timestamp.fromDate(today),
           completed: true,
           progress: { value: progressValue },
           completedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
-        });
+        };
+
+        await addDoc(collection(db, 'users', user.userId, 'habitHistory'), historyData);
       }
 
+      // Update streak
       await updateHabitStreak(habitId);
+
+      // Refresh history
       await fetchHabitHistory();
 
       return { success: true };
@@ -296,29 +288,32 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // -------------------------------------------------
-  // Mark Habit Incomplete
-  // -------------------------------------------------
-  const markHabitIncomplete = async (habitId: string, date: Date) => {
+  // Mark habit as incomplete
+  const markHabitIncomplete = async (habitId: string, date: Date): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'No user logged in' };
 
     try {
-      const d = new Date(date);
-      d.setHours(0, 0, 0, 0);
+      const logDate = new Date(date);
+      logDate.setHours(0, 0, 0, 0);
 
-      const existingLog = habitHistory.find(
-        log => log.habitId === habitId && log.date.getTime() === d.getTime()
+      const existingLog = habitHistory.find(log =>
+        log.habitId === habitId &&
+        log.date.getTime() === logDate.getTime()
       );
 
       if (existingLog) {
-        await updateDoc(doc(db, 'users', user.userId, 'habitHistory', existingLog.logId), {
+        const logRef = doc(db, 'users', user.userId, 'habitHistory', existingLog.logId);
+        await updateDoc(logRef, {
           completed: false,
           progress: { value: 0 },
           completedAt: null,
         });
       }
 
+      // Update streak
       await updateHabitStreak(habitId);
+
+      // Refresh history
       await fetchHabitHistory();
 
       return { success: true };
@@ -327,9 +322,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // -------------------------------------------------
-  // Streak Logic
-  // -------------------------------------------------
+  // Update habit streak
   const updateHabitStreak = async (habitId: string) => {
     if (!user) return;
 
@@ -342,12 +335,84 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await updateHabit(habitId, { streak, bestStreak });
   };
 
+  // Calculate habit streak
   const calculateHabitStreak = (habitId: string): number => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     let streak = 0;
-    let current = new Date(today);
+    let currentDate = new Date(today);
 
     while (true) {
-      const log =
+      const log = habitHistory.find(h =>
+        h.habitId === habitId &&
+        h.date.getTime() === currentDate.getTime()
+      );
+
+      if (log && log.completed) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  };
+
+  // Get today's habits
+  const getTodayHabits = (): Habit[] => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+
+    return habits.filter(habit => {
+      // Check if habit is active for today
+      if (habit.endDate && today > habit.endDate) {
+        return false;
+      }
+
+      // Check if today is a reminder day
+      return habit.reminderDays.includes(dayOfWeek);
+    });
+  };
+
+  // Get habit progress for a specific date
+  const getHabitProgress = (habitId: string, date: Date): number => {
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const log = habitHistory.find(h =>
+      h.habitId === habitId &&
+      h.date.getTime() === targetDate.getTime()
+    );
+
+    return log?.progress.value || 0;
+  };
+
+  // Get habit streak
+  const getHabitStreak = (habitId: string): number => {
+    const habit = habits.find(h => h.habitId === habitId);
+    return habit?.streak || 0;
+  };
+
+  const value: HabitContextType = {
+    habits,
+    habitHistory,
+    loading,
+    addHabit,
+    updateHabit,
+    deleteHabit,
+    markHabitCompleted,
+    markHabitIncomplete,
+    getTodayHabits,
+    getHabitProgress,
+    getHabitStreak,
+    refreshHabits,
+  };
+
+  return (
+    <HabitContext.Provider value={value}>
+      {children}
+    </HabitContext.Provider>
+  );
+};
