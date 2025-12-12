@@ -109,80 +109,124 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Update habit
-  const updateHabit = async (id: string, updates: Partial<Habit>) => {
-    if (!user) return { success: false, error: 'User not authenticated' };
+// Update habit
+const updateHabit = async (id: string, updates: Partial<Habit>) => {
+  if (!user) return { success: false, error: "User not authenticated" };
 
-    try {
-      // Get the existing habit before updating
-      const existingHabit = habits.find(h => h.habitId === id);
+  try {
+    const existingHabit = habits.find(h => h.habitId === id);
 
-      // Remove old real-time notifications
-      if (existingHabit) {
-        await notificationScheduler.removeNotifications(undefined, existingHabit.habitId);
-        console.log('🔍 [DEBUG] Habit Update - Removed old real-time notifications');
-      }
-
-      // Apply the updates
-      await habitService.updateHabit(user.userId, id, updates);
-
-      // Apply the updates to existing habit
-      const updatedHabit = { ...existingHabit, habitId: id, ...updates };
-
-      // Use the new frequency structure first, fallback to reminderTimes for compatibility
-      const timesToSchedule = updatedHabit.frequency?.times || updatedHabit.reminderTimes || [];
-      console.log('🔍 [DEBUG] Habit Update - Times to reschedule for real-time:', timesToSchedule);
-
-      // Add new real-time notifications
-      const notificationTimes = timesToSchedule;
-
-      if (notificationTimes.length > 0) {
-        for (const reminderTime of notificationTimes) {
-          console.log('🔍 [DEBUG] Habit Update - Adding real-time notification for time:', reminderTime);
-
-          await notificationScheduler.addNotification({
-            habitId: id,
-            time: reminderTime,
-            title: '💪 Habit Reminder',
-            body: `Time for ${updatedHabit.habitName}${updatedHabit.target?.value ? ` (${updatedHabit.target.value} ${updatedHabit.target.unit})` : ''}`,
-            type: 'habit',
-          });
-
-          console.log('✅ [DEBUG] Habit Update - Real-time notification added for time:', reminderTime);
-        }
-
-        console.log('🔍 [DEBUG] Habit Update - Total real-time notifications rescheduled:', timesToSchedule.length);
-      } else {
-        console.log('⚠️ [DEBUG] Habit Update - No times to schedule real-time notifications');
-      }
-
-      await fetchData(); // Refresh data
-      return { success: true };
-    } catch (error) {
-      console.error('Error updating habit:', error);
-      return { success: false, error: 'Failed to update habit' };
+    if (!existingHabit) {
+      return { success: false, error: "Habit not found" };
     }
-  };
 
-  // Delete habit
-  const deleteHabit = async (id: string) => {
-    if (!user) return { success: false, error: 'User not authenticated' };
+    // --- REMOVE OLD REAL-TIME NOTIFS ---
+    await notificationScheduler.removeNotifications(undefined, id);
+    console.log("🔄 [DEBUG] Old notifications removed for:", id);
 
+    // --- UPDATE HABIT IN DB ---
+    await habitService.updateHabit(user.userId, id, updates);
+
+    // Merge old + new data
+    const updatedHabit: Habit = {
+      ...existingHabit,
+      ...updates,
+      habitId: id,
+    };
+
+    // --- GET TIMES TO RESCHEDULE ---
+    const timesToSchedule =
+      updatedHabit.frequency?.times ||
+      updatedHabit.reminderTimes ||
+      [];
+
+    console.log(
+      "🔍 [DEBUG] Rescheduling real-time notifications for:",
+      timesToSchedule
+    );
+
+    // --- ADD NEW REAL-TIME NOTIFS ---
+    for (const time of timesToSchedule) {
+      await notificationScheduler.addNotification({
+        habitId: id,
+        time,
+        title: "💪 Habit Reminder",
+        body: `Time for ${updatedHabit.habitName}${
+          updatedHabit.target?.value
+            ? ` (${updatedHabit.target.value} ${updatedHabit.target.unit})`
+            : ""
+        }`,
+        type: "habit",
+      });
+
+      console.log("✅ [DEBUG] Notification scheduled at:", time);
+    }
+
+    if (timesToSchedule.length === 0) {
+      console.log("⚠️ [DEBUG] No notification times available to schedule");
+    }
+
+    // Refresh local state
+    await fetchData();
+
+    return { success: true };
+
+  } catch (err) {
+    console.error("❌ Error updating habit:", err);
+    return { success: false, error: "Failed to update habit" };
+  }
+};
+
+// Delete habit
+const deleteHabit = async (id: string) => {
+  if (!user) return { success: false, error: 'User not authenticated' };
+  if (!id) return { success: false, error: 'Invalid habit id' };
+
+  try {
+    // Optional: check local list first so we can early-fail if habit not known locally
+    const existingHabit = habits.find(h => h.habitId === id);
+    if (!existingHabit) {
+      console.warn('⚠️ [DEBUG] Delete - Habit not found in local state:', id);
+      // continue anyway — maybe remote DB still has it; choose behaviour you prefer
+    }
+
+    // Try removing notifications, but don't block deletion if scheduler fails.
     try {
-      // Remove real-time notifications before deleting from database
+      // NOTE: jika signature removeNotifications beda, sesuaikan argumen di sini
       await notificationScheduler.removeNotifications(undefined, id);
       console.log('🔍 [DEBUG] Delete - Removed real-time notifications for habit:', id);
-
-      // Delete from database
-      await habitService.deleteHabit(user.userId, id);
-
-      await fetchData(); // Refresh data
-      return { success: true };
-    } catch (error) {
-      console.error('Error deleting habit:', error);
-      return { success: false, error: 'Failed to delete habit' };
+    } catch (notifErr) {
+      // Log error but continue to delete the DB record
+      console.error('⚠️ [DEBUG] Failed to remove notifications (will continue):', notifErr);
     }
-  };
+
+    // Delete from database - expect habitService.deleteHabit to throw on failure or return info
+    const deleteResult = await habitService.deleteHabit(user.userId, id);
+
+    // Jika service mengembalikan objek hasil, cek itu (opsional)
+    if (deleteResult && typeof deleteResult === 'object' && 'success' in deleteResult) {
+      if (!deleteResult.success) {
+        console.error('❌ [DEBUG] Delete failed by service:', deleteResult);
+        return { success: false, error: deleteResult.error || 'Failed to delete habit (service)' };
+      }
+    }
+
+    // Refresh local state (fetchData harus ada)
+    try {
+      await fetchData();
+    } catch (fetchErr) {
+      // Jika refresh gagal, tetap anggap delete berhasil — tapi beri warning
+      console.warn('⚠️ [DEBUG] Deleted in backend but failed to refresh local data:', fetchErr);
+      return { success: true };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Error deleting habit:', error);
+    return { success: false, error: 'Failed to delete habit' };
+  }
+};
+
 
   // Mark habit as completed
   const markHabitCompleted = async (habitId: string, value?: number, notes?: string, completionTime?: string, completionDate?: Date) => {
