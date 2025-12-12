@@ -1873,24 +1873,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-
-  /* --------------------- HEADER --------------------- */
   headerContainer: {
     paddingBottom: 20,
     minHeight: 88,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1.5,
       },
       android: {
-        elevation: 4,
-      },
-    }),
+        elevation: 6,
+        backgroundColor: '#ffffff',
+      }
+    })
   },
-
   headerGradient: {
     paddingTop: 20,
     paddingBottom: 24,
@@ -1898,190 +1896,626 @@ const styles = StyleSheet.create({
     minHeight: 88,
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-
+  circleBackground: {
+    position: 'absolute',
+    top: '15%',
+    right: '-10%',
+    width: 150,
+    height: 150,
+    borderRadius: 999,
+    opacity: 0.3,
+  },
   headerContent: {
     flex: 1,
-    justifyContent: "center",
-    maxWidth: "65%",
-    marginRight: 12,
+    justifyContent: 'center',
+    maxWidth: '60%', // Prevent text from taking too much space
+    marginRight: 10, // Add some spacing from right buttons
   },
-
   greeting: {
     fontSize: 32,
-    fontWeight: "700",
+    fontWeight: '700',
   },
-
   headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-
-  /* --------------------- TODAY BUTTON --------------------- */
+  buttonsContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  calendarWithDate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  smallDateText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  searchButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateSelectorContainer: {
+    borderBottomWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      }
+    })
+  },
+  dateSelectorSection: {
+    paddingTop: 20,
+    paddingBottom: 48,
+  },
+  dateScrollContainer: {
+  },
   compactTodayButton: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 8,
     right: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
     gap: 4,
-    backgroundColor: "#fff",
+    zIndex: 10,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.08,
         shadowRadius: 3,
       },
       android: {
-        elevation: 2,
-      },
-    }),
+        elevation: 3,
+      }
+    })
   },
-
+  compactTodayButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   compactTodayButtonText: {
     fontSize: 11,
-    fontWeight: "600",
-    textTransform: "uppercase",
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
-
-  /* --------------------- DATE CARD --------------------- */
   dateCard: {
     width: 70,
-    height: 82,
+    height: 80,
     borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    marginRight: 14,
+    marginRight: 12, // Increased gap
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 5,
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
       },
       android: {
         elevation: 3,
-      },
-    }),
+      }
+    })
   },
-
+  datePaddingLeft: {
+    width: 20,
+  },
+  datePaddingRight: {
+    width: 16,
+  },
   dateDay: {
     fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
+    fontWeight: '600',
+    textTransform: 'uppercase',
     marginBottom: 4,
   },
-
   dateNumber: {
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: '700',
   },
-
-  /* --------------------- TASK SECTION --------------------- */
+  tasksContainer: {
+    flex: 1,
+  },
+  tasksScrollView: {
+    flex: 1,
+  },
   tasksContent: {
     paddingTop: 20,
     paddingHorizontal: 20,
-    paddingBottom: 50,
+    paddingBottom: 40,
   },
-
   taskSection: {
-    marginBottom: 26,
+    marginBottom: 24,
   },
-
   sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
-
   sectionLabel: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: '700',
   },
-
   taskCount: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: '600',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
     minWidth: 30,
-    textAlign: "center",
+    textAlign: 'center',
   },
-
   taskItem: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
-    borderRadius: 14,
-    backgroundColor: "#fff",
-    marginBottom: 10,
+    borderRadius: 12,
+    marginBottom: 8,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 10,
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 5,
-      },
-    }),
+        elevation: 6,
+        backgroundColor: '#ffffff',
+      }
+    })
   },
-
   overdueTask: {
     borderLeftWidth: 4,
-    borderLeftColor: "#FF5252",
+    borderLeftColor: '#FF5252',
   },
-
-  /* --------------------- SEARCH MODAL --------------------- */
+  taskIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  taskIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taskIconText: {
+    fontSize: 18,
+  },
+  taskInfo: {
+    flex: 1,
+  },
+  taskTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 8,
+  },
+  taskTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  taskTypeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  taskTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  taskTime: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  taskSubtitle: {
+    fontSize: 14,
+    flex: 1,
+  },
+  taskStatus: {
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    minHeight: 200,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+  },
+  // Search Modal
+  searchModalContainer: {
+    flex: 1,
+  },
   searchModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: '#F0F0F0',
   },
-
+  searchModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  searchModalCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  searchModalContent: {
+    flex: 1,
+    padding: 20,
+  },
   searchInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#E4E4E4",
-    backgroundColor: "#FFF",
+    marginBottom: 20,
   },
-
-  /* --------------------- EMPTY STATE --------------------- */
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 40,
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
   },
-
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 12,
+  searchResultsSection: {
+    flex: 1,
   },
-
-  emptyStateSubtext: {
+  searchResultsTitle: {
     fontSize: 14,
-    color: "#666",
+    fontWeight: '500',
+    marginBottom: 16,
+  },
+  searchResultsScroll: {
+    flex: 1,
+  },
+  searchTaskSection: {
+    marginBottom: 24,
+  },
+  searchSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  searchSectionLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  searchTaskCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    minWidth: 25,
+    textAlign: 'center',
+  },
+  searchTaskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  searchTaskIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  searchTaskIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchTaskIconText: {
+    fontSize: 14,
+  },
+  searchTaskInfo: {
+    flex: 1,
+  },
+  searchTaskTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  searchTaskTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 6,
+  },
+  searchTaskTypeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  searchTaskTypeText: {
+    fontSize: 8,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  searchTaskSubtitle: {
+    fontSize: 12,
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  noResultsText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  noResultsSubtext: {
+    fontSize: 14,
+  },
+  // Calendar Modal
+  calendarModal: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  calendarScrollableContent: {
+    flex: 1,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  calendarNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  navButton: {
+    padding: 4,
+  },
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    minWidth: 150,
+    textAlign: 'center',
+  },
+  quickSelectContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  monthYearScroll: {
+    marginBottom: 8,
+    paddingHorizontal: 20,
+  },
+  monthButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  monthButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  yearScroll: {
+    paddingHorizontal: 20,
+  },
+  yearButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  yearButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  calendarDone: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#84CC16',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  dayHeader: {
+    width: `${100/7}%`,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dayHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    color: '#999',
+  },
+  dayCell: {
+    width: `${100/7}%`,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  dayButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  dayButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Month Year Picker Button
+  monthYearPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginHorizontal: 20,
+  },
+  monthYearPickerText: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  // Inline Month Year Picker
+  inlineMonthYearPicker: {
+    borderBottomWidth: 1,
+    padding: 20,
+  },
+  pickerSection: {
+    marginBottom: 24,
+  },
+  pickerSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  yearPickerScroll: {
+    marginBottom: 8,
+  },
+  yearPickerContent: {
+    paddingHorizontal: 5,
+  },
+  yearPickerItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginRight: 12,
+    borderWidth: 1,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  yearPickerText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  monthPickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  monthPickerItem: {
+    width: '30%',
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  monthPickerText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quickSelectGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  quickSelectButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  quickSelectButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

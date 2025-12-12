@@ -628,72 +628,40 @@ export default function HabitsScreen() {
               </View>
 
               {/* Progress Section */}
-<View
-  style={[
-    styles.detailSection,
-    {
-      backgroundColor: colors.backgroundSecondary,
-      borderRadius: 16,
-      paddingVertical: 16,
-      paddingHorizontal: 14,
-      gap: 14,
-    },
-  ]}
->
-  {/* Header */}
-  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-    <Ionicons
-      name="stats-chart-outline"
-      size={22}
-      color={colors.primary}
-    />
-    <Text style={[styles.sectionTitle, { color: colors.text, fontSize: 18 }]}>
-      Progress
-    </Text>
-  </View>
-
-  {/* Content */}
-  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-    <View style={{ gap: 2 }}>
-      <Text
-        style={[
-          styles.progressLabel,
-          { color: colors.textSecondary, fontSize: 13 },
-        ]}
-      >
-        Current Streak
-      </Text>
-      <Text
-        style={[
-          styles.progressValue,
-          { color: colors.text, fontSize: 20, fontWeight: "600" },
-        ]}
-      >
-        {selectedHabit?.streak} days
-      </Text>
-    </View>
-
-    <View style={{ gap: 2, alignItems: "flex-end" }}>
-      <Text
-        style={[
-          styles.progressLabel,
-          { color: colors.textSecondary, fontSize: 13 },
-        ]}
-      >
-        Best Streak
-      </Text>
-      <Text
-        style={[
-          styles.progressValue,
-          { color: colors.text, fontSize: 20, fontWeight: "600" },
-        ]}
-      >
-        {selectedHabit?.bestStreak} days
-      </Text>
-    </View>
-  </View>
-</View>
-
+              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons
+                    name="stats-chart-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Progress
+                  </Text>
+                </View>
+                <View style={styles.progressContent}>
+                  <View style={styles.progressItem}>
+                    <Text
+                      style={[styles.progressLabel, { color: colors.textSecondary }]}
+                    >
+                      Current Streak
+                    </Text>
+                    <Text style={[styles.progressValue, { color: colors.text }]}>
+                      {selectedHabit?.streak} days
+                    </Text>
+                  </View>
+                  <View style={styles.progressItem}>
+                    <Text
+                      style={[styles.progressLabel, { color: colors.textSecondary }]}
+                    >
+                      Best Streak
+                    </Text>
+                    <Text style={[styles.progressValue, { color: colors.text }]}>
+                      {selectedHabit?.bestStreak} days
+                    </Text>
+                  </View>
+                </View>
+              </View>
             </ScrollView>
           </>
         )}
