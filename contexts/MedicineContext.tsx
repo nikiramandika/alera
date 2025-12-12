@@ -13,8 +13,8 @@ interface MedicineContextType {
   deleteMedicine: (id: string) => Promise<{ success: boolean; error?: string }>;
   markMedicineTaken: (reminderId: string, scheduledTime: Date, actualTime?: Date) => Promise<{ success: boolean; error?: string }>;
   markMedicineSkipped: (reminderId: string, scheduledTime: Date) => Promise<{ success: boolean; error?: string }>;
-  getTodaySchedule: () => MedicineReminder[];
   getOverdueMeds: () => MedicineReminder[];
+  getTodaySchedule: () => MedicineReminder[];
   refreshMedicines: () => Promise<void>;
   getMedicineHistoryForDateRange: (startDate: Date, endDate: Date) => Promise<MedicineHistory[]>;
 }
@@ -163,25 +163,25 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  // Delete medicine
-  const deleteMedicine = async (id: string) => {
+ 
+    const deleteMedicine = async (id: string) => {
     if (!user) return { success: false, error: 'User not authenticated' };
 
     try {
-      // Remove real-time notifications before deleting from database
       await notificationScheduler.removeNotifications(id);
       console.log('🔍 [DEBUG] Delete - Removed real-time notifications for medicine:', id);
 
-      // Delete from database
+      
       await medicineService.deleteMedicine(user.userId, id);
 
-      await fetchData(); // Refresh data
+      await fetchData(); 
       return { success: true };
     } catch (error) {
       console.error('Error deleting medicine:', error);
       return { success: false, error: 'Failed to delete medicine' };
     }
   };
+
 
   // Mark medicine as taken
   const markMedicineTaken = async (reminderId: string, scheduledTime: Date, actualTime?: Date) => {
@@ -212,34 +212,43 @@ export const MedicineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Get today's scheduled medicines
-  const getTodaySchedule = () => {
-    const now = new Date();
-    return medicines.filter(medicine => {
-      // Check if medicine should be taken today
-      if (medicine.frequency.type === 'daily') return true;
-      if (medicine.frequency.type === 'interval') {
-        const today = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        return medicine.frequency.specificDays?.includes(today);
-      }
-      return false;
+const getTodaySchedule = () => {
+  const today = new Date().getDay(); // 0 = Sunday ... 6 = Saturday
+
+  return medicines.filter(med => {
+    const freq = med.frequency;
+
+    if (freq.type === 'daily') return true;
+
+    if (freq.type === 'interval') {
+      return Array.isArray(freq.specificDays) && freq.specificDays.includes(today);
+    }
+
+    return false;
+  });
+};
+
+// Get overdue medicines
+const getOverdueMeds = () => {
+  const now = new Date();
+  const todayMeds = getTodaySchedule();
+
+  return todayMeds.filter(med => {
+    const { times } = med.frequency;
+
+    if (!Array.isArray(times)) return false;
+
+    return times.some(timeStr => {
+      const [h, m] = timeStr.split(':').map(Number);
+
+      const scheduled = new Date();
+      scheduled.setHours(h, m, 0, 0);
+
+      return scheduled < now;
     });
-  };
+  });
+};
 
-  // Get overdue medicines
-  const getOverdueMeds = () => {
-    const now = new Date();
-    const todaySchedule = getTodaySchedule();
-
-    return todaySchedule.filter(medicine => {
-      return medicine.frequency.times.some(time => {
-        const [hours, minutes] = time.split(':').map(Number);
-        const scheduledTime = new Date();
-        scheduledTime.setHours(hours, minutes, 0, 0);
-
-        return scheduledTime < now; // Medicine time has passed
-      });
-    });
-  };
 
   // Refresh medicine data
   const refreshMedicines = async () => {
