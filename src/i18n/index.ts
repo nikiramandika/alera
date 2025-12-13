@@ -14,8 +14,8 @@ const resources = {
 // Initialize i18n
 i18n.use(initReactI18next).init({
   resources,
-  lng: (Localization.locale && Localization.locale.split('-')[0]) || 'id', // Default to Indonesian
-  fallbackLng: 'id',
+  lng: (Localization.locale && Localization.locale.split('-')[0]) || 'en', // Default to English
+  fallbackLng: 'en',
   interpolation: {
     escapeValue: false, // React already escapes by default
   },
