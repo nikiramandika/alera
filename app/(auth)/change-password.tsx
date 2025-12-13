@@ -90,7 +90,6 @@ export default function ChangePasswordScreen() {
       setConfirmPassword("");
 
     } catch (error: any) {
-      console.error('Error changing password:', error);
       let errorMessage = 'Failed to change password. Please try again.';
 
       // Handle specific Firebase auth errors
