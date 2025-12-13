@@ -18,7 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 
 export default function ForgotPasswordScreen() {
@@ -45,10 +45,34 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
+      // First, check if email exists in Firebase
+      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+
+      if (signInMethods.length === 0) {
+        // No account found with this email
+        Alert.alert(
+          'Email Not Found',
+          'No account found with this email address. Please check the email or create a new account.',
+          [
+            {
+              text: 'Try Again',
+              onPress: () => {}
+            },
+            {
+              text: 'Sign Up',
+              onPress: () => router.push('/(auth)/register')
+            }
+          ]
+        );
+        return;
+      }
+
+      // Email exists, send reset email
       await sendPasswordResetEmail(auth, email);
+
       Alert.alert(
-        'Email Sent',
-        'A password reset email has been sent to your email address. Please check your inbox and follow the instructions.',
+        'Reset Email Sent',
+        'A password reset email has been sent to your email address. Please check your inbox (and spam folder) and follow the instructions to reset your password.',
         [
           {
             text: 'OK',
@@ -56,21 +80,37 @@ export default function ForgotPasswordScreen() {
           }
         ]
       );
-    } catch (error: any) {
-      let errorMessage = 'An error occurred while sending the reset email';
 
-      switch (error.code) {
-        case 'auth/user-not-found':
-          errorMessage = 'No account found with this email address';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address';
-          break;
-        case 'auth/too-many-requests':
-          errorMessage = 'Too many requests. Please try again later';
-          break;
-        default:
-          errorMessage = error.message;
+    } catch (error: any) {
+      console.error('Error in forgot password:', error);
+      let errorMessage = 'Failed to send reset email. Please try again.';
+
+      // Handle specific Firebase auth errors
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/invalid-email':
+            errorMessage = 'Invalid email address format. Please check and try again.';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'Too many requests. For security, please wait a few minutes before trying again.';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+            break;
+          case 'auth/timeout':
+            errorMessage = 'Request timed out. Please check your connection and try again.';
+            break;
+          case 'auth/user-disabled':
+            errorMessage = 'This account has been disabled. Please contact support.';
+            break;
+          default:
+            errorMessage = 'Failed to send reset email. Please try again.';
+        }
+      } else if (error?.message) {
+        // Handle error messages that might come from network issues
+        if (error.message.includes('network') || error.message.includes('connection')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        }
       }
 
       Alert.alert('Error', errorMessage);
@@ -125,26 +165,28 @@ export default function ForgotPasswordScreen() {
                 <Text style={[styles.inputLabel, { color: colors.text }]}>
                   {t('auth.emailAddress', 'Email Address')}
                 </Text>
-                <TextInput
-                  style={[styles.input, {
-                    color: colors.text,
-                    backgroundColor: colors.backgroundSecondary,
-                    borderColor: colors.border
-                  }]}
-                  placeholder={t('auth.emailPlaceholder', 'Enter your email')}
-                  placeholderTextColor={colors.textSecondary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                />
-                <Ionicons
-                  name="mail-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.inputIcon}
-                />
+                <View style={styles.passwordInputContainer}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.inputWithLeftIcon, {
+                      color: colors.text,
+                      backgroundColor: colors.backgroundSecondary,
+                      borderColor: colors.border
+                    }]}
+                    placeholder={t('auth.emailPlaceholder', 'Enter your email')}
+                    placeholderTextColor={colors.textSecondary}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                  />
+                </View>
               </View>
 
               {/* Send Reset Email Button */}
@@ -257,13 +299,21 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    paddingLeft: Spacing.xl + Spacing.md,
     fontSize: 16,
+  },
+  passwordInputContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inputWithLeftIcon: {
+    paddingLeft: Spacing.xl + Spacing.md,
+    flex: 1,
   },
   inputIcon: {
     position: 'absolute',
     left: Spacing.md,
-    top: Spacing.md + 28, // Adjust based on label height
+    zIndex: 1,
   },
   resetButton: {
     borderRadius: BorderRadius.md,

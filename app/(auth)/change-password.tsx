@@ -60,7 +60,7 @@ export default function ChangePasswordScreen() {
     }
 
     if (!user?.email) {
-      Alert.alert('Error', 'User email not found. Please login again.');
+      Alert.alert('Error', 'User session expired. Please login again.');
       return;
     }
 
@@ -91,32 +91,49 @@ export default function ChangePasswordScreen() {
 
     } catch (error: any) {
       console.error('Error changing password:', error);
-      let errorMessage = 'An error occurred while changing your password';
+      let errorMessage = 'Failed to change password. Please try again.';
 
-      switch (error.code) {
-        case 'auth/wrong-password':
-          errorMessage = 'Current password is incorrect';
-          break;
-        case 'auth/weak-password':
+      // Handle specific Firebase auth errors
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            errorMessage = 'Current password is incorrect. Please check and try again.';
+            break;
+          case 'auth/weak-password':
+            errorMessage = 'New password is too weak. Please choose a stronger password with at least 6 characters.';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'Too many failed attempts. For your security, please try again later.';
+            break;
+          case 'auth/user-mismatch':
+          case 'auth/user-not-found':
+            errorMessage = 'User session expired. Please login again and try.';
+            break;
+          case 'auth/requires-recent-login':
+            errorMessage = 'For security, please login again before changing your password.';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'Account information is invalid. Please contact support.';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+            break;
+          case 'auth/timeout':
+            errorMessage = 'Request timed out. Please check your connection and try again.';
+            break;
+          default:
+            errorMessage = 'Failed to change password. Please try again.';
+        }
+      } else if (error?.message) {
+        // Handle error messages that might come from the auth context
+        if (error.message.includes('re-authenticate')) {
+          errorMessage = 'For security, please login again before changing your password.';
+        } else if (error.message.includes('network') || error.message.includes('connection')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (error.message.includes('password') && error.message.includes('weak')) {
           errorMessage = 'New password is too weak. Please choose a stronger password.';
-          break;
-        case 'auth/too-many-requests':
-          errorMessage = 'Too many failed attempts. Please try again later.';
-          break;
-        case 'auth/user-mismatch':
-          errorMessage = 'User mismatch. Please login again.';
-          break;
-        case 'auth/user-not-found':
-          errorMessage = 'User not found. Please login again.';
-          break;
-        case 'auth/invalid-credential':
-          errorMessage = 'Invalid credentials. Please check your current password.';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address';
-          break;
-        default:
-          errorMessage = error.message || 'Failed to change password';
+        }
       }
 
       Alert.alert('Error', errorMessage);

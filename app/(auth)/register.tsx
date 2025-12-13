@@ -51,16 +51,21 @@ export default function RegisterScreen() {
   }, [user, router]);
 
   const handleSignUp = async () => {
-    console.log('🔍 [DEBUG] RegisterScreen - Form data:', {
-      displayName,
-      email,
-      passwordLength: password.length,
-      confirmPasswordLength: confirmPassword.length,
-      agreeTerms
-    });
-
     if (!displayName || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    // Basic name validation
+    if (displayName.trim().length < 2) {
+      Alert.alert('Error', 'Please enter a valid name (at least 2 characters)');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
@@ -70,7 +75,7 @@ export default function RegisterScreen() {
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      Alert.alert('Error', 'Password must be at least 6 characters long');
       return;
     }
 
@@ -81,22 +86,65 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      console.log('🔍 [DEBUG] RegisterScreen - Calling signUp with:', {
-        email,
-        password: '***',
-        displayName
-      });
       const result = await signUp(email, password, displayName);
-      console.log('🔍 [DEBUG] RegisterScreen - signUp result:', result);
       if (result.success) {
         // Navigate to onboarding
         router.replace('/(auth)/onboarding');
       } else {
-        Alert.alert('Registration Failed', result.error || 'An error occurred');
+        let errorMessage = 'Registration failed. Please check your information and try again.';
+
+        // Handle specific Firebase auth errors
+        if (result.error) {
+          if (result.error.includes('email-already-in-use') ||
+              result.error.includes('email-already-exists')) {
+            errorMessage = 'This email address is already registered. Please use a different email or try signing in.';
+          } else if (result.error.includes('weak-password')) {
+            errorMessage = 'Password is too weak. Please choose a stronger password (at least 6 characters).';
+          } else if (result.error.includes('invalid-email')) {
+            errorMessage = 'Invalid email address format. Please check and try again.';
+          } else if (result.error.includes('operation-not-allowed')) {
+            errorMessage = 'Email registration is currently disabled. Please contact support.';
+          } else if (result.error.includes('too-many-requests')) {
+            errorMessage = 'Too many registration attempts. Please try again later.';
+          } else if (result.error.includes('network')) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+          }
+        }
+
+        Alert.alert('Registration Failed', errorMessage);
       }
-    } catch (error) {
-      console.error('🔍 [DEBUG] RegisterScreen - Error during sign up:', error);
-      Alert.alert('Registration Failed', 'An unexpected error occurred');
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      let errorMessage = 'Registration failed. Please try again.';
+
+      // Handle any unexpected Firebase errors
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+          case 'auth/email-already-exists':
+            errorMessage = 'This email address is already registered. Please use a different email or try signing in.';
+            break;
+          case 'auth/weak-password':
+            errorMessage = 'Password is too weak. Please choose a stronger password.';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'Invalid email address format. Please check and try again.';
+            break;
+          case 'auth/operation-not-allowed':
+            errorMessage = 'Email registration is currently disabled. Please contact support.';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'Too many registration attempts. Please try again later.';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your internet connection.';
+            break;
+          default:
+            errorMessage = 'Registration failed. Please try again.';
+        }
+      }
+
+      Alert.alert('Registration Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -109,10 +157,45 @@ export default function RegisterScreen() {
       if (result.success) {
         router.replace('/(auth)/onboarding');
       } else {
-        Alert.alert('Google Sign-Up Failed', result.error || 'An error occurred');
+        let errorMessage = 'Google sign-up failed. Please try again.';
+
+        if (result.error) {
+          if (result.error.includes('popup-closed-by-user') ||
+              result.error.includes('popup-blocked')) {
+            errorMessage = 'Sign-up was cancelled. Please try again.';
+          } else if (result.error.includes('network')) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+          } else if (result.error.includes('too-many-requests')) {
+            errorMessage = 'Too many sign-up attempts. Please try again later.';
+          }
+        }
+
+        Alert.alert('Google Sign-Up Failed', errorMessage);
       }
-    } catch (error) {
-      Alert.alert('Google Sign-Up Failed', 'An unexpected error occurred');
+    } catch (error: any) {
+      console.error('Google sign-up error:', error);
+      let errorMessage = 'Google sign-up failed. Please try again.';
+
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/popup-closed-by-user':
+            errorMessage = 'Sign-up was cancelled. Please try again.';
+            break;
+          case 'auth/popup-blocked':
+            errorMessage = 'Pop-up was blocked. Please allow pop-ups and try again.';
+            break;
+          case 'auth/cancelled-popup-request':
+            errorMessage = 'Sign-up was cancelled. Please try again.';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your internet connection.';
+            break;
+          default:
+            errorMessage = 'Google sign-up failed. Please try again.';
+        }
+      }
+
+      Alert.alert('Google Sign-Up Failed', errorMessage);
     } finally {
       setLoading(false);
     }

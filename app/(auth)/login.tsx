@@ -53,16 +53,62 @@ export default function LoginScreen() {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await signIn(email, password);
       if (result.success) {
         router.replace('/(auth)/transition');
       } else {
-        Alert.alert('Login Failed', result.error || 'An error occurred');
+        let errorMessage = 'Login failed. Please check your credentials and try again.';
+
+        // Handle specific Firebase auth errors
+        if (result.error) {
+          if (result.error.includes('invalid-credential') ||
+              result.error.includes('wrong-password') ||
+              result.error.includes('user-not-found')) {
+            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+          } else if (result.error.includes('too-many-requests')) {
+            errorMessage = 'Too many failed login attempts. Please try again later.';
+          } else if (result.error.includes('user-disabled')) {
+            errorMessage = 'This account has been disabled. Please contact support.';
+          } else if (result.error.includes('invalid-email')) {
+            errorMessage = 'Invalid email address format. Please check and try again.';
+          } else if (result.error.includes('network')) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+          }
+        }
+
+        Alert.alert('Login Failed', errorMessage);
       }
-    } catch {
-      Alert.alert('Login Failed', 'An unexpected error occurred');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+
+      // Handle any unexpected Firebase errors
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your internet connection.';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'Too many failed attempts. Please try again later.';
+            break;
+          case 'auth/user-disabled':
+            errorMessage = 'This account has been disabled.';
+            break;
+          default:
+            errorMessage = 'Login failed. Please try again.';
+        }
+      }
+
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -75,10 +121,45 @@ export default function LoginScreen() {
       if (result.success) {
         router.replace('/(auth)/transition');
       } else {
-        Alert.alert('Google Sign-In Failed', result.error || 'An error occurred');
+        let errorMessage = 'Google sign-in failed. Please try again.';
+
+        if (result.error) {
+          if (result.error.includes('popup-closed-by-user') ||
+              result.error.includes('popup-blocked')) {
+            errorMessage = 'Sign-in was cancelled. Please try again.';
+          } else if (result.error.includes('network')) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+          } else if (result.error.includes('too-many-requests')) {
+            errorMessage = 'Too many sign-in attempts. Please try again later.';
+          }
+        }
+
+        Alert.alert('Google Sign-In Failed', errorMessage);
       }
-    } catch {
-      Alert.alert('Google Sign-In Failed', 'An unexpected error occurred');
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      let errorMessage = 'Google sign-in failed. Please try again.';
+
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/popup-closed-by-user':
+            errorMessage = 'Sign-in was cancelled. Please try again.';
+            break;
+          case 'auth/popup-blocked':
+            errorMessage = 'Pop-up was blocked. Please allow pop-ups and try again.';
+            break;
+          case 'auth/cancelled-popup-request':
+            errorMessage = 'Sign-in was cancelled. Please try again.';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your internet connection.';
+            break;
+          default:
+            errorMessage = 'Google sign-in failed. Please try again.';
+        }
+      }
+
+      Alert.alert('Google Sign-In Failed', errorMessage);
     } finally {
       setLoading(false);
     }
