@@ -28,6 +28,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Redirect authenticated users away from login screen
   useEffect(() => {
@@ -111,27 +112,61 @@ export default function LoginScreen() {
           <View style={styles.form}>
             {/* Email Input */}
             <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                placeholder={t('auth.emailPlaceholder')}
-                placeholderTextColor={colors.textSecondary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+              <View style={styles.passwordInputContainer}>
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, styles.inputWithLeftIcon, {
+                    color: colors.text,
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: colors.border
+                  }]}
+                  placeholder={t('auth.emailPlaceholder')}
+                  placeholderTextColor={colors.textSecondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
             </View>
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                placeholder={t('auth.passwordPlaceholder')}
-                placeholderTextColor={colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordInputContainer}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, styles.passwordInput, {
+                    color: colors.text,
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: colors.border
+                  }]}
+                  placeholder={t('auth.passwordPlaceholder')}
+                  placeholderTextColor={colors.textSecondary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Remember Me Checkbox */}
@@ -253,6 +288,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     fontSize: 16,
+  },
+  passwordInputContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    paddingLeft: Spacing.xl + Spacing.md,
+    paddingRight: Spacing.xl + 32,
+    flex: 1,
+  },
+  inputWithLeftIcon: {
+    paddingLeft: Spacing.xl + Spacing.md,
+    flex: 1,
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: Spacing.md,
+    zIndex: 1,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: Spacing.md,
+    zIndex: 1,
   },
   checkboxContainer: {
     flexDirection: "row",

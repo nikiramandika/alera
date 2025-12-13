@@ -30,6 +30,8 @@ export default function RegisterScreen() {
   const [displayName, setDisplayName] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Redirect authenticated users away from register screen
   useEffect(() => {
@@ -144,51 +146,119 @@ export default function RegisterScreen() {
           <View style={styles.form}>
             {/* Name Input */}
             <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                placeholder="Full Name"
-                placeholderTextColor={colors.textSecondary}
-                value={displayName}
-                onChangeText={setDisplayName}
-                autoCapitalize="words"
-              />
+              <View style={styles.passwordInputContainer}>
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, styles.inputWithLeftIcon, {
+                    color: colors.text,
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: colors.border
+                  }]}
+                  placeholder="Full Name"
+                  placeholderTextColor={colors.textSecondary}
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  autoCapitalize="words"
+                />
+              </View>
             </View>
 
             {/* Email Input */}
             <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                placeholder="Email address"
-                placeholderTextColor={colors.textSecondary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+              <View style={styles.passwordInputContainer}>
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, styles.inputWithLeftIcon, {
+                    color: colors.text,
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: colors.border
+                  }]}
+                  placeholder="Email address"
+                  placeholderTextColor={colors.textSecondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
             </View>
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                placeholder="Password"
-                placeholderTextColor={colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordInputContainer}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, styles.passwordInput, {
+                    color: colors.text,
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: colors.border
+                  }]}
+                  placeholder="Password"
+                  placeholderTextColor={colors.textSecondary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Confirm Password Input */}
             <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                placeholder="Confirm Password"
-                placeholderTextColor={colors.textSecondary}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordInputContainer}>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, styles.passwordInput, {
+                    color: colors.text,
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: colors.border
+                  }]}
+                  placeholder="Confirm Password"
+                  placeholderTextColor={colors.textSecondary}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Terms and Conditions Checkbox */}
@@ -304,6 +374,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     fontSize: 16,
+  },
+  passwordInputContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    paddingLeft: Spacing.xl + Spacing.md,
+    paddingRight: Spacing.xl + 32,
+    flex: 1,
+  },
+  inputWithLeftIcon: {
+    paddingLeft: Spacing.xl + Spacing.md,
+    flex: 1,
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: Spacing.md,
+    zIndex: 1,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: Spacing.md,
+    zIndex: 1,
   },
   checkboxContainer: {
     flexDirection: "row",
