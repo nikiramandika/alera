@@ -129,7 +129,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               body: notification.request.content.body,
               data: data, // Keep the same data including recurring flag
             },
-            trigger: tomorrow as any,
+            trigger: {
+              type: 'date' as const,
+              date: tomorrow,
+            },
           }).then(id => {
             if (id) {
               console.log('✅ [DEBUG] Recurring notification rescheduled for:', tomorrow.toLocaleString());
