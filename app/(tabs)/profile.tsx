@@ -340,7 +340,8 @@ export default function ProfileScreen() {
       </Text>
 
       <View style={[styles.settingsCard, { backgroundColor: colors.card }]}>
-        <TouchableOpacity style={styles.settingItem}>
+
+      <TouchableOpacity style={styles.settingItem}>
           <View style={styles.settingLeft}>
             <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />
@@ -360,6 +361,28 @@ export default function ProfileScreen() {
               settings: { ...user?.settings, vibration: value }
             })}
           />
+        </TouchableOpacity>
+        
+        <View style={[styles.settingBorder, { borderBottomColor: colors.border }]} />
+
+        <TouchableOpacity
+          style={styles.settingItem}
+          onPress={() => router.push("/(auth)/change-password")}
+        >
+          <View style={styles.settingLeft}>
+            <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="key-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingText, { color: colors.text }]}>
+                {t('profile.changePassword', 'Change Password')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('profile.changePasswordDescription', 'Reset your account password')}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
 
         <View style={[styles.settingBorder, { borderBottomColor: colors.border }]} />

@@ -17,6 +17,7 @@ export const Colors = {
     secondary: aleraSecondary,
     accent: aleraAccent,
     success: aleraSuccess,
+    error: '#FF6B6B',
 
     // UI colors
     text: '#11181C',
@@ -56,6 +57,7 @@ export const Colors = {
     secondary: '#FFFFFF',
     accent: '#84CC16',
     success: '#22C55E',
+    error: '#FF6B6B',
 
     // UI colors
     text: '#ECEDEE',
