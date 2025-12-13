@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import {
   User as FirebaseUser,
   signInWithEmailAndPassword,
@@ -9,11 +10,14 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged
 } from 'firebase/auth';
-import { useRouter } from 'expo-router';
 import { auth, enableAuthPersistence } from '@/config/firebase';
 import { User } from '@/types';
 import { userService } from '@/services';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 
 interface AuthContextType {
   user: User | null;
@@ -30,7 +34,7 @@ interface AuthContextType {
 
 // Helper function to check if user needs onboarding
 const needsOnboarding = (user: User): boolean => {
-  return !user.profile || !user.profile.gender || !user.profile.weight || !user.profile.age;
+  return !user.profile || !user.profile.gender || !user.profile.weight || !user.profile.age || !user.profile.birthDate;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,24 +49,9 @@ export const useAuth = () => {
 
 export const useAuthNavigation = () => {
   const { user, loading } = useAuth();
-  const router = useRouter();
 
-  useEffect(() => {
-    console.log('🔍 [DEBUG] AuthNavigation - user:', user?.userId || 'No user', 'loading:', loading);
-    if (!loading) {
-      if (user) {
-        const needsOnboardingResult = needsOnboarding(user);
-        console.log('🔍 [DEBUG] AuthNavigation - needsOnboarding:', needsOnboardingResult);
-        console.log('🔍 [DEBUG] AuthNavigation - user.profile:', user.profile);
-        if (needsOnboardingResult) {
-          console.log('🔍 [DEBUG] AuthNavigation - Navigating to onboarding');
-          router.replace('/(auth)/onboarding');
-        } else {
-          console.log('🔍 [DEBUG] AuthNavigation - User complete, no navigation needed');
-        }
-      }
-    }
-  }, [user, loading, router]);
+  // NOTE: Navigation is now handled in app/index.tsx to avoid race conditions
+  // This hook is kept for backward compatibility but doesn't perform navigation
 
   return { user, loading, needsOnboarding: user ? needsOnboarding(user) : true };
 };
@@ -74,6 +63,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [checkingCache, setCheckingCache] = useState(true);
   const networkStatus = useNetworkStatus();
   const isOffline = networkStatus.isConnected === false;
+
+  // Configure Google Sign-In
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID,
+      offlineAccess: false,
+      iosClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID, // Use web client ID for iOS as fallback
+      forceCodeForRefreshToken: true,
+    });
+  }, []);
 
   // Create user document in Firestore
   const createUserDocument = async (firebaseUser: FirebaseUser, displayName?: string): Promise<User> => {
@@ -335,23 +334,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign in with Google
   const signInWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Note: For web, you'd use different Google Sign-In implementation
-      // This is a placeholder for Google Sign-In
-      const provider = new GoogleAuthProvider();
-      await signInWithCredential(auth, provider as any);
+      console.log('🔍 [GOOGLE] Starting Google Sign-In process...');
+
+      // Check if your device supports Google Play Services
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+      console.log('🔍 [GOOGLE] Play Services available');
+
+      // Sign in with Google
+      const userInfo = await GoogleSignin.signIn();
+      console.log('🔍 [GOOGLE] Google Sign-In successful');
+      console.log('🔍 [GOOGLE] User info:', {
+        email: userInfo.data?.user.email,
+        name: userInfo.data?.user.name,
+        idToken: userInfo.data?.idToken ? 'present' : 'missing'
+      });
+
+      // Create a Google credential with the token
+      const googleCredential = GoogleAuthProvider.credential(userInfo.data?.idToken);
+      console.log('🔍 [GOOGLE] Google credential created');
+
+      // Sign-in with the credential from Google
+      const result = await signInWithCredential(auth, googleCredential);
+      console.log('🔍 [GOOGLE] Firebase sign-in successful');
+      console.log('🔍 [GOOGLE] User signed in:', result.user.uid);
+
+      // Force a brief delay to ensure user state is properly set
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       return { success: true };
     } catch (error: any) {
+      console.log('🔍 [GOOGLE] Error occurred:', error);
+      console.log('🔍 [GOOGLE] Error code:', error.code);
+      console.log('🔍 [GOOGLE] Error message:', error.message);
+
       let errorMessage = 'An error occurred during Google sign in';
 
-      switch (error.code) {
-        case 'auth/popup-closed-by-user':
-          errorMessage = 'Sign-in popup was closed before completion';
-          break;
-        case 'auth/popup-blocked':
-          errorMessage = 'Sign-in popup was blocked by the browser';
-          break;
-        default:
-          errorMessage = error.message;
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        errorMessage = 'Sign-in was cancelled';
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        errorMessage = 'Sign-in is already in progress';
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        errorMessage = 'Google Play Services is not available';
+      } else {
+        // Handle Firebase auth errors
+        switch (error.code) {
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your internet connection.';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'Too many sign-in attempts. Please try again later.';
+            break;
+          case 'auth/user-disabled':
+            errorMessage = 'This account has been disabled.';
+            break;
+          case 'auth/invalid-credential':
+            errorMessage = 'Invalid Google credentials. Please try again.';
+            break;
+          case 'auth/email-already-in-use':
+            errorMessage = 'This email is already registered. Please sign in with your password instead.';
+            break;
+          case 'auth/account-exists-with-different-credential':
+            // This happens when user tries to sign in with Google but email is already registered with email/password
+            console.log('🔍 [GOOGLE] Account exists with different credential');
+            errorMessage = 'This email is already registered with password. Please use password sign-in or link your Google account in settings.';
+            break;
+          default:
+            errorMessage = error.message || 'Failed to sign in with Google';
+        }
       }
 
       return { success: false, error: errorMessage };
@@ -361,6 +412,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign out
   const signOut = async (): Promise<void> => {
     try {
+      // Sign out from Google as well
+      try {
+        await GoogleSignin.signOut();
+      } catch (signOutError) {
+        console.log('Google Sign-in was not active, continuing...');
+      }
+
       await firebaseSignOut(auth);
       // Clear cached data
       await AsyncStorage.removeItem('user_data');

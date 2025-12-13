@@ -126,6 +126,31 @@ export default function HomeScreen() {
 
   // Import contexts for real data
   const { user } = useAuth();
+
+  // Check if user has completed onboarding - redirect if not
+  useEffect(() => {
+    if (user) {
+      const hasProfileData = user.profile &&
+        user.profile.gender &&
+        user.profile.weight &&
+        user.profile.age &&
+        user.profile.birthDate;
+
+      console.log('🔍 [HOME] Checking user profile:', {
+        hasProfile: !!user.profile,
+        gender: user.profile?.gender,
+        weight: user.profile?.weight,
+        age: user.profile?.age,
+        birthDate: user.profile?.birthDate,
+        hasProfileData
+      });
+
+      if (!hasProfileData) {
+        console.log('🔍 [HOME] User profile incomplete, redirecting to onboarding');
+        router.replace('/(auth)/onboarding');
+      }
+    }
+  }, [user, router]);
   const { habits, refreshHabits, getHabitHistoryForDateRange } = useHabit();
   const { medicines, refreshMedicines, getMedicineHistoryForDateRange } = useMedicine();
 

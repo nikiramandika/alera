@@ -17,7 +17,10 @@
       "icon": "./assets/images/Alera-ios.icon",
       "bundleIdentifier": "com.alera.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLSchemes": [
+          "com.googleusercontent.apps.411616898655-h4m9t6ubrbrm3t3s7t1lmstf62q4193j"
+        ]
       }
     },
     "android": {
@@ -56,6 +59,12 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.411616898655-h4m9t6ubrbrm3t3s7t1lmstf62q4193j"
         }
       ]
     ],

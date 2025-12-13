@@ -19,22 +19,37 @@ export default function Index() {
         setHasRedirected(true);
         setIsCheckingSession(false);
 
+        console.log('🔍 [INDEX] HandleRouting called');
+        console.log('🔍 [INDEX] User exists:', !!user);
+        console.log('🔍 [INDEX] User ID:', user?.userId);
+        console.log('🔍 [INDEX] User object:', user);
+
         if (user) {
           // User is logged in, check if they have completed onboarding
           const hasCompletedOnboarding = user.profile &&
             user.profile.gender &&
             user.profile.weight &&
-            user.profile.age;
+            user.profile.age &&
+            user.profile.birthDate;
+
+          console.log('🔍 [INDEX] Onboarding check results:');
+          console.log('  - hasProfile:', !!user.profile);
+          console.log('  - profile:', user.profile);
+          console.log('  - gender:', user.profile?.gender);
+          console.log('  - weight:', user.profile?.weight);
+          console.log('  - age:', user.profile?.age);
+          console.log('  - birthDate:', user.profile?.birthDate);
+          console.log('  - hasCompletedOnboarding:', hasCompletedOnboarding);
 
           if (!hasCompletedOnboarding) {
-            console.log('User needs onboarding, redirecting...');
+            console.log('🔍 [INDEX] User needs onboarding, redirecting to /(auth)/onboarding');
             router.replace('/(auth)/onboarding');
           } else {
-            console.log('User has completed onboarding, redirecting to tabs...');
+            console.log('🔍 [INDEX] User has completed onboarding, redirecting to /(tabs)');
             router.replace('/(tabs)');
           }
         } else {
-          console.log('User not logged in, redirecting to welcome...');
+          console.log('🔍 [INDEX] User not logged in, redirecting to welcome...');
           router.replace('/(auth)/welcome');
         }
       };
