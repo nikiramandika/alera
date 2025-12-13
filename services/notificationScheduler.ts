@@ -304,7 +304,13 @@ class NotificationScheduler {
         triggerDate.setDate(triggerDate.getDate() + 1);
       }
 
-  
+      // Create proper trigger object according to Expo Notifications API
+      // Use correct DateTriggerInput format
+      const trigger = {
+        type: 'date' as const,
+        date: triggerDate,
+      };
+
       const id = await NotificationsRef.scheduleNotificationAsync({
         content: {
           title: notification.title,
@@ -319,7 +325,7 @@ class NotificationScheduler {
           },
           sound: 'default',
         },
-        trigger: triggerDate as any,
+        trigger: trigger,
         identifier: `native_${notification.id}`,
       });
 

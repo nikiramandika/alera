@@ -14,10 +14,21 @@ import { auth, enableAuthPersistence } from '@/config/firebase';
 import { User } from '@/types';
 import { userService } from '@/services';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import {
-  GoogleSignin,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
+
+let GoogleSignin: any = null;
+let statusCodes: any = null;
+
+// Try to import Google Sign-in with error handling for Expo Go compatibility
+try {
+  const googleSigninModule = require('@react-native-google-signin/google-signin');
+  GoogleSignin = googleSigninModule.default;
+  statusCodes = googleSigninModule.statusCodes;
+  console.log('🔑 Google Sign-in module loaded successfully');
+} catch (error) {
+  console.warn('⚠️ Google Sign-in module not available (this is expected in Expo Go):', error);
+  GoogleSignin = null;
+  statusCodes = null;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -66,12 +77,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Configure Google Sign-In
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID,
-      offlineAccess: false,
-      iosClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID, // Use web client ID for iOS as fallback
-      forceCodeForRefreshToken: true,
-    });
+    if (GoogleSignin && typeof GoogleSignin.configure === 'function') {
+      try {
+        GoogleSignin.configure({
+          webClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID,
+          offlineAccess: false,
+          iosClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID, // Use web client ID for iOS as fallback
+          forceCodeForRefreshToken: true,
+        });
+        console.log('🔑 Google Sign-in configured successfully');
+      } catch (error) {
+        console.warn('⚠️ Failed to configure Google Sign-in:', error);
+      }
+    } else {
+      console.log('🔑 Google Sign-in not available - skipping configuration');
+    }
   }, []);
 
   // Create user document in Firestore
@@ -336,11 +356,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('🔍 [GOOGLE] Starting Google Sign-In process...');
 
+      // Check if Google Sign-in is available
+      if (!GoogleSignin) {
+        console.warn('⚠️ Google Sign-in is not available (please use development build)');
+        return { success: false, error: 'Google Sign-in is not available in Expo Go. Please use a development build for full functionality.' };
+      }
+
       // Check if your device supports Google Play Services
-      await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
-      console.log('🔍 [GOOGLE] Play Services available');
+      if (GoogleSignin.hasPlayServices) {
+        await GoogleSignin.hasPlayServices({
+          showPlayServicesUpdateDialog: true,
+        });
+        console.log('🔍 [GOOGLE] Play Services available');
+      }
 
       // Sign in with Google
       const userInfo = await GoogleSignin.signIn();
@@ -371,12 +399,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       let errorMessage = 'An error occurred during Google sign in';
 
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      if (statusCodes && error.code === statusCodes.SIGN_IN_CANCELLED) {
         errorMessage = 'Sign-in was cancelled';
-      } else if (error.code === statusCodes.IN_PROGRESS) {
+      } else if (statusCodes && error.code === statusCodes.IN_PROGRESS) {
         errorMessage = 'Sign-in is already in progress';
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      } else if (statusCodes && error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         errorMessage = 'Google Play Services is not available';
+      } else if (error.message?.includes('RNGoogleSignin')) {
+        errorMessage = 'Google Sign-in is not available in Expo Go. Please use a development build for full functionality.';
       } else {
         // Handle Firebase auth errors
         switch (error.code) {
@@ -414,8 +444,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Sign out from Google as well
       try {
-        await GoogleSignin.signOut();
-      } catch (signOutError) {
+        if (GoogleSignin && typeof GoogleSignin.signOut === 'function') {
+          await GoogleSignin.signOut();
+        }
+      } catch (error) {
         console.log('Google Sign-in was not active, continuing...');
       }
 
