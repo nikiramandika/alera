@@ -59,7 +59,26 @@ export default function LoginScreen() {
       if (result.success) {
         router.replace('/(auth)/transition');
       } else {
-        Alert.alert('Login Failed', result.error || 'An error occurred');
+        let errorMessage = 'Login failed. Please check your credentials and try again.';
+
+        // Handle specific Firebase auth errors
+        if (result.error) {
+          if (result.error.includes('invalid-credential') ||
+              result.error.includes('wrong-password') ||
+              result.error.includes('user-not-found')) {
+            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+          } else if (result.error.includes('too-many-requests')) {
+            errorMessage = 'Too many failed login attempts. Please try again later.';
+          } else if (result.error.includes('user-disabled')) {
+            errorMessage = 'This account has been disabled. Please contact support.';
+          } else if (result.error.includes('invalid-email')) {
+            errorMessage = 'Invalid email address format. Please check and try again.';
+          } else if (result.error.includes('network')) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+          }
+        }
+
+        Alert.alert('Login Failed', errorMessage);
       }
     } catch {
       Alert.alert('Login Failed', 'An unexpected error occurred');
