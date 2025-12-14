@@ -362,11 +362,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Sign in with Google
       const userInfo = await GoogleSignin.signIn();
+
+      // Check if the user cancelled the sign-in process
+      if (!userInfo || !userInfo.data) {
+        console.log('🔍 [GOOGLE] Sign-in cancelled - no user data received');
+        return { success: false, error: 'Sign-in was cancelled' };
+      }
+
+      // Check for essential data
+      if (!userInfo.data.idToken || !userInfo.data.user.email) {
+        console.log('🔍 [GOOGLE] Incomplete user data received:', {
+          email: userInfo.data?.user.email,
+          name: userInfo.data?.user.name,
+          idToken: userInfo.data?.idToken ? 'present' : 'missing'
+        });
+        return { success: false, error: 'Incomplete authentication data received' };
+      }
+
       console.log('🔍 [GOOGLE] Google Sign-In successful');
       console.log('🔍 [GOOGLE] User info:', {
         email: userInfo.data?.user.email,
         name: userInfo.data?.user.name,
-        idToken: userInfo.data?.idToken ? 'present' : 'missing'
+        idToken: 'present'
       });
 
       // Create a Google credential with the token
@@ -390,10 +407,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let errorMessage = 'An error occurred during Google sign in';
 
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('🔍 [GOOGLE] Sign-in cancelled by user');
         errorMessage = 'Sign-in was cancelled';
       } else if (error.code === statusCodes.IN_PROGRESS) {
+        console.log('🔍 [GOOGLE] Sign-in already in progress');
         errorMessage = 'Sign-in is already in progress';
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        console.log('🔍 [GOOGLE] Play Services not available');
         errorMessage = 'Google Play Services is not available';
       } else {
         // Handle Firebase auth errors
@@ -433,7 +453,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Sign out from Google as well
       try {
         await GoogleSignin.signOut();
-      } catch (error) {
+      } catch {
         console.log('Google Sign-in was not active, continuing...');
       }
 

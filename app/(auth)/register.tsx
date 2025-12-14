@@ -161,16 +161,22 @@ export default function RegisterScreen() {
       if (result.success) {
         router.replace('/(auth)/onboarding');
       } else {
-        let errorMessage = 'Google sign-up failed. Please try again.';
+        // Handle cancelled sign-up gracefully - don't show error for user cancellation
+        if (result.error?.includes('cancelled')) {
+          console.log('Google Sign-Up was cancelled by user');
+          return;
+        }
 
+        let errorMessage = 'Google sign-up failed. Please try again.';
         if (result.error) {
-          if (result.error.includes('popup-closed-by-user') ||
-              result.error.includes('popup-blocked')) {
-            errorMessage = 'Sign-up was cancelled. Please try again.';
-          } else if (result.error.includes('network')) {
+          if (result.error.includes('network')) {
             errorMessage = 'Network error. Please check your internet connection and try again.';
           } else if (result.error.includes('too-many-requests')) {
             errorMessage = 'Too many sign-up attempts. Please try again later.';
+          } else if (result.error.includes('incomplete')) {
+            errorMessage = 'Incomplete authentication data. Please try again.';
+          } else {
+            errorMessage = result.error;
           }
         }
 
@@ -183,13 +189,12 @@ export default function RegisterScreen() {
       if (error?.code) {
         switch (error.code) {
           case 'auth/popup-closed-by-user':
-            errorMessage = 'Sign-up was cancelled. Please try again.';
-            break;
+          case 'auth/cancelled-popup-request':
+            // Silently handle cancellation
+            console.log('Google Sign-Up was cancelled by user');
+            return;
           case 'auth/popup-blocked':
             errorMessage = 'Pop-up was blocked. Please allow pop-ups and try again.';
-            break;
-          case 'auth/cancelled-popup-request':
-            errorMessage = 'Sign-up was cancelled. Please try again.';
             break;
           case 'auth/network-request-failed':
             errorMessage = 'Network error. Please check your internet connection.';

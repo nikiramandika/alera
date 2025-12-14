@@ -94,6 +94,11 @@ export default function LoginScreen() {
       if (result.success) {
         router.replace('/(auth)/transition');
       } else {
+        // Handle cancelled sign-in gracefully - don't show error for user cancellation
+        if (result.error?.includes('cancelled')) {
+          console.log('Google Sign-In was cancelled by user');
+          return;
+        }
         Alert.alert('Google Sign-In Failed', result.error || 'An error occurred');
       }
     } catch {
