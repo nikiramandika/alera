@@ -35,7 +35,7 @@ export default function HabitsScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
-  const { habits, refreshHabits, markHabitCompleted, deleteHabit } = useHabit();
+  const { habits, refreshHabits, deleteHabit } = useHabit();
 
   const [selectedHabit, setSelectedHabit] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -69,10 +69,54 @@ export default function HabitsScreen() {
     );
   }, [headerScale, cardTranslateY]);
 
-  // Filter habits to exclude optimistically deleted ones
-  const filteredHabits = habits.filter(
-    (habit) => !optimisticallyDeletedIds.has(habit.habitId)
-  );
+  // Helper function to check if habit is expired
+  const isHabitExpired = (habit: any) => {
+    if (!habit?.endDate && !habit?.duration?.endDate) return false;
+
+    let endDate = habit.endDate || habit.duration?.endDate;
+
+    if (!endDate) return false;
+
+    // Handle Firebase Timestamp
+    if (typeof endDate?.toDate === "function") {
+      endDate = endDate.toDate();
+    } else if (typeof endDate === "string" || typeof endDate === "number") {
+      endDate = new Date(endDate);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+
+    return endDate < today;
+  };
+
+  // Filter habits to exclude optimistically deleted ones and sort by status
+  const filteredHabits = habits
+    .filter((habit) => !optimisticallyDeletedIds.has(habit.habitId))
+    .sort((a, b) => {
+      // First sort by status: active habits first, then ended habits
+      const aIsExpired = isHabitExpired(a);
+      const bIsExpired = isHabitExpired(b);
+
+      if (aIsExpired !== bIsExpired) {
+        return aIsExpired ? 1 : -1; // false (active) comes before true (ended)
+      }
+
+      // Then sort by creation date (newest first) if both have same status
+      const aDate = a.createdAt;
+      const bDate = b.createdAt;
+
+      // Handle Firebase Timestamp objects and regular dates
+      const aTime = (aDate as any)?.toDate
+        ? (aDate as any).toDate().getTime()
+        : (aDate instanceof Date ? aDate.getTime() : new Date(aDate || 0).getTime());
+
+      const bTime = (bDate as any)?.toDate
+        ? (bDate as any).toDate().getTime()
+        : (bDate instanceof Date ? bDate.getTime() : new Date(bDate || 0).getTime());
+
+      return bTime - aTime;
+    });
 
   // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => ({
@@ -95,17 +139,7 @@ export default function HabitsScreen() {
     }
   };
 
-  const toggleHabitStatus = async (habitId: string) => {
-    // In real app, you'd check if habit is completed today
-    // For now, we'll just mark it as completed
-    const result = await markHabitCompleted(habitId, 1);
-    if (!result.success) {
-      Alert.alert("Error", result.error || "Failed to mark habit as completed");
-    } else {
-      await refreshHabits();
-    }
-  };
-
+  
   const handleEditHabit = () => {
     if (selectedHabit) {
       // Close the modal first
@@ -136,27 +170,6 @@ export default function HabitsScreen() {
       default:
         return "Custom";
     }
-  };
-
-  // Helper function to check if habit is expired
-  const isHabitExpired = (habit: any) => {
-    if (!habit?.endDate && !habit?.duration?.endDate) return false;
-
-    let endDate = habit.endDate || habit.duration?.endDate;
-
-    if (!endDate) return false;
-
-    // Handle Firebase Timestamp
-    if (typeof endDate?.toDate === "function") {
-      endDate = endDate.toDate();
-    } else if (typeof endDate === "string" || typeof endDate === "number") {
-      endDate = new Date(endDate);
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
-
-    return endDate < today;
   };
 
   const handleDeleteHabit = (habit: any) => {
@@ -308,24 +321,6 @@ export default function HabitsScreen() {
                     )}
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={[
-                    styles.checkButton,
-                    {
-                      backgroundColor: colors.backgroundSecondary,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  onPress={() => {
-                    toggleHabitStatus(item.habitId);
-                  }}
-                >
-                  <Ionicons
-                    name="checkmark-outline"
-                    size={20}
-                    color={colors.icon}
-                  />
-                </TouchableOpacity>
               </View>
 
               <Text
@@ -1091,15 +1086,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  checkButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  habitDescription: {
+    habitDescription: {
     fontSize: 14,
     marginBottom: 8,
   },
