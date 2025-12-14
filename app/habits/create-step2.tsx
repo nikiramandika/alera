@@ -113,10 +113,10 @@ export default function CreateHabitStep2Screen() {
 
   // Load existing habit data for edit mode
   useEffect(() => {
-    if (editMode && habitId && user) {
+    if (editMode && habitId && user && !step1Data) {
       const loadHabitData = async () => {
         try {
-          console.log('Loading habit data for edit:', habitId);
+          console.log('Loading habit data for edit (no step1 data):', habitId);
           const habit = await habitService.getHabitById(user.userId, habitId);
 
           if (habit) {
@@ -161,8 +161,49 @@ export default function CreateHabitStep2Screen() {
       };
 
       loadHabitData();
+    } else if (editMode && habitId && user && step1Data) {
+      // If we have step1Data, only load frequency and duration data from database
+      // Don't overwrite step1 changes!
+      const loadFrequencyAndDuration = async () => {
+        try {
+          console.log('Loading frequency and duration for edit (with step1 data):', habitId);
+          const habit = await habitService.getHabitById(user.userId, habitId);
+
+          if (habit) {
+            console.log('Loaded frequency/duration data, keeping step1 changes');
+
+            // Only update frequency and duration data, keep step1 data intact
+            setHabitData((prev) => ({
+              ...prev, // Keep step1 data
+              // Update frequency and duration data only
+              frequency: {
+                type: habit.frequency?.type || 'daily',
+                times: habit.frequency?.times || ['08:00'],
+                selectedDays: habit.frequency?.specificDays || [],
+              },
+
+              // Update duration data
+              duration: {
+                startDate: habit.duration?.startDate || new Date(),
+                endDate: habit.duration?.endDate || undefined,
+                totalDays: habit.duration?.totalDays || null,
+              },
+            }));
+
+            // Set frequency tab based on loaded data
+            setActiveFrequencyTab(habit.frequency?.type || 'daily');
+
+            // Set showEndDate based on whether end date exists
+            setShowEndDate(!!habit.duration?.endDate);
+          }
+        } catch (error) {
+          console.error('Error loading frequency/duration data:', error);
+        }
+      };
+
+      loadFrequencyAndDuration();
     }
-  }, [editMode, habitId, user]);
+  }, [editMode, habitId, user, step1Data]);
 
   const handleSaveHabit = async () => {
     setLoading(true);
