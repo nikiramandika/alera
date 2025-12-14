@@ -50,10 +50,10 @@ export default function HomeScreen() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   // Check if selected date is today
-  const isViewingToday = () => {
+  const isViewingToday = useCallback(() => {
     const todayIndonesia = getIndonesiaTimeForCalendar();
     return selectedDate.toDateString() === todayIndonesia.toDateString();
-  };
+  }, [selectedDate]);
 
   // Animated value for Today button
   const todayButtonOpacity = useRef(new Animated.Value(0)).current;
@@ -93,7 +93,7 @@ export default function HomeScreen() {
         }),
       ]).start();
     }
-  }, [selectedDate, todayButtonOpacity, todayButtonScale, isViewingToday]); // Trigger when selected date changes
+  }, [selectedDate, todayButtonOpacity, todayButtonScale]); // Trigger when selected date changes
 
   // Function to go back to today
   const goToToday = () => {

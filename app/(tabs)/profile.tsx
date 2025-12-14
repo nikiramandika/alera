@@ -38,6 +38,7 @@ export default function ProfileScreen() {
 
   const [loading, setLoading] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [localVibration, setLocalVibration] = useState(user?.settings?.vibration || false);
 
   // Animation values
   const headerScale = useSharedValue(0.9);
@@ -53,7 +54,10 @@ export default function ProfileScreen() {
       damping: 15,
       stiffness: 100,
     }));
-  }, [headerScale, cardTranslateY]);
+
+    // Sync local vibration state with user data
+    setLocalVibration(user?.settings?.vibration || false);
+  }, [headerScale, cardTranslateY, user?.settings?.vibration]);
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: headerScale.value }]
@@ -89,10 +93,18 @@ export default function ProfileScreen() {
       const result = await updateUserProfile(updatedData);
       if (!result.success) {
         Alert.alert(t('profile.error'), result.error || t('profile.failedToUpdateProfile'));
+        // Revert local vibration state if update failed
+        if (updatedData.settings?.vibration !== undefined) {
+          setLocalVibration(user?.settings?.vibration || false);
+        }
       }
       // Settings changes update silently
     } catch {
       Alert.alert(t('profile.error'), t('profile.unexpectedError'));
+      // Revert local vibration state if error occurred
+      if (updatedData.settings?.vibration !== undefined) {
+        setLocalVibration(user?.settings?.vibration || false);
+      }
     }
   };
 
@@ -358,10 +370,15 @@ export default function ProfileScreen() {
             </View>
           </View>
           <Switch
-            value={user?.settings?.vibration || false}
-            onValueChange={(value) => handleUpdateProfile({
-              settings: { ...user?.settings, vibration: value }
-            })}
+            value={localVibration}
+            onValueChange={(value) => {
+              // Optimistic UI update - update local state immediately
+              setLocalVibration(value);
+              // Then update in background
+              handleUpdateProfile({
+                settings: { ...user?.settings, vibration: value }
+              });
+            }}
           />
         </TouchableOpacity>
         
