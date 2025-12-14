@@ -14,7 +14,7 @@ import { auth, enableAuthPersistence } from '@/config/firebase';
 import { User } from '@/types';
 import { userService } from '@/services';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'; // komen import ini kalo mau pake expo go
 
 interface AuthContextType {
   user: User | null;
@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const networkStatus = useNetworkStatus();
   const isOffline = networkStatus.isConnected === false;
 
-  // Configure Google Sign-In
+  // Configure Google Sign-In komenin ini dulu ya, kalo mau pake expo go
   useEffect(() => {
     const configureGoogleSignIn = async () => {
       try {
@@ -89,6 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     configureGoogleSignIn();
   }, []);
+
+// sampe sini komennya
 
   // Create user document in Firestore
   const createUserDocument = async (firebaseUser: FirebaseUser, displayName?: string): Promise<User> => {
