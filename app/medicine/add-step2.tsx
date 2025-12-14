@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -87,6 +87,7 @@ export default function AddMedicineStep2NewScreen() {
   const [activeFrequencyTab, setActiveFrequencyTab] = useState("daily");
   const [loading, setLoading] = useState(false);
   const [showEndDate, setShowEndDate] = useState(false);
+  const dataLoadedRef = useRef(false);
 
   const [medicineData, setMedicineData] = useState({
     medicineName: step1Data?.medicineName || "",
@@ -113,10 +114,10 @@ export default function AddMedicineStep2NewScreen() {
 
   // Load existing medicine data for edit mode
   useEffect(() => {
-    if (editMode && medicineId && user && !step1Data) {
+    if (!dataLoadedRef.current && editMode && medicineId && user) {
       const loadMedicineData = async () => {
         try {
-          console.log("Loading medicine data for edit (no step1 data):", medicineId);
+          console.log("Loading medicine data for edit:", medicineId);
           const medicine = await medicineService.getMedicineById(
             user.userId,
             medicineId
@@ -125,35 +126,57 @@ export default function AddMedicineStep2NewScreen() {
           if (medicine) {
             console.log("Loaded medicine data:", medicine);
 
-            // Update all medicineData with loaded data
-            setMedicineData({
-              medicineName: medicine.medicineName || "",
-              dosage: medicine.dosage || "",
-              medicineType: medicine.medicineType || "tablet",
-              takeWithMeal: medicine.takeWithMeal || "before",
-              description: medicine.description || "",
-              drugAppearance: medicine.drugAppearance || null,
+            if (!step1Data) {
+              // Load all medicine data
+              setMedicineData({
+                medicineName: medicine.medicineName || "",
+                dosage: medicine.dosage || "",
+                medicineType: medicine.medicineType || "tablet",
+                takeWithMeal: medicine.takeWithMeal || "before",
+                description: medicine.description || "",
+                drugAppearance: medicine.drugAppearance || null,
 
-              // Update frequency data
-              frequency: {
-                type: medicine.frequency?.type || "daily",
-                times: medicine.frequency?.times || ["08:00"],
-                selectedDays: medicine.frequency?.specificDays || [],
-              },
+                // Update frequency data
+                frequency: {
+                  type: medicine.frequency?.type || "daily",
+                  times: medicine.frequency?.times || ["08:00"],
+                  selectedDays: medicine.frequency?.specificDays || [],
+                },
 
-              // Update duration data
-              duration: {
-                startDate: medicine.duration?.startDate || new Date(),
-                endDate: medicine.duration?.endDate || undefined,
-                totalDays: medicine.duration?.totalDays || null,
-              },
-            });
+                // Update duration data
+                duration: {
+                  startDate: medicine.duration?.startDate || new Date(),
+                  endDate: medicine.duration?.endDate || undefined,
+                  totalDays: medicine.duration?.totalDays || null,
+                },
+              });
+            } else {
+              // Only update frequency and duration data, keep step1 data intact
+              setMedicineData((prev) => ({
+                ...prev, // Keep step1 data
+                // Update frequency data only if not changed by user
+                frequency: {
+                  type: medicine.frequency?.type || "daily",
+                  times: medicine.frequency?.times || ["08:00"],
+                  selectedDays: medicine.frequency?.specificDays || [],
+                },
+
+                // Update duration data
+                duration: {
+                  startDate: medicine.duration?.startDate || new Date(),
+                  endDate: medicine.duration?.endDate || undefined,
+                  totalDays: medicine.duration?.totalDays || null,
+                },
+              }));
+            }
 
             // Set frequency tab based on loaded data
             setActiveFrequencyTab(medicine.frequency?.type || "daily");
 
             // Set showEndDate based on whether end date exists
             setShowEndDate(!!medicine.duration?.endDate);
+
+            dataLoadedRef.current = true;
           }
         } catch (error) {
           console.error("Error loading medicine data:", error);
@@ -161,52 +184,8 @@ export default function AddMedicineStep2NewScreen() {
       };
 
       loadMedicineData();
-    } else if (editMode && medicineId && user && step1Data) {
-      // If we have step1Data, only load frequency and duration data from database
-      // Don't overwrite step1 changes!
-      const loadFrequencyAndDuration = async () => {
-        try {
-          console.log("Loading frequency and duration for edit (with step1 data):", medicineId);
-          const medicine = await medicineService.getMedicineById(
-            user.userId,
-            medicineId
-          );
-
-          if (medicine) {
-            console.log("Loaded frequency/duration data, keeping step1 changes");
-
-            // Only update frequency and duration data, keep step1 data intact
-            setMedicineData((prev) => ({
-              ...prev, // Keep step1 data
-              // Update frequency data only if not changed by user
-              frequency: {
-                type: medicine.frequency?.type || "daily",
-                times: medicine.frequency?.times || ["08:00"],
-                selectedDays: medicine.frequency?.specificDays || [],
-              },
-
-              // Update duration data
-              duration: {
-                startDate: medicine.duration?.startDate || new Date(),
-                endDate: medicine.duration?.endDate || undefined,
-                totalDays: medicine.duration?.totalDays || null,
-              },
-            }));
-
-            // Set frequency tab based on loaded data
-            setActiveFrequencyTab(medicine.frequency?.type || "daily");
-
-            // Set showEndDate based on whether end date exists
-            setShowEndDate(!!medicine.duration?.endDate);
-          }
-        } catch (error) {
-          console.error("Error loading frequency/duration data:", error);
-        }
-      };
-
-      loadFrequencyAndDuration();
     }
-  }, [editMode, medicineId, user, step1Data]);
+  }, [editMode, medicineId, user]);
 
   const handleSaveMedicine = async () => {
     setLoading(true);
@@ -372,7 +351,7 @@ export default function AddMedicineStep2NewScreen() {
     }));
   };
 
-  const renderFrequencyTab = (tab: FrequencyTab, index: number) => {
+  const renderFrequencyTab = (tab: FrequencyTab) => {
     const isActive = activeFrequencyTab === tab.id;
 
     return (
@@ -692,8 +671,8 @@ export default function AddMedicineStep2NewScreen() {
             </Text>
 
             <View style={styles.frequencyTabContainer}>
-              {frequencyTabs.map((tab, index) =>
-                renderFrequencyTab(tab, index)
+              {frequencyTabs.map((tab) =>
+                renderFrequencyTab(tab)
               )}
             </View>
 
