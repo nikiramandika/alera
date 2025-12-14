@@ -359,15 +359,15 @@ export default function AnalyticsScreen() {
     console.log('📈 [DEBUG] Habit Data:', { labels, data, selectedPeriod });
 
     // If all data is 0, add some sample data for demonstration
-    if (data.every(value => value === 0) && habits.length > 0) {
-      console.log('📊 [INFO] No real habit data found, adding sample data for demonstration');
-      const sampleData = selectedPeriod === 'year'
-        ? [25, 30, 28, 35, 32, 38, 34, 40, 36, 32, 28, 30]
-        : selectedPeriod === 'month'
-        ? [18, 22, 25, 20]
-        : [2, 3, 4, 2, 5, 3, 4];
-      data = sampleData;
-    }
+    // if (data.every(value => value === 0) && habits.length > 0) {
+    //   console.log('📊 [INFO] No real habit data found, adding sample data for demonstration');
+    //   const sampleData = selectedPeriod === 'year'
+    //     ? [25, 30, 28, 35, 32, 38, 34, 40, 36, 32, 28, 30]
+    //     : selectedPeriod === 'month'
+    //     ? [18, 22, 25, 20]
+    //     : [2, 3, 4, 2, 5, 3, 4];
+    //   data = sampleData;
+    // }
 
     return {
       labels,
@@ -770,7 +770,7 @@ export default function AnalyticsScreen() {
         </Text>
         <View style={styles.statisticsGrid}>
           <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.secondary }]}>
+            <Text style={[styles.statisticValue, { color: colors.primary }]}>
               {getHabitCompletionRate()}%
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
@@ -778,7 +778,7 @@ export default function AnalyticsScreen() {
             </Text>
           </View>
           <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.secondary }]}>
+            <Text style={[styles.statisticValue, { color: colors.primary }]}>
               {habits.length > 0 ? Math.max(...habits.map(h => h.streak || 0)) : 0}
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
@@ -786,7 +786,7 @@ export default function AnalyticsScreen() {
             </Text>
           </View>
           <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.secondary }]}>
+            <Text style={[styles.statisticValue, { color: colors.primary }]}>
               {habits.length > 0 ? Math.max(...habits.map(h => h.bestStreak || 0)) : 0}
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
@@ -794,7 +794,7 @@ export default function AnalyticsScreen() {
             </Text>
           </View>
           <View style={styles.statisticItem}>
-            <Text style={[styles.statisticValue, { color: colors.secondary }]}>
+            <Text style={[styles.statisticValue, { color: colors.primary }]}>
               {habitHistory.filter(h => h.completed).length}
             </Text>
             <Text style={[styles.statisticLabel, { color: colors.textSecondary }]}>
