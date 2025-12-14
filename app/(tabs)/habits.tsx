@@ -1041,6 +1041,8 @@ const styles = StyleSheet.create({
   },
   habitInfo: {
     flex: 1,
+    justifyContent: "center",
+    gap: 4,
   },
   headerRow: {
     flexDirection: "row",
@@ -1203,7 +1205,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginBottom: 16,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1211,13 +1212,14 @@ const styles = StyleSheet.create({
     fontSize: 36,
   },
   detailName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "700",
-    marginBottom: 4,
-    flex: 1,
+    letterSpacing: -0.5,
   },
   detailType: {
     fontSize: 16,
+    fontWeight: "400",
+    textTransform: "capitalize",
   },
   detailSection: {
     padding: 20,
@@ -1274,6 +1276,7 @@ const styles = StyleSheet.create({
   habitHeader: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 16,
     marginBottom: 20,
   },
   quickStats: {

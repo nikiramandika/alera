@@ -487,7 +487,9 @@ export default function MedicationScreen() {
                         backgroundColor: selectedMedication?.color || "#F47B9F",
                       },
                     ]}
-                  />
+                  >
+                    <Text style={styles.medicineIconLarge}>💊</Text>
+                  </View>
 
                   <View style={styles.medicineInfo}>
                     <Text style={[styles.detailName, { color: colors.text }]}>
@@ -504,7 +506,6 @@ export default function MedicationScreen() {
                         const medicineType =
                           selectedMedication?.medicineType?.trim() || "";
 
-                        // Check if dosage already contains the medicine type (case insensitive)
                         if (
                           dosage &&
                           medicineType &&
@@ -1092,7 +1093,7 @@ const styles = StyleSheet.create({
   cardContent: {
     flexDirection: "row",
     padding: 16,
-    paddingRight: 16, 
+    paddingRight: 16,
   },
   colorIndicator: {
     width: 4,
@@ -1107,25 +1108,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 4,
-    gap: 8, 
+    gap: 8,
   },
   medicationName: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 4,
-    flexWrap: 'wrap', 
+    flexWrap: "wrap",
   },
   nameContainer: {
     flex: 1,
-    flexDirection: 'column',
-    marginRight: 8, 
+    flexDirection: "column",
+    marginRight: 8,
   },
   expiredBadge: {
     backgroundColor: "#FF3B30",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginTop: 4,
   },
   expiredBadgeText: {
@@ -1142,7 +1143,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0, 
+    flexShrink: 0,
   },
   dosage: {
     fontSize: 14,
@@ -1150,19 +1151,19 @@ const styles = StyleSheet.create({
   },
   timeRow: {
     flexDirection: "row",
-    alignItems: "flex-start", 
+    alignItems: "flex-start",
     marginBottom: 12,
     gap: 8,
   },
   time: {
     fontSize: 12,
-    flex: 1, 
+    flex: 1,
     flexShrink: 1,
   },
   nextDose: {
     fontSize: 12,
     fontWeight: "600",
-    flexShrink: 0, 
+    flexShrink: 0,
     paddingLeft: 4,
   },
   emptyStateContainer: {
@@ -1240,7 +1241,8 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginBottom: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   detailName: {
     fontSize: 24,
@@ -1305,26 +1307,30 @@ const styles = StyleSheet.create({
   medicineHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    gap: 16,
   },
   medicineInfo: {
-    flex: 1,
-    marginLeft: 16,
+  flex: 1,
+  justifyContent: 'center',
+  gap: 4,
+},
+  medicineIconLarge: {
+    fontSize: 36,
   },
   quickStats: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 16,
-    gap: 12,
+    justifyContent: "flex-start",
+    marginTop: 12,
+    paddingLeft: 0,
+    marginLeft: 0,
   },
   statItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 12,
-    gap: 8,
-    flex: 1,
+    gap: 6,
   },
   statText: {
     fontSize: 14,
