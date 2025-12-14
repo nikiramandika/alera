@@ -607,7 +607,7 @@ export default function AnalyticsScreen() {
                   </Text>
                 </View>
                 <Text style={[styles.performerValue, { color: colors.success }]}>
-                  {topHabit.streak > 0 ? `${Math.round((topHabit.streak / Math.max(topHabit.bestStreak, 1)) * 100)}%` : '0%'}
+                  {topHabit.streak > 0 ? `${Math.min(Math.round((topHabit.streak / Math.max(topHabit.bestStreak || topHabit.streak, 1)) * 100), 100)}%` : '0%'}
                 </Text>
               </View>
             );

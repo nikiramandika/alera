@@ -116,13 +116,32 @@ export default function EditProfileScreen() {
       return;
     }
 
+    // Additional validation to ensure the date is valid
+    if (isNaN(editForm.birthDate.getTime())) {
+      Alert.alert('Error', 'Invalid birth date. Please select a valid date.');
+      return;
+    }
+
+    // Create a new date object to ensure it's valid and serialize properly
+    const validBirthDate = new Date(
+      editForm.birthDate.getFullYear(),
+      editForm.birthDate.getMonth(),
+      editForm.birthDate.getDate()
+    );
+
+    // Double-check the created date is valid
+    if (isNaN(validBirthDate.getTime())) {
+      Alert.alert('Error', 'Invalid birth date. Please select a valid date.');
+      return;
+    }
+
     const profileData: any = {
       displayName: editForm.displayName.trim(),
       profile: {
         gender: editForm.gender,
         weight: editForm.weight ? Number(editForm.weight) : undefined,
         age: calculatedAge,
-        birthDate: editForm.birthDate,
+        birthDate: validBirthDate,
       }
     };
 
