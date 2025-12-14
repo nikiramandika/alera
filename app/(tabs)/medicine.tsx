@@ -36,7 +36,7 @@ export default function MedicationScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
-  const { medicines, refreshMedicines, markMedicineTaken, deleteMedicine } =
+  const { medicines, refreshMedicines, deleteMedicine } =
     useMedicine();
 
   const [selectedMedication, setSelectedMedication] = useState<any>(null);
@@ -107,41 +107,45 @@ export default function MedicationScreen() {
     transform: [{ translateY: cardTranslateY.value }],
   }));
 
-  const toggleMedicationStatus = async (medicineId: string, time: string) => {
-    const scheduledTime = new Date();
-    const [hours, minutes] = time.split(":").map(Number);
-    scheduledTime.setHours(hours, minutes, 0, 0);
-
-    // If time is in the past, schedule for tomorrow
-    if (scheduledTime < currentTime) {
-      scheduledTime.setDate(scheduledTime.getDate() + 1);
-    }
-
-    const result = await markMedicineTaken(medicineId, scheduledTime);
-    if (!result.success) {
-      Alert.alert("Error", result.error || "Failed to mark medicine as taken");
-    } else {
-      await refreshMedicines();
-    }
-  };
-
-  const getNextDoseTime = (time: string) => {
+  
+  const parseTime = (time: string) => {
     const [hours, minutes, period] = time.split(/[:\s]/);
     let hour24 = parseInt(hours);
     if (period === "PM" && hour24 !== 12) hour24 += 12;
     if (period === "AM" && hour24 === 12) hour24 = 0;
+    return { hours: hour24, minutes: parseInt(minutes) };
+  };
+
+  const getNextDoseTime = (times: string[]) => {
+    if (!times || times.length === 0) return "No schedule";
 
     const now = currentTime;
-    const medTime = new Date();
-    medTime.setHours(hour24, parseInt(minutes), 0, 0);
+    let closestTime = null;
+    let minDiffMs = Infinity;
 
-    if (medTime <= now) {
-      medTime.setDate(medTime.getDate() + 1);
+    // Find the closest next dose time
+    for (const time of times) {
+      const { hours, minutes } = parseTime(time);
+      const medTime = new Date();
+      medTime.setHours(hours, minutes, 0, 0);
+
+      // If time is in the past, schedule for tomorrow
+      if (medTime <= now) {
+        medTime.setDate(medTime.getDate() + 1);
+      }
+
+      const diffMs = medTime.getTime() - now.getTime();
+
+      if (diffMs < minDiffMs) {
+        minDiffMs = diffMs;
+        closestTime = medTime;
+      }
     }
 
-    const diffMs = medTime.getTime() - now.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (!closestTime) return "No schedule";
+
+    const diffHours = Math.floor(minDiffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((minDiffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     if (diffHours > 24) return "Tomorrow";
     if (diffHours > 0) return `In ${diffHours}h ${diffMins}m`;
@@ -361,29 +365,6 @@ export default function MedicationScreen() {
                     </View>
                   )}
                 </View>
-                <TouchableOpacity
-                  style={[
-                    styles.checkButton,
-                    {
-                      backgroundColor: colors.backgroundSecondary,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  onPress={() => {
-                    if (item.frequency.times.length > 0) {
-                      toggleMedicationStatus(
-                        item.reminderId,
-                        item.frequency.times[0]
-                      );
-                    }
-                  }}
-                >
-                  <Ionicons
-                    name="checkmark-outline"
-                    size={20}
-                    color={colors.icon}
-                  />
-                </TouchableOpacity>
               </View>
 
               <Text style={[styles.dosage, { color: colors.textSecondary }]}>
@@ -421,11 +402,11 @@ export default function MedicationScreen() {
                 >
                   {item.frequency.times.join(", ")}
                 </Text>
-                <Text style={[styles.nextDose, { color: colors.primary }]}>
-                  {item.frequency.times.length > 0
-                    ? getNextDoseTime(item.frequency.times[0])
-                    : "As needed"}
-                </Text>
+                {!isMedicationExpired(item) && (
+                  <Text style={[styles.nextDose, { color: colors.primary }]}>
+                    {getNextDoseTime(item.frequency.times)}
+                  </Text>
+                )}
               </View>
             </View>
           </TouchableOpacity>
@@ -1136,16 +1117,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  checkButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  dosage: {
+    dosage: {
     fontSize: 14,
     marginBottom: 8,
   },
