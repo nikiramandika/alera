@@ -29,26 +29,26 @@ import { Swipeable } from "react-native-gesture-handler";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 import { useMedicine } from "@/contexts/MedicineContext";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
 export default function MedicationScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
-  const {
-    medicines,
-    refreshMedicines,
-    markMedicineTaken,
-    deleteMedicine,
-  } = useMedicine();
+  const { medicines, refreshMedicines, markMedicineTaken, deleteMedicine } =
+    useMedicine();
 
   const [selectedMedication, setSelectedMedication] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [deletingMedicineId, setDeletingMedicineId] = useState<string | null>(null);
-const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<string>>(new Set());
+  const [deletingMedicineId, setDeletingMedicineId] = useState<string | null>(
+    null
+  );
+  const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<
+    Set<string>
+  >(new Set());
 
   // Animation values
   const headerScale = useSharedValue(0.9);
@@ -95,7 +95,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
 
   // Filter medicines to exclude optimistically deleted ones
   const filteredMedicines = medicines.filter(
-    medicine => !optimisticallyDeletedIds.has(medicine.reminderId)
+    (medicine) => !optimisticallyDeletedIds.has(medicine.reminderId)
   );
 
   // Animated styles
@@ -150,35 +150,37 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
   };
 
   const handleDeleteMedicine = (medicine: any) => {
-    console.log('Deleting medicine:', medicine); // Debug log
+    console.log("Deleting medicine:", medicine); // Debug log
     Alert.alert(
-      t('medicine.deleteMedicine'),
-      t('medicine.deleteMedicineConfirm'),
+      t("medicine.deleteMedicine"),
+      t("medicine.deleteMedicineConfirm"),
       [
         {
-          text: t('common.cancel'),
+          text: t("common.cancel"),
           style: "cancel",
         },
         {
-          text: t('common.delete'),
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             try {
               // Use reminderId instead of id
               const medicineId = medicine.reminderId || medicine.id;
-              console.log('Using medicine ID:', medicineId); // Debug log
+              console.log("Using medicine ID:", medicineId); // Debug log
 
               // Optimistic delete: immediately remove from UI
-              setOptimisticallyDeletedIds(prev => new Set(prev).add(medicineId));
+              setOptimisticallyDeletedIds((prev) =>
+                new Set(prev).add(medicineId)
+              );
               setDeletingMedicineId(medicineId);
 
               const result = await deleteMedicine(medicineId);
               if (result.success) {
                 // Success - medicine is already removed from UI
-                console.log('Delete successful');
+                console.log("Delete successful");
               } else {
                 // Failed - restore the medicine in UI
-                setOptimisticallyDeletedIds(prev => {
+                setOptimisticallyDeletedIds((prev) => {
                   const newSet = new Set(prev);
                   newSet.delete(medicineId);
                   return newSet;
@@ -192,7 +194,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
             } catch {
               // Error - restore the medicine in UI
               const medicineId = medicine.reminderId || medicine.id;
-              setOptimisticallyDeletedIds(prev => {
+              setOptimisticallyDeletedIds((prev) => {
                 const newSet = new Set(prev);
                 newSet.delete(medicineId);
                 return newSet;
@@ -214,7 +216,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
 
   // Render right action for swipeable
   const renderRightActions = (medicine: any) => {
-    console.log('Render right actions for medicine:', medicine.medicineName); // Debug log
+    console.log("Render right actions for medicine:", medicine.medicineName); // Debug log
 
     const medicineId = medicine.reminderId || medicine.id;
     const isDeleting = deletingMedicineId === medicineId;
@@ -224,11 +226,11 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
         <TouchableOpacity
           style={[
             styles.deleteButton,
-            isDeleting && styles.deleteButtonDisabled
+            isDeleting && styles.deleteButtonDisabled,
           ]}
           onPress={() => {
             if (!isDeleting) {
-              console.log('Delete button pressed for:', medicine.medicineName); // Debug log
+              console.log("Delete button pressed for:", medicine.medicineName); // Debug log
               handleDeleteMedicine(medicine);
             }
           }}
@@ -268,9 +270,9 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
     let endDate = medicine.duration.endDate;
 
     // Handle Firebase Timestamp
-    if (typeof endDate?.toDate === 'function') {
+    if (typeof endDate?.toDate === "function") {
       endDate = endDate.toDate();
-    } else if (typeof endDate === 'string' || typeof endDate === 'number') {
+    } else if (typeof endDate === "string" || typeof endDate === "number") {
       endDate = new Date(endDate);
     }
 
@@ -386,11 +388,15 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
 
               <Text style={[styles.dosage, { color: colors.textSecondary }]}>
                 {(() => {
-                  const dosage = item.dosage?.trim() || '';
-                  const medicineType = item.medicineType?.trim() || '';
+                  const dosage = item.dosage?.trim() || "";
+                  const medicineType = item.medicineType?.trim() || "";
 
                   // Check if dosage already contains the medicine type (case insensitive)
-                  if (dosage && medicineType && dosage.toLowerCase().includes(medicineType.toLowerCase())) {
+                  if (
+                    dosage &&
+                    medicineType &&
+                    dosage.toLowerCase().includes(medicineType.toLowerCase())
+                  ) {
                     return dosage;
                   } else if (dosage && medicineType) {
                     return `${dosage} • ${medicineType}`;
@@ -399,7 +405,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                   } else if (medicineType) {
                     return medicineType;
                   }
-                  return '';
+                  return "";
                 })()}
               </Text>
 
@@ -409,7 +415,10 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                   size={16}
                   color={colors.textSecondary}
                 />
-                <Text style={[styles.time, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.time, { color: colors.textSecondary }]}
+                  numberOfLines={2}
+                >
                   {item.frequency.times.join(", ")}
                 </Text>
                 <Text style={[styles.nextDose, { color: colors.primary }]}>
@@ -448,14 +457,14 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                 <Ionicons name="close-outline" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                {t('medicine.medicineDetails')}
+                {t("medicine.medicineDetails")}
               </Text>
               <TouchableOpacity
                 onPress={handleEditMedication}
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
               >
                 <Ionicons name="create" size={16} color="#FFFFFF" />
-                <Text style={styles.editButtonText}>{t('common.edit')}</Text>
+                <Text style={styles.editButtonText}>{t("common.edit")}</Text>
               </TouchableOpacity>
             </View>
 
@@ -465,7 +474,10 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
             >
               {/* Medicine Overview Card */}
               <View
-                style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary }]}
+                style={[
+                  styles.detailCard,
+                  { backgroundColor: colors.backgroundSecondary },
+                ]}
               >
                 <View style={styles.medicineHeader}>
                   <View
@@ -476,7 +488,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       },
                     ]}
                   />
-                  
+
                   <View style={styles.medicineInfo}>
                     <Text style={[styles.detailName, { color: colors.text }]}>
                       {selectedMedication?.medicineName}
@@ -488,11 +500,18 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       ]}
                     >
                       {(() => {
-                        const dosage = selectedMedication?.dosage?.trim() || '';
-                        const medicineType = selectedMedication?.medicineType?.trim() || '';
+                        const dosage = selectedMedication?.dosage?.trim() || "";
+                        const medicineType =
+                          selectedMedication?.medicineType?.trim() || "";
 
                         // Check if dosage already contains the medicine type (case insensitive)
-                        if (dosage && medicineType && dosage.toLowerCase().includes(medicineType.toLowerCase())) {
+                        if (
+                          dosage &&
+                          medicineType &&
+                          dosage
+                            .toLowerCase()
+                            .includes(medicineType.toLowerCase())
+                        ) {
                           return dosage;
                         } else if (dosage && medicineType) {
                           return `${dosage} • ${medicineType}`;
@@ -501,11 +520,10 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                         } else if (medicineType) {
                           return medicineType;
                         }
-                        return '';
+                        return "";
                       })()}
                     </Text>
                   </View>
-                  
                 </View>
 
                 {/* Quick Stats */}
@@ -524,28 +542,41 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                     <Text style={[styles.statText, { color: colors.text }]}>
                       {(() => {
                         const freq = selectedMedication?.frequency;
-                        if (freq?.type === 'daily' && freq?.times) {
+                        if (freq?.type === "daily" && freq?.times) {
                           return `${freq.times.length}x daily`;
-                        } else if (freq?.type === 'interval' && freq?.specificDays) {
-                          const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                          return freq.specificDays.map((day: number) => dayNames[day]).join(', ');
-                        } else if (freq?.type === 'as_needed') {
-                          return 'As needed';
+                        } else if (
+                          freq?.type === "interval" &&
+                          freq?.specificDays
+                        ) {
+                          const dayNames = [
+                            "Sun",
+                            "Mon",
+                            "Tue",
+                            "Wed",
+                            "Thu",
+                            "Fri",
+                            "Sat",
+                          ];
+                          return freq.specificDays
+                            .map((day: number) => dayNames[day])
+                            .join(", ");
+                        } else if (freq?.type === "as_needed") {
+                          return "As needed";
                         }
-                        return 'No schedule';
+                        return "No schedule";
                       })()}
                     </Text>
                   </View>
-                  
-                  </View>
-                  
+                </View>
               </View>
 
               {/* Schedule Section */}
               <View
-                style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}
+                style={[
+                  styles.detailSection,
+                  { backgroundColor: colors.backgroundSecondary },
+                ]}
               >
-                
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="time-outline"
@@ -560,16 +591,42 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                   <Text style={[styles.scheduleText, { color: colors.text }]}>
                     {(() => {
                       const freq = selectedMedication?.frequency;
-                      if (freq?.type === 'daily' && freq?.times) {
+                      if (freq?.type === "daily" && freq?.times) {
                         return freq.times.join(", ");
-                      } else if (freq?.type === 'weekly' && freq?.specificDays) {
-                        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                        return freq.specificDays.map((day: number) => dayNames[day]).join(", ");
-                      } else if (freq?.type === 'as_needed') {
+                      } else if (
+                        freq?.type === "weekly" &&
+                        freq?.specificDays
+                      ) {
+                        const dayNames = [
+                          "Sun",
+                          "Mon",
+                          "Tue",
+                          "Wed",
+                          "Thu",
+                          "Fri",
+                          "Sat",
+                        ];
+                        return freq.specificDays
+                          .map((day: number) => dayNames[day])
+                          .join(", ");
+                      } else if (freq?.type === "as_needed") {
                         return "As needed";
-                      } else if (freq?.type === 'interval' && freq?.specificDays) {
-                        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                        return `On ${freq.specificDays.map((day: number) => dayNames[day]).join(', ')}`;
+                      } else if (
+                        freq?.type === "interval" &&
+                        freq?.specificDays
+                      ) {
+                        const dayNames = [
+                          "Sun",
+                          "Mon",
+                          "Tue",
+                          "Wed",
+                          "Thu",
+                          "Fri",
+                          "Sat",
+                        ];
+                        return `On ${freq.specificDays
+                          .map((day: number) => dayNames[day])
+                          .join(", ")}`;
                       }
                       return "No schedule";
                     })()}
@@ -582,21 +639,34 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                   >
                     {(() => {
                       const freq = selectedMedication?.frequency;
-                      if (!freq?.type) return '';
+                      if (!freq?.type) return "";
                       switch (freq.type) {
-                        case 'daily':
-                          return 'Daily';
-                        case 'interval':
-                          if (freq.specificDays && freq.specificDays.length > 0) {
-                            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                            return freq.specificDays.map((day: number) => dayNames[day]).join(', ');
+                        case "daily":
+                          return "Daily";
+                        case "interval":
+                          if (
+                            freq.specificDays &&
+                            freq.specificDays.length > 0
+                          ) {
+                            const dayNames = [
+                              "Sun",
+                              "Mon",
+                              "Tue",
+                              "Wed",
+                              "Thu",
+                              "Fri",
+                              "Sat",
+                            ];
+                            return freq.specificDays
+                              .map((day: number) => dayNames[day])
+                              .join(", ");
                           } else {
-                            return 'No days selected';
+                            return "No days selected";
                           }
-                        case 'as_needed':
-                          return 'As Needed';
+                        case "as_needed":
+                          return "As Needed";
                         default:
-                          return freq.type.replace('_', ' ').toUpperCase();
+                          return freq.type.replace("_", " ").toUpperCase();
                       }
                     })()}
                   </Text>
@@ -652,7 +722,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      {t('medicine.description')}
+                      {t("medicine.description")}
                     </Text>
                   </View>
                   <Text
@@ -681,7 +751,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      {t('medicine.takeWithMeal')}
+                      {t("medicine.takeWithMeal")}
                     </Text>
                   </View>
                   <Text
@@ -690,7 +760,9 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       { color: colors.textSecondary },
                     ]}
                   >
-                    {selectedMedication.takeWithMeal === 'before' ? t('medicine.beforeMeals') : t('medicine.afterMeals')}
+                    {selectedMedication.takeWithMeal === "before"
+                      ? t("medicine.beforeMeals")
+                      : t("medicine.afterMeals")}
                   </Text>
                 </View>
               )}
@@ -710,14 +782,14 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      {t('medicine.photo')}
+                      {t("medicine.photo")}
                     </Text>
                   </View>
                   <Image
                     source={{ uri: selectedMedication.drugAppearance }}
                     style={[
                       styles.medicinePhoto,
-                      { backgroundColor: colors.backgroundSecondary }
+                      { backgroundColor: colors.backgroundSecondary },
                     ]}
                     resizeMode="cover"
                   />
@@ -773,9 +845,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                   )}
                 </View>
               </View> */}
-
-              
-              </ScrollView>
+            </ScrollView>
           </>
         )}
       </SafeAreaView>
@@ -813,7 +883,7 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
 
             <View style={styles.headerContent}>
               <Text style={[styles.greeting, { color: colors.primary }]}>
-                {t('medicine.myMedications')}
+                {t("medicine.myMedications")}
               </Text>
               <View
                 style={[
@@ -822,7 +892,10 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                 ]}
               >
                 <Text style={styles.totalMedicationsText}>
-                  {medicines.length} {medicines.length > 1 ? t('medicine.totalMedications') : t('medicine.totalMedication')}
+                  {medicines.length}{" "}
+                  {medicines.length > 1
+                    ? t("medicine.totalMedications")
+                    : t("medicine.totalMedication")}
                 </Text>
               </View>
             </View>
@@ -854,8 +927,8 @@ const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<str
                     { color: colors.textSecondary },
                   ]}
                 >
-                  You have {filteredMedicines.length} medications setup. Kindly setup a
-                  new one!
+                  You have {filteredMedicines.length} medications setup. Kindly
+                  setup a new one!
                 </Text>
                 <TouchableOpacity
                   style={[
@@ -913,7 +986,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
     paddingBottom: 20,
-    minHeight: 88, // Height to center greeting vertically
+    minHeight: 88,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -969,7 +1042,7 @@ const styles = StyleSheet.create({
   },
   floatingActionButton: {
     position: "absolute",
-    bottom: 100, // Increased from 24 to avoid tab overlap
+    bottom: 100,
     right: 24,
     width: 60,
     height: 60,
@@ -1003,7 +1076,6 @@ const styles = StyleSheet.create({
   medicationCard: {
     borderRadius: 12,
     marginBottom: 0,
-
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -1020,6 +1092,7 @@ const styles = StyleSheet.create({
   cardContent: {
     flexDirection: "row",
     padding: 16,
+    paddingRight: 16, 
   },
   colorIndicator: {
     width: 4,
@@ -1034,15 +1107,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 4,
+    gap: 8, 
   },
   medicationName: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 4,
+    flexWrap: 'wrap', 
   },
   nameContainer: {
     flex: 1,
     flexDirection: 'column',
+    marginRight: 8, 
   },
   expiredBadge: {
     backgroundColor: "#FF3B30",
@@ -1066,6 +1142,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0, 
   },
   dosage: {
     fontSize: 14,
@@ -1073,19 +1150,22 @@ const styles = StyleSheet.create({
   },
   timeRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start", 
     marginBottom: 12,
     gap: 8,
   },
   time: {
     fontSize: 12,
+    flex: 1, 
+    flexShrink: 1,
   },
   nextDose: {
     fontSize: 12,
     fontWeight: "600",
-    marginLeft: "auto",
+    flexShrink: 0, 
+    paddingLeft: 4,
   },
-    emptyStateContainer: {
+  emptyStateContainer: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 60,
@@ -1195,7 +1275,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
   },
-  // New modal styles
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1282,7 +1361,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-    deleteContainer: {
+  deleteContainer: {
     width: 100,
     height: "100%",
     justifyContent: "center",

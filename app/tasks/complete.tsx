@@ -672,8 +672,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   iconWrapper: {
-    marginTop: 100,
-    marginBottom: 20,
+    marginTop: 90,
+    marginBottom: 12,
   },
   iconCircle: {
     width: 120,
@@ -694,14 +694,20 @@ const styles = StyleSheet.create({
     borderRadius: 60,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: 150,
-  },
+  fontSize: 28,
+  fontWeight: '700',
+  marginTop: 120,
+  textAlign: 'center',
+  paddingHorizontal: 24,
+},
   subtitle: {
-    fontSize: 16,
-    marginTop: 6,
-  },
+  fontSize: 16,
+  marginTop: 6,
+  textAlign: 'center',
+  paddingHorizontal: 24,   
+  lineHeight: 22,
+},
+
   sliderWrapper: {
     width: '85%',
     height: 60,

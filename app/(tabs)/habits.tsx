@@ -35,18 +35,15 @@ export default function HabitsScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
-  const {
-    habits,
-    refreshHabits,
-    markHabitCompleted,
-    deleteHabit,
-  } = useHabit();
+  const { habits, refreshHabits, markHabitCompleted, deleteHabit } = useHabit();
 
   const [selectedHabit, setSelectedHabit] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [deletingHabitId, setDeletingHabitId] = useState<string | null>(null);
-  const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<Set<string>>(new Set());
+  const [optimisticallyDeletedIds, setOptimisticallyDeletedIds] = useState<
+    Set<string>
+  >(new Set());
 
   // Animation values
   const headerScale = useSharedValue(0.9);
@@ -54,21 +51,27 @@ export default function HabitsScreen() {
 
   useEffect(() => {
     // Animate header in
-    headerScale.value = withDelay(200, withSpring(1, {
-      damping: 15,
-      stiffness: 100,
-    }));
+    headerScale.value = withDelay(
+      200,
+      withSpring(1, {
+        damping: 15,
+        stiffness: 100,
+      })
+    );
 
     // Animate cards in
-    cardTranslateY.value = withDelay(400, withSpring(0, {
-      damping: 15,
-      stiffness: 100,
-    }));
+    cardTranslateY.value = withDelay(
+      400,
+      withSpring(0, {
+        damping: 15,
+        stiffness: 100,
+      })
+    );
   }, [headerScale, cardTranslateY]);
 
   // Filter habits to exclude optimistically deleted ones
   const filteredHabits = habits.filter(
-    habit => !optimisticallyDeletedIds.has(habit.habitId)
+    (habit) => !optimisticallyDeletedIds.has(habit.habitId)
   );
 
   // Animated styles
@@ -112,14 +115,13 @@ export default function HabitsScreen() {
       router.push({
         pathname: "/habits/create-step1",
         params: {
-          editMode: 'true',
+          editMode: "true",
           habitId: selectedHabit.habitId,
-          habitData: JSON.stringify(selectedHabit)
-        }
+          habitData: JSON.stringify(selectedHabit),
+        },
       } as any);
     }
   };
-
 
   const getHabitTypeLabel = (habitType: string) => {
     switch (habitType) {
@@ -145,9 +147,9 @@ export default function HabitsScreen() {
     if (!endDate) return false;
 
     // Handle Firebase Timestamp
-    if (typeof endDate?.toDate === 'function') {
+    if (typeof endDate?.toDate === "function") {
       endDate = endDate.toDate();
-    } else if (typeof endDate === 'string' || typeof endDate === 'number') {
+    } else if (typeof endDate === "string" || typeof endDate === "number") {
       endDate = new Date(endDate);
     }
 
@@ -159,60 +161,55 @@ export default function HabitsScreen() {
 
   const handleDeleteHabit = (habit: any) => {
     console.log("Deleting habit:", habit);
-    Alert.alert(
-      t('habits.deleteHabit'),
-      t('habits.deleteHabitConfirm'),
-      [
-        {
-          text: t('common.cancel'),
-          style: "cancel",
-        },
-        {
-          text: t('common.delete'),
-          style: "destructive",
-          onPress: async () => {
-            try {
-              // Optimistic delete: immediately remove from UI
-              setOptimisticallyDeletedIds(prev => new Set(prev).add(habit.habitId));
-              setDeletingHabitId(habit.habitId);
+    Alert.alert(t("habits.deleteHabit"), t("habits.deleteHabitConfirm"), [
+      {
+        text: t("common.cancel"),
+        style: "cancel",
+      },
+      {
+        text: t("common.delete"),
+        style: "destructive",
+        onPress: async () => {
+          try {
+            // Optimistic delete: immediately remove from UI
+            setOptimisticallyDeletedIds((prev) =>
+              new Set(prev).add(habit.habitId)
+            );
+            setDeletingHabitId(habit.habitId);
 
-              const result = await deleteHabit(habit.habitId);
-              if (result.success) {
-                // Success - habit is already removed from UI
-                console.log("Delete successful");
-              } else {
-                // Failed - restore the habit in UI
-                setOptimisticallyDeletedIds(prev => {
-                  const newSet = new Set(prev);
-                  newSet.delete(habit.habitId);
-                  return newSet;
-                });
-
-                Alert.alert(
-                  "Error",
-                  result.error || "Failed to delete habit"
-                );
-              }
-            } catch {
-              // Error - restore the habit in UI
-              setOptimisticallyDeletedIds(prev => {
+            const result = await deleteHabit(habit.habitId);
+            if (result.success) {
+              // Success - habit is already removed from UI
+              console.log("Delete successful");
+            } else {
+              // Failed - restore the habit in UI
+              setOptimisticallyDeletedIds((prev) => {
                 const newSet = new Set(prev);
                 newSet.delete(habit.habitId);
                 return newSet;
               });
 
-              Alert.alert(
-                "Error",
-                "An unexpected error occurred while deleting the habit"
-              );
-            } finally {
-              // Clear loading state
-              setDeletingHabitId(null);
+              Alert.alert("Error", result.error || "Failed to delete habit");
             }
-          },
+          } catch {
+            // Error - restore the habit in UI
+            setOptimisticallyDeletedIds((prev) => {
+              const newSet = new Set(prev);
+              newSet.delete(habit.habitId);
+              return newSet;
+            });
+
+            Alert.alert(
+              "Error",
+              "An unexpected error occurred while deleting the habit"
+            );
+          } finally {
+            // Clear loading state
+            setDeletingHabitId(null);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   // Render right action for swipeable
@@ -226,7 +223,7 @@ export default function HabitsScreen() {
         <TouchableOpacity
           style={[
             styles.deleteButton,
-            isDeleting && styles.deleteButtonDisabled
+            isDeleting && styles.deleteButtonDisabled,
           ]}
           onPress={() => {
             if (!isDeleting) {
@@ -247,7 +244,7 @@ export default function HabitsScreen() {
               <View style={styles.deleteIconContainer}>
                 <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
               </View>
-              <Text style={styles.deleteButtonText}>{t('common.delete')}</Text>
+              <Text style={styles.deleteButtonText}>{t("common.delete")}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -255,13 +252,7 @@ export default function HabitsScreen() {
     );
   };
 
-  const renderHabitCard = ({
-    item,
-    index,
-  }: {
-    item: any;
-    index: number;
-  }) => (
+  const renderHabitCard = ({ item, index }: { item: any; index: number }) => (
     <View style={styles.cardWrapper}>
       <Swipeable
         renderRightActions={() => renderRightActions(item)}
@@ -297,7 +288,12 @@ export default function HabitsScreen() {
               <View style={styles.headerRow}>
                 <View style={styles.habitTitleRow}>
                   {item.icon && (
-                    <View style={[styles.habitIconContainer, { backgroundColor: item.color + '20' }]}>
+                    <View
+                      style={[
+                        styles.habitIconContainer,
+                        { backgroundColor: item.color + "20" },
+                      ]}
+                    >
                       <Text style={styles.habitIcon}>{item.icon}</Text>
                     </View>
                   )}
@@ -332,7 +328,12 @@ export default function HabitsScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Text style={[styles.habitDescription, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.habitDescription,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 {item.target.value} {item.target.unit} • {item.habitType}
               </Text>
 
@@ -342,29 +343,50 @@ export default function HabitsScreen() {
                   size={16}
                   color={colors.textSecondary}
                 />
-                <Text style={[styles.time, { color: colors.textSecondary }]}>
-                  {item.frequency?.times ? item.frequency.times.join(", ") : "No reminders"}
+                <Text
+                  style={[styles.time, { color: colors.textSecondary }]}
+                  numberOfLines={2}
+                >
+                  {item.frequency?.times
+                    ? item.frequency.times.join(", ")
+                    : "No reminders"}
                 </Text>
                 <Text style={[styles.nextReminder, { color: colors.primary }]}>
-                  {item.frequency?.type === 'interval' ? 'Interval' : 'Daily'}
+                  {item.frequency?.type === "interval" ? "Interval" : "Daily"}
                 </Text>
               </View>
 
-              {item.frequency?.type === 'interval' && item.frequency?.specificDays && (
-                <View style={styles.intervalDaysRow}>
-                  <Ionicons
-                    name="calendar-outline"
-                    size={16}
-                    color={colors.textSecondary}
-                  />
-                  <Text style={[styles.intervalDays, { color: colors.textSecondary }]}>
-                    {item.frequency.specificDays?.map((day: number) => {
-                      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                      return days[day] || day;
-                    }).join(", ")}
-                  </Text>
-                </View>
-              )}
+              {item.frequency?.type === "interval" &&
+                item.frequency?.specificDays && (
+                  <View style={styles.intervalDaysRow}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={16}
+                      color={colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.intervalDays,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {item.frequency.specificDays
+                        ?.map((day: number) => {
+                          const days = [
+                            "Sun",
+                            "Mon",
+                            "Tue",
+                            "Wed",
+                            "Thu",
+                            "Fri",
+                            "Sat",
+                          ];
+                          return days[day] || day;
+                        })
+                        .join(", ")}
+                    </Text>
+                  </View>
+                )}
 
               <View style={styles.streakRow}>
                 <View style={styles.streakContainer}>
@@ -374,7 +396,7 @@ export default function HabitsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.streakText, { color: colors.text }]}>
-                    {item.streak} {t('habits.dayStreak')}
+                    {item.streak} {t("habits.dayStreak")}
                   </Text>
                 </View>
               </View>
@@ -419,9 +441,17 @@ export default function HabitsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.modalContent}
+              showsVerticalScrollIndicator={false}
+            >
               {/* Habit Overview Card */}
-              <View style={[styles.detailCard, { backgroundColor: colors.backgroundSecondary }]}>
+              <View
+                style={[
+                  styles.detailCard,
+                  { backgroundColor: colors.backgroundSecondary },
+                ]}
+              >
                 <View style={styles.habitHeader}>
                   <View
                     style={[
@@ -430,7 +460,9 @@ export default function HabitsScreen() {
                     ]}
                   >
                     {selectedHabit?.icon && (
-                      <Text style={styles.detailIconInCircle}>{selectedHabit.icon}</Text>
+                      <Text style={styles.detailIconInCircle}>
+                        {selectedHabit.icon}
+                      </Text>
                     )}
                   </View>
                   <View style={styles.habitInfo}>
@@ -438,9 +470,13 @@ export default function HabitsScreen() {
                       {selectedHabit?.habitName}
                     </Text>
                     <Text
-                      style={[styles.detailType, { color: colors.textSecondary }]}
+                      style={[
+                        styles.detailType,
+                        { color: colors.textSecondary },
+                      ]}
                     >
-                      {selectedHabit && getHabitTypeLabel(selectedHabit.habitType)}
+                      {selectedHabit &&
+                        getHabitTypeLabel(selectedHabit.habitType)}
                     </Text>
                   </View>
                 </View>
@@ -481,7 +517,12 @@ export default function HabitsScreen() {
               </View>
 
               {/* Target Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+              <View
+                style={[
+                  styles.detailSection,
+                  { backgroundColor: colors.backgroundSecondary },
+                ]}
+              >
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="at-outline"
@@ -492,14 +533,24 @@ export default function HabitsScreen() {
                     Target
                   </Text>
                 </View>
-                <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.sectionContent,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   {selectedHabit?.target.value} {selectedHabit?.target.unit} per{" "}
                   {selectedHabit?.target.frequency}
                 </Text>
               </View>
 
               {/* Schedule Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+              <View
+                style={[
+                  styles.detailSection,
+                  { backgroundColor: colors.backgroundSecondary },
+                ]}
+              >
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="time-outline"
@@ -512,24 +563,55 @@ export default function HabitsScreen() {
                 </View>
                 <View style={styles.scheduleContent}>
                   <Text style={[styles.scheduleType, { color: colors.text }]}>
-                    {selectedHabit?.frequency?.type === 'interval' ? 'Interval' : 'Daily'}
+                    {selectedHabit?.frequency?.type === "interval"
+                      ? "Interval"
+                      : "Daily"}
                   </Text>
-                  <Text style={[styles.scheduleTimes, { color: colors.textSecondary }]}>
-                    {selectedHabit?.frequency?.times ? selectedHabit.frequency.times.join(", ") : "No reminders"}
+                  <Text
+                    style={[
+                      styles.scheduleTimes,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {selectedHabit?.frequency?.times
+                      ? selectedHabit.frequency.times.join(", ")
+                      : "No reminders"}
                   </Text>
-                  {selectedHabit?.frequency?.type === 'interval' && selectedHabit?.frequency?.specificDays && (
-                    <Text style={[styles.scheduleDays, { color: colors.textSecondary }]}>
-                      Days: {selectedHabit.frequency?.specificDays?.map((day: number) => {
-                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                        return days[day] || day;
-                      }).join(", ")}
-                    </Text>
-                  )}
+                  {selectedHabit?.frequency?.type === "interval" &&
+                    selectedHabit?.frequency?.specificDays && (
+                      <Text
+                        style={[
+                          styles.scheduleDays,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Days:{" "}
+                        {selectedHabit.frequency?.specificDays
+                          ?.map((day: number) => {
+                            const days = [
+                              "Sun",
+                              "Mon",
+                              "Tue",
+                              "Wed",
+                              "Thu",
+                              "Fri",
+                              "Sat",
+                            ];
+                            return days[day] || day;
+                          })
+                          .join(", ")}
+                      </Text>
+                    )}
                 </View>
               </View>
 
               {/* Duration Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+              <View
+                style={[
+                  styles.detailSection,
+                  { backgroundColor: colors.backgroundSecondary },
+                ]}
+              >
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="calendar-outline"
@@ -542,20 +624,28 @@ export default function HabitsScreen() {
                 </View>
                 <View style={styles.durationContent}>
                   <View style={styles.durationItem}>
-                    <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        styles.durationLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       Start Date
                     </Text>
-                    <Text style={[styles.durationValue, { color: colors.text }]}>
+                    <Text
+                      style={[styles.durationValue, { color: colors.text }]}
+                    >
                       {(() => {
                         // Try to get the start date from multiple sources
-                        let startDate = selectedHabit?.startDate ||
-                                       selectedHabit?.duration?.startDate ||
-                                       selectedHabit?.createdAt;
+                        let startDate =
+                          selectedHabit?.startDate ||
+                          selectedHabit?.duration?.startDate ||
+                          selectedHabit?.createdAt;
 
-                        if (!startDate) return 'Not set';
+                        if (!startDate) return "Not set";
 
                         // Handle Firebase Timestamp
-                        if (typeof startDate?.toDate === 'function') {
+                        if (typeof startDate?.toDate === "function") {
                           startDate = startDate.toDate();
                         }
 
@@ -563,31 +653,41 @@ export default function HabitsScreen() {
 
                         // Check if date is valid
                         if (isNaN(date.getTime())) {
-                          console.log('Invalid start date:', startDate);
-                          return 'Invalid Date';
+                          console.log("Invalid start date:", startDate);
+                          return "Invalid Date";
                         }
 
-                        return date.toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric'
+                        return date.toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
                         });
                       })()}
                     </Text>
                   </View>
-                  {selectedHabit?.endDate || selectedHabit?.duration?.endDate ? (
+                  {selectedHabit?.endDate ||
+                  selectedHabit?.duration?.endDate ? (
                     <View style={styles.durationItem}>
-                      <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.durationLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         End Date
                       </Text>
-                      <Text style={[styles.durationValue, { color: colors.text }]}>
+                      <Text
+                        style={[styles.durationValue, { color: colors.text }]}
+                      >
                         {(() => {
-                          const endDate = selectedHabit?.endDate || selectedHabit?.duration?.endDate;
-                          if (!endDate) return 'No end date';
+                          const endDate =
+                            selectedHabit?.endDate ||
+                            selectedHabit?.duration?.endDate;
+                          if (!endDate) return "No end date";
 
                           // Handle Firebase Timestamp
                           let date = endDate;
-                          if (typeof endDate?.toDate === 'function') {
+                          if (typeof endDate?.toDate === "function") {
                             date = endDate.toDate();
                           }
 
@@ -595,31 +695,43 @@ export default function HabitsScreen() {
 
                           // Check if date is valid
                           if (isNaN(parsedDate.getTime())) {
-                            console.log('Invalid end date:', endDate);
-                            return 'Invalid Date';
+                            console.log("Invalid end date:", endDate);
+                            return "Invalid Date";
                           }
 
-                          return parsedDate.toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
+                          return parsedDate.toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
                           });
                         })()}
                       </Text>
                     </View>
                   ) : (
                     <View style={styles.durationItem}>
-                      <Text style={[styles.durationValue, { color: colors.primary, fontStyle: 'italic' }]}>
+                      <Text
+                        style={[
+                          styles.durationValue,
+                          { color: colors.primary, fontStyle: "italic" },
+                        ]}
+                      >
                         Ongoing • No end date set
                       </Text>
                     </View>
                   )}
                   {selectedHabit?.duration?.totalDays && (
                     <View style={styles.durationItem}>
-                      <Text style={[styles.durationLabel, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.durationLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         Duration
                       </Text>
-                      <Text style={[styles.durationValue, { color: colors.text }]}>
+                      <Text
+                        style={[styles.durationValue, { color: colors.text }]}
+                      >
                         {selectedHabit.duration.totalDays} days
                       </Text>
                     </View>
@@ -628,7 +740,12 @@ export default function HabitsScreen() {
               </View>
 
               {/* Progress Section */}
-              <View style={[styles.detailSection, { backgroundColor: colors.backgroundSecondary }]}>
+              <View
+                style={[
+                  styles.detailSection,
+                  { backgroundColor: colors.backgroundSecondary },
+                ]}
+              >
                 <View style={styles.sectionHeader}>
                   <Ionicons
                     name="stats-chart-outline"
@@ -642,21 +759,31 @@ export default function HabitsScreen() {
                 <View style={styles.progressContent}>
                   <View style={styles.progressItem}>
                     <Text
-                      style={[styles.progressLabel, { color: colors.textSecondary }]}
+                      style={[
+                        styles.progressLabel,
+                        { color: colors.textSecondary },
+                      ]}
                     >
                       Current Streak
                     </Text>
-                    <Text style={[styles.progressValue, { color: colors.text }]}>
+                    <Text
+                      style={[styles.progressValue, { color: colors.text }]}
+                    >
                       {selectedHabit?.streak} days
                     </Text>
                   </View>
                   <View style={styles.progressItem}>
                     <Text
-                      style={[styles.progressLabel, { color: colors.textSecondary }]}
+                      style={[
+                        styles.progressLabel,
+                        { color: colors.textSecondary },
+                      ]}
                     >
                       Best Streak
                     </Text>
-                    <Text style={[styles.progressValue, { color: colors.text }]}>
+                    <Text
+                      style={[styles.progressValue, { color: colors.text }]}
+                    >
                       {selectedHabit?.bestStreak} days
                     </Text>
                   </View>
@@ -700,13 +827,19 @@ export default function HabitsScreen() {
 
             <View style={styles.headerContent}>
               <Text style={[styles.greeting, { color: colors.primary }]}>
-                {t('habits.title')}
+                {t("habits.title")}
               </Text>
               <View
-                style={[styles.totalHabitsBadge, { backgroundColor: "#4ECDC4" }]}
+                style={[
+                  styles.totalHabitsBadge,
+                  { backgroundColor: "#4ECDC4" },
+                ]}
               >
                 <Text style={styles.totalHabitsText}>
-                  {habits.length} {habits.length > 1 ? t('habits.totalHabits') : t('habits.totalHabit')}
+                  {habits.length}{" "}
+                  {habits.length > 1
+                    ? t("habits.totalHabits")
+                    : t("habits.totalHabit")}
                 </Text>
               </View>
             </View>
@@ -730,7 +863,7 @@ export default function HabitsScreen() {
                   color={colors.textSecondary}
                 />
                 <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                  {t('habits.noHabits')}
+                  {t("habits.noHabits")}
                 </Text>
                 <Text
                   style={[
@@ -749,7 +882,9 @@ export default function HabitsScreen() {
                   onPress={() => router.push("/habits/create-step1")}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
-                  <Text style={styles.addHabitButtonText}>{t('habits.addHabit')}</Text>
+                  <Text style={styles.addHabitButtonText}>
+                    {t("habits.addHabit")}
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -922,8 +1057,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   habitIcon: {
@@ -937,14 +1072,14 @@ const styles = StyleSheet.create({
   },
   nameContainer: {
     flex: 1,
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   expiredBadge: {
     backgroundColor: "#FF3B30",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginTop: 4,
   },
   expiredBadgeText: {
@@ -1259,17 +1394,20 @@ const styles = StyleSheet.create({
   },
   timeRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 12,
     gap: 8,
   },
   time: {
     fontSize: 12,
+    flex: 1,
+    flexShrink: 1,
   },
   nextReminder: {
     fontSize: 12,
     fontWeight: "600",
-    marginLeft: "auto",
+    flexShrink: 0,
+    paddingLeft: 4,
   },
   intervalDaysRow: {
     flexDirection: "row",
