@@ -103,13 +103,56 @@ export const habitService = {
 
       if (habitDoc.exists()) {
         const data = habitDoc.data();
+
+        // Convert duration dates if they exist
+        let duration = data.duration;
+        if (duration) {
+          if (duration.startDate) {
+            if (typeof duration.startDate === 'object' && 'toDate' in duration.startDate && typeof duration.startDate.toDate === 'function') {
+              duration.startDate = duration.startDate.toDate();
+            } else {
+              duration.startDate = new Date(duration.startDate);
+            }
+          }
+          if (duration.endDate) {
+            if (typeof duration.endDate === 'object' && 'toDate' in duration.endDate && typeof duration.endDate.toDate === 'function') {
+              duration.endDate = duration.endDate.toDate();
+            } else {
+              duration.endDate = new Date(duration.endDate);
+            }
+          }
+        }
+
+        // Convert end date if it exists
+        let endDate = data.endDate;
+        if (endDate) {
+          if (typeof endDate === 'object' && 'toDate' in endDate && typeof endDate.toDate === 'function') {
+            endDate = endDate.toDate();
+          } else {
+            endDate = new Date(endDate);
+          }
+        }
+
+        // Convert start date if it exists
+        let startDate = data.startDate;
+        if (startDate) {
+          if (typeof startDate === 'object' && 'toDate' in startDate && typeof startDate.toDate === 'function') {
+            startDate = startDate.toDate();
+          } else {
+            startDate = new Date(startDate);
+          }
+        }
+
         return {
           ...data,
           habitId: habitDoc.id,
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
           streak: data.streak || 0,
-          completedDates: data.completedDates || []
+          completedDates: data.completedDates || [],
+          duration,
+          endDate,
+          startDate
         } as Habit;
       }
       return null;
@@ -158,8 +201,10 @@ export const habitService = {
   async getTodayHabits(userId: string): Promise<Habit[]> {
     try {
       const habits = await this.getHabits(userId);
-      const todayDate = new Date();
-      todayDate.setHours(0, 0, 0, 0);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0); // Set to start of today for comparison
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999); // Set to end of today for comparison
 
       return habits.filter(habit => {
         // Check if habit has expired first
@@ -170,10 +215,11 @@ export const habitService = {
         } else {
           endDate = new Date(habit.endDate);
         }
-        endDate.setHours(23, 59, 59, 999);
 
-        if (endDate <= todayDate) {
-          console.log(`Habit ${habit.habitName} has expired on ${endDate.toISOString()}`);
+        // Habit is active if end date is >= today start (inclusive of today)
+        console.log(`Habit ${habit.habitName}: endDate = ${endDate.toISOString()}, todayStart = ${todayStart.toISOString()}, endDate < todayStart = ${endDate < todayStart}`);
+        if (endDate < todayStart) {
+          console.log(`Habit ${habit.habitName} has expired on ${endDate.toISOString()}, today is ${todayStart.toISOString()}`);
           return false;
         }
       } else if (habit.duration?.endDate) {
@@ -183,10 +229,11 @@ export const habitService = {
         } else {
           durationEndDate = new Date(habit.duration.endDate);
         }
-        durationEndDate.setHours(23, 59, 59, 999);
 
-        if (durationEndDate <= todayDate) {
-          console.log(`Habit ${habit.habitName} has expired on ${durationEndDate.toISOString()}`);
+        // Habit is active if end date is >= today start (inclusive of today)
+        console.log(`Habit ${habit.habitName}: durationEndDate = ${durationEndDate.toISOString()}, todayStart = ${todayStart.toISOString()}, durationEndDate < todayStart = ${durationEndDate < todayStart}`);
+        if (durationEndDate < todayStart) {
+          console.log(`Habit ${habit.habitName} has expired on ${durationEndDate.toISOString()}, today is ${todayStart.toISOString()}`);
           return false;
         }
       }

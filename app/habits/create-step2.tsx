@@ -80,6 +80,7 @@ export default function CreateHabitStep2Screen() {
 
   const [loading, setLoading] = useState(false);
   const [showEndDate, setShowEndDate] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const [habitData, setHabitData] = useState({
     habitName: step1Data?.habitName || '',
@@ -113,6 +114,8 @@ export default function CreateHabitStep2Screen() {
 
   // Load existing habit data for edit mode
   useEffect(() => {
+    if (dataLoaded) return; // Don't reload data if already loaded
+
     if (editMode && habitId && user && !step1Data) {
       const loadHabitData = async () => {
         try {
@@ -143,8 +146,26 @@ export default function CreateHabitStep2Screen() {
 
               // Update duration data
               duration: {
-                startDate: habit.duration?.startDate || new Date(),
-                endDate: habit.duration?.endDate || undefined,
+                startDate: (() => {
+                  if (habit.duration?.startDate) {
+                    if (typeof habit.duration.startDate === 'object' && 'toDate' in habit.duration.startDate && typeof habit.duration.startDate.toDate === 'function') {
+                      return habit.duration.startDate.toDate();
+                    } else {
+                      return new Date(habit.duration.startDate);
+                    }
+                  }
+                  return new Date();
+                })(),
+                endDate: (() => {
+                  if (habit.duration?.endDate) {
+                    if (typeof habit.duration.endDate === 'object' && 'toDate' in habit.duration.endDate && typeof habit.duration.endDate.toDate === 'function') {
+                      return habit.duration.endDate.toDate();
+                    } else {
+                      return new Date(habit.duration.endDate);
+                    }
+                  }
+                  return undefined;
+                })(),
                 totalDays: habit.duration?.totalDays || null,
               },
             });
@@ -154,6 +175,9 @@ export default function CreateHabitStep2Screen() {
 
             // Set showEndDate based on whether end date exists
             setShowEndDate(!!habit.duration?.endDate);
+
+            // Mark data as loaded
+            setDataLoaded(true);
           }
         } catch (error) {
           console.error('Error loading habit data:', error);
@@ -184,8 +208,26 @@ export default function CreateHabitStep2Screen() {
 
               // Update duration data
               duration: {
-                startDate: habit.duration?.startDate || new Date(),
-                endDate: habit.duration?.endDate || undefined,
+                startDate: (() => {
+                  if (habit.duration?.startDate) {
+                    if (typeof habit.duration.startDate === 'object' && 'toDate' in habit.duration.startDate && typeof habit.duration.startDate.toDate === 'function') {
+                      return habit.duration.startDate.toDate();
+                    } else {
+                      return new Date(habit.duration.startDate);
+                    }
+                  }
+                  return new Date();
+                })(),
+                endDate: (() => {
+                  if (habit.duration?.endDate) {
+                    if (typeof habit.duration.endDate === 'object' && 'toDate' in habit.duration.endDate && typeof habit.duration.endDate.toDate === 'function') {
+                      return habit.duration.endDate.toDate();
+                    } else {
+                      return new Date(habit.duration.endDate);
+                    }
+                  }
+                  return undefined;
+                })(),
                 totalDays: habit.duration?.totalDays || null,
               },
             }));
@@ -195,6 +237,9 @@ export default function CreateHabitStep2Screen() {
 
             // Set showEndDate based on whether end date exists
             setShowEndDate(!!habit.duration?.endDate);
+
+            // Mark data as loaded
+            setDataLoaded(true);
           }
         } catch (error) {
           console.error('Error loading frequency/duration data:', error);
@@ -203,7 +248,7 @@ export default function CreateHabitStep2Screen() {
 
       loadFrequencyAndDuration();
     }
-  }, [editMode, habitId, user, step1Data]);
+  }, [editMode, habitId, user, step1Data, dataLoaded]);
 
   const handleSaveHabit = async () => {
     setLoading(true);
@@ -217,12 +262,6 @@ export default function CreateHabitStep2Screen() {
       if (habitData.duration.endDate) {
         duration.endDate = habitData.duration.endDate;
       }
-
-      const frequencyData = {
-        type: habitData.frequency.type,
-        times: habitData.frequency.times,
-        specificDays: habitData.frequency.type === 'interval' ? habitData.frequency.selectedDays : [],
-      };
 
       const habitPayload: any = {
         habitName: habitData.habitName,
@@ -676,9 +715,12 @@ export default function CreateHabitStep2Screen() {
                   mode="date"
                   onChange={(event, selectedDate) => {
                     if (event.type === 'set' && selectedDate) {
-                      // Set to start of day
-                      const startOfDay = new Date(selectedDate);
+                      // Create date in local timezone and set to start of day
+                      const localDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+                      const startOfDay = new Date(localDate);
                       startOfDay.setHours(0, 0, 0, 0);
+
+                      console.log('Start date selected:', selectedDate, 'Local start of day:', startOfDay);
 
                       setHabitData(prev => ({
                         ...prev,
@@ -714,25 +756,26 @@ export default function CreateHabitStep2Screen() {
                       value={(() => {
                         const endDate = habitData.duration.endDate;
                         if (endDate instanceof Date) {
-                          // Set to start of day to avoid timezone issues
-                          const startOfDay = new Date(endDate);
-                          startOfDay.setHours(0, 0, 0, 0);
-                          return startOfDay;
+                          // Return a copy for display to avoid modifying the stored value
+                          return new Date(endDate);
                         }
                         return new Date();
                       })()}
                       mode="date"
                       onChange={(event, selectedDate) => {
                         if (event.type === 'set' && selectedDate) {
-                          // Set to start of day
-                          const startOfDay = new Date(selectedDate);
-                          startOfDay.setHours(0, 0, 0, 0);
+                          // Create date in local timezone and set to end of day
+                          const localDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+                          const endOfDay = new Date(localDate);
+                          endOfDay.setHours(23, 59, 59, 999);
+
+                          console.log('End date selected:', selectedDate, 'Local end of day:', endOfDay);
 
                           setHabitData(prev => ({
                             ...prev,
                             duration: {
                               ...prev.duration,
-                              endDate: startOfDay
+                              endDate: endOfDay
                             }
                           }));
                         }

@@ -168,8 +168,8 @@ export default function ManageHabitScreen() {
           },
           reminderTimes: habit.reminderTimes || ['08:00'],
           reminderDays: habit.reminderDays || [0, 1, 2, 3, 4, 5, 6],
-          startDate: habit.startDate ? new Date(habit.startDate) : new Date(),
-          endDate: habit.endDate ? new Date(habit.endDate) : null,
+          startDate: habit.startDate || habit.duration?.startDate ? new Date(habit.startDate || habit.duration?.startDate) : new Date(),
+          endDate: habit.endDate || habit.duration?.endDate ? new Date(habit.endDate || habit.duration?.endDate) : null,
           isActive: habit.isActive ?? true,
           color: habit.color || '#4ECDC4',
           icon: habit.icon || 'checkmark-circle-outline',
@@ -308,7 +308,11 @@ export default function ManageHabitScreen() {
 
   const handleEndDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     if (event.type === 'set' && selectedDate) {
-      setHabitData(prev => ({ ...prev, endDate: selectedDate }));
+      // Set to end of day so habit is active throughout the selected day
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      setHabitData(prev => ({ ...prev, endDate: endOfDay }));
     }
     setShowEndDatePicker(false);
   };
