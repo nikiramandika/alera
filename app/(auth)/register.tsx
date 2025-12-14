@@ -91,27 +91,31 @@ export default function RegisterScreen() {
         // Navigate to onboarding
         router.replace('/(auth)/onboarding');
       } else {
-        let errorMessage = 'Registration failed. Please check your information and try again.';
+        let errorMessage = '';
 
         // Handle specific Firebase auth errors
         if (result.error) {
           if (result.error.includes('email-already-in-use') ||
               result.error.includes('email-already-exists')) {
-            errorMessage = 'This email address is already registered. Please use a different email or try signing in.';
+            errorMessage = t('auth.emailAlreadyExists');
           } else if (result.error.includes('weak-password')) {
-            errorMessage = 'Password is too weak. Please choose a stronger password (at least 6 characters).';
+            errorMessage = t('auth.weakPassword');
           } else if (result.error.includes('invalid-email')) {
-            errorMessage = 'Invalid email address format. Please check and try again.';
+            errorMessage = t('auth.invalidEmailFormat');
           } else if (result.error.includes('operation-not-allowed')) {
-            errorMessage = 'Email registration is currently disabled. Please contact support.';
+            errorMessage = t('auth.registrationDisabled');
           } else if (result.error.includes('too-many-requests')) {
-            errorMessage = 'Too many registration attempts. Please try again later.';
+            errorMessage = t('auth.tooManyRequests');
           } else if (result.error.includes('network')) {
-            errorMessage = 'Network error. Please check your internet connection and try again.';
+            errorMessage = t('auth.networkError');
+          } else {
+            errorMessage = `${t('auth.registrationError')}: ${result.error}`;
           }
+        } else {
+          errorMessage = t('auth.registrationError');
         }
 
-        Alert.alert('Registration Failed', errorMessage);
+        Alert.alert(t('auth.registerFailed'), errorMessage);
       }
     } catch (error: any) {
       console.error('Registration error:', error);

@@ -55,12 +55,21 @@
     "or": "Atau",
     "continueWithGoogle": "Lanjutkan dengan Google",
     "dontHaveAccount": "Belum punya akun?",
-    "signUp": "Daftar",
     "error": "Error",
     "loginFailed": "Gagal Masuk",
     "googleSignInFailed": "Login Google Gagal",
     "fillAllFields": "Harap isi semua kolom",
-    "unexpectedError": "Terjadi kesalahan yang tidak terduga"
+    "unexpectedError": "Terjadi kesalahan yang tidak terduga",
+    "emailAlreadyExists": "Email ini sudah terdaftar. Gunakan email lain atau coba masuk.",
+    "weakPassword": "Password terlalu lemah. Pilih password yang lebih kuat (minimal 6 karakter).",
+    "invalidEmailFormat": "Format email tidak valid. Periksa kembali dan coba lagi.",
+    "registrationDisabled": "Pendaftaran email sedang dinonaktifkan. Hubungi dukungan.",
+    "tooManyRequests": "Terlalu banyak percobaan pendaftaran. Coba lagi nanti.",
+    "networkError": "Error jaringan. Periksa koneksi internet Anda dan coba lagi.",
+    "registrationError": "Registrasi gagal. Periksa informasi Anda dan coba lagi.",
+    "googleSignUpCancelled": "Pendaftaran dibatalkan. Silakan coba lagi.",
+    "googleSignUpFailed": "Pendaftaran Google gagal. Silakan coba lagi.",
+    "popupBlocked": "Pop-up diblokir. Izinkan pop-up dan coba lagi."
   },
   "habits": {
     "title": "Kebiasaan Saya",
@@ -185,7 +194,8 @@
     "exportData": "Ekspor Data",
     "privacyPolicy": "Kebijakan Privasi",
     "termsOfService": "Syarat Layanan",
-    "signOut": "Keluar"
+    "signOut": "Keluar",
+    "selectLanguage": "Pilih Bahasa"
   },
   "categories": {
     "title": "Kategori Kebiasaan",

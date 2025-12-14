@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -36,6 +37,7 @@ export default function ProfileScreen() {
   const { t, changeLanguage, currentLanguage } = useAppTranslation();
 
   const [loading, setLoading] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   // Animation values
   const headerScale = useSharedValue(0.9);
@@ -389,7 +391,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.settingItem}
-          onPress={() => changeLanguage(currentLanguage === 'id' ? 'en' : 'id')}
+          onPress={() => setShowLanguageModal(true)}
         >
           <View style={styles.settingLeft}>
             <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
@@ -460,6 +462,85 @@ export default function ProfileScreen() {
     </Animated.View>
   );
 
+  const renderLanguageModal = () => (
+    <Modal
+      transparent={true}
+      visible={showLanguageModal}
+      animationType="fade"
+      onRequestClose={() => setShowLanguageModal(false)}
+    >
+      <View style={styles.languageModalOverlay}>
+        <View style={[styles.languageModalContent, { backgroundColor: colors.card }]}>
+          <View style={styles.languageModalHeader}>
+            <Text style={[styles.languageModalTitle, { color: colors.text }]}>
+              {t('profile.selectLanguage')}
+            </Text>
+            <TouchableOpacity
+              style={styles.languageModalCloseButton}
+              onPress={() => setShowLanguageModal(false)}
+            >
+              <Ionicons name="close" size={24} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.languageOptions}>
+            <TouchableOpacity
+              style={[
+                styles.languageOption,
+                {
+                  backgroundColor: currentLanguage === 'id' ? colors.primary + '20' : 'transparent',
+                  borderColor: colors.border
+                }
+              ]}
+              onPress={() => {
+                changeLanguage('id');
+                setShowLanguageModal(false);
+              }}
+            >
+              <View style={styles.languageLeft}>
+                <Text style={[styles.languageName, { color: colors.text }]}>
+                  Bahasa Indonesia
+                </Text>
+                <Text style={[styles.languageNative, { color: colors.textSecondary }]}>
+                  Indonesian
+                </Text>
+              </View>
+              {currentLanguage === 'id' && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.languageOption,
+                {
+                  backgroundColor: currentLanguage === 'en' ? colors.primary + '20' : 'transparent',
+                  borderColor: colors.border
+                }
+              ]}
+              onPress={() => {
+                changeLanguage('en');
+                setShowLanguageModal(false);
+              }}
+            >
+              <View style={styles.languageLeft}>
+                <Text style={[styles.languageName, { color: colors.text }]}>
+                  English
+                </Text>
+                <Text style={[styles.languageNative, { color: colors.textSecondary }]}>
+                  English
+                </Text>
+              </View>
+              {currentLanguage === 'en' && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
@@ -475,6 +556,7 @@ export default function ProfileScreen() {
 
         <View style={styles.footerSpace} />
       </ScrollView>
+      {renderLanguageModal()}
     </SafeAreaView>
   );
 }
@@ -821,5 +903,67 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+
+  // Language Modal Styles
+  languageModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  languageModalContent: {
+    width: '85%',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 10,
+      }
+    })
+  },
+  languageModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  languageModalTitle: {
+    ...Typography.h3,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  languageModalCloseButton: {
+    padding: Spacing.xs,
+  },
+  languageOptions: {
+    gap: Spacing.sm,
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  languageLeft: {
+    flex: 1,
+  },
+  languageName: {
+    ...Typography.body,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  languageNative: {
+    ...Typography.caption,
+    fontSize: 14,
   },
 });

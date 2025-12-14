@@ -55,12 +55,21 @@
     "or": "Or",
     "continueWithGoogle": "Continue with Google",
     "dontHaveAccount": "Don't have an account?",
-    "signUp": "Sign Up",
     "error": "Error",
     "loginFailed": "Login Failed",
     "googleSignInFailed": "Google Sign-In Failed",
     "fillAllFields": "Please fill in all fields",
-    "unexpectedError": "An unexpected error occurred"
+    "unexpectedError": "An unexpected error occurred",
+    "emailAlreadyExists": "This email address is already registered. Please use a different email or try signing in.",
+    "weakPassword": "Password is too weak. Please choose a stronger password (at least 6 characters).",
+    "invalidEmailFormat": "Invalid email address format. Please check and try again.",
+    "registrationDisabled": "Email registration is currently disabled. Please contact support.",
+    "tooManyRequests": "Too many registration attempts. Please try again later.",
+    "networkError": "Network error. Please check your internet connection and try again.",
+    "registrationError": "Registration failed. Please check your information and try again.",
+    "googleSignUpCancelled": "Sign-up was cancelled. Please try again.",
+    "googleSignUpFailed": "Google sign-up failed. Please try again.",
+    "popupBlocked": "Pop-up was blocked. Please allow pop-ups and try again."
   },
   "habits": {
     "title": "My Habits",
@@ -184,7 +193,8 @@
     "exportData": "Export Data",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "selectLanguage": "Select Language"
   },
   "categories": {
     "title": "Habit Categories",

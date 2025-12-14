@@ -177,6 +177,12 @@ export default function AnalyticsScreen() {
       sampleData: historyToUse.slice(0, 3)
     });
 
+    // Check if we have any data at all
+    if (historyToUse.length === 0) {
+      console.log('📊 [INFO] No medicine history data available');
+      return null;
+    }
+
     // Generate labels and data based on selected period
     switch (selectedPeriod) {
       case 'week':
@@ -232,17 +238,6 @@ export default function AnalyticsScreen() {
     }
 
     console.log('📈 [DEBUG] Medication Data:', { labels, data, selectedPeriod });
-
-    // If all data is 0, add some sample data for demonstration
-    if (data.every(value => value === 0) && medicines.length > 0) {
-      console.log('📊 [INFO] No real medicine data found, adding sample data for demonstration');
-      const sampleData = selectedPeriod === 'year'
-        ? [15, 22, 18, 25, 20, 28, 24, 30, 26, 22, 18, 20]
-        : selectedPeriod === 'month'
-        ? [8, 12, 15, 10]
-        : [3, 4, 2, 5, 3, 4, 2];
-      data = sampleData;
-    }
 
     return {
       labels,
@@ -302,6 +297,12 @@ export default function AnalyticsScreen() {
       sampleData: historyToUse.slice(0, 3)
     });
 
+    // Check if we have any data at all
+    if (historyToUse.length === 0) {
+      console.log('📊 [INFO] No habit history data available');
+      return null;
+    }
+
     // Generate labels and data based on selected period
     switch (selectedPeriod) {
       case 'week':
@@ -357,17 +358,6 @@ export default function AnalyticsScreen() {
     }
 
     console.log('📈 [DEBUG] Habit Data:', { labels, data, selectedPeriod });
-
-    // If all data is 0, add some sample data for demonstration
-    // if (data.every(value => value === 0) && habits.length > 0) {
-    //   console.log('📊 [INFO] No real habit data found, adding sample data for demonstration');
-    //   const sampleData = selectedPeriod === 'year'
-    //     ? [25, 30, 28, 35, 32, 38, 34, 40, 36, 32, 28, 30]
-    //     : selectedPeriod === 'month'
-    //     ? [18, 22, 25, 20]
-    //     : [2, 3, 4, 2, 5, 3, 4];
-    //   data = sampleData;
-    // }
 
     return {
       labels,
@@ -543,31 +533,54 @@ export default function AnalyticsScreen() {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t('analytics.weeklyProgressOverview')}
         </Text>
-        <LineChart
-          data={{
+        {(() => {
+          const medicationData = getMedicationData();
+          const habitData = getHabitData();
+
+          if (!medicationData && !habitData) {
+            return (
+              <View style={[styles.noDataContainer, { alignItems: 'center', paddingVertical: Spacing.xl }]}>
+                <Ionicons name="bar-chart-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.noDataText, { color: colors.textSecondary, marginTop: Spacing.md }]}>
+                  {t('analytics.noDataAvailable', 'No data available for the selected period')}
+                </Text>
+              </View>
+            );
+          }
+
+          const combinedData = {
             labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
             datasets: [
-              {
-                data: getMedicationData().datasets[0].data,
+              ...(medicationData ? [{
+                data: medicationData.datasets[0].data,
                 color: (opacity = 1) => `rgba(244, 123, 159, ${opacity})`,
                 strokeWidth: 3,
-              },
-              {
-                data: getHabitData().datasets[0].data,
+              }] : []),
+              ...(habitData ? [{
+                data: habitData.datasets[0].data,
                 color: (opacity = 1) => `rgba(78, 205, 196, ${opacity})`,
                 strokeWidth: 3,
-              }
-            ],
-            legend: [t('analytics.medicines'), t('analytics.habits')]
-          }}
-          width={screenWidth - Spacing.lg * 2}
-          height={240}
-          chartConfig={chartConfig}
-          bezier
-          style={styles.chart}
-          withInnerLines={false}
-          withOuterLines={true}
-        />
+              }] : [])
+            ].filter(Boolean),
+            legend: [
+              ...(medicationData ? [t('analytics.medicines')] : []),
+              ...(habitData ? [t('analytics.habits')] : [])
+            ]
+          };
+
+          return (
+            <LineChart
+              data={combinedData}
+              width={screenWidth - Spacing.lg * 2}
+              height={240}
+              chartConfig={chartConfig}
+              bezier
+              style={styles.chart}
+              withInnerLines={false}
+              withOuterLines={true}
+            />
+          );
+        })()}
       </View>
 
       {/* Best Performers */}
@@ -644,16 +657,31 @@ export default function AnalyticsScreen() {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t('analytics.medicationAdherence')}
         </Text>
-        <LineChart
-          data={getMedicationData()}
-          width={screenWidth - Spacing.lg * 2}
-          height={220}
-          chartConfig={chartConfig}
-          style={styles.chart}
-          bezier
-          yAxisLabel=""
-          yAxisSuffix=""
-        />
+        {(() => {
+          const medicationData = getMedicationData();
+          if (!medicationData) {
+            return (
+              <View style={[styles.noDataContainer, { alignItems: 'center', paddingVertical: Spacing.xl }]}>
+                <Ionicons name="medical-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.noDataText, { color: colors.textSecondary, marginTop: Spacing.md }]}>
+                  {t('analytics.noMedicineData', 'No medication data available for the selected period')}
+                </Text>
+              </View>
+            );
+          }
+          return (
+            <LineChart
+              data={medicationData}
+              width={screenWidth - Spacing.lg * 2}
+              height={220}
+              chartConfig={chartConfig}
+              style={styles.chart}
+              bezier
+              yAxisLabel=""
+              yAxisSuffix=""
+            />
+          );
+        })()}
         <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
           {t('analytics.medicationsPerDay')}
         </Text>
@@ -731,14 +759,29 @@ export default function AnalyticsScreen() {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t('analytics.habitCompletion')}
         </Text>
-        <LineChart
-          data={getHabitData()}
-          width={screenWidth - Spacing.lg * 2}
-          height={220}
-          chartConfig={chartConfig}
-          bezier
-          style={styles.chart}
-        />
+        {(() => {
+          const habitData = getHabitData();
+          if (!habitData) {
+            return (
+              <View style={[styles.noDataContainer, { alignItems: 'center', paddingVertical: Spacing.xl }]}>
+                <Ionicons name="repeat-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.noDataText, { color: colors.textSecondary, marginTop: Spacing.md }]}>
+                  {t('analytics.noHabitData', 'No habit data available for the selected period')}
+                </Text>
+              </View>
+            );
+          }
+          return (
+            <LineChart
+              data={habitData}
+              width={screenWidth - Spacing.lg * 2}
+              height={220}
+              chartConfig={chartConfig}
+              bezier
+              style={styles.chart}
+            />
+          );
+        })()}
         <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
           {t('analytics.habitsPerDay')}
         </Text>
@@ -1181,5 +1224,15 @@ const styles = StyleSheet.create({
   },
   performerEmoji: {
     fontSize: 20,
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  noDataText: {
+    ...Typography.body,
+    textAlign: 'center',
+    marginTop: Spacing.md,
   },
 });
