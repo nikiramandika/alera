@@ -167,7 +167,94 @@ const createStyles = (logoSize: number, circleSize: number) => StyleSheet.create
     width: circleSize * 0.7,
     height: circleSize * 0.7,
     backgroundColor: '#65A30D',
+  },import React, { useEffect, useRef } from 'react';
+import { View, Animated, StyleSheet, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+interface LoadingAnimationProps {
+  size?: 'small' | 'medium' | 'large';
+}
+
+const LoadingAnimation: React.FC<LoadingAnimationProps> = ({ size = 'medium' }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const breathingScale = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    const entranceAnimation = Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(breathingScale, {
+        toValue: 1,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    const breathingAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathingScale, {
+          toValue: 1.1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(breathingScale, {
+          toValue: 0.9,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    entranceAnimation.start(() => breathingAnimation.start());
+
+    return () => breathingAnimation.stop();
+  }, [fadeAnim, breathingScale]);
+
+  const getSize = () => {
+    switch (size) {
+      case 'small':
+        return width * 0.1;
+      case 'large':
+        return width * 0.3;
+      default:
+        return width * 0.2;
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.circle,
+          {
+            width: getSize(),
+            height: getSize(),
+            opacity: fadeAnim,
+            transform: [{ scale: breathingScale }],
+          },
+        ]}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  circle: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 1000,
+  },
+});
+
+export default LoadingAnimation;
 });
 
 export default LoadingAnimation;
