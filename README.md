@@ -35,10 +35,8 @@ Makna tersebut mencerminkan filosofi aplikasi ini, untuk menjadi asisten kesehat
    Menampilkan grafik perkembangan kepatuhan pengguna terhadap jadwal minum obat dan aktivitas sehat per minggu.
 
 4. **💡 Health Tips & Motivation**  
-   Memberikan kutipan motivasi serta tips hidup sehat harian agar pengguna tetap semangat menjaga rutinitasnya.
+   Memberikan motivasi melalui streak agar pengguna tetap semangat menjaga rutinitasnya.
 
-5. **☁️ Cloud Sync (Firebase)**  
-   Seluruh data tersimpan aman di cloud menggunakan Firebase dan dapat diakses lintas perangkat.
 
 ---
 
