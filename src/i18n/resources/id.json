@@ -248,5 +248,44 @@
     "currentStreak": "Streak Saat Ini",
     "bestStreak": "Streak Terbaik",
     "totalCompletions": "Total Penyelesaian"
+  },
+"terms": {
+    "title": "Syarat & Ketentuan",
+    "acceptButton": "Tutup",
+
+    "section1": {
+      "title": "1. Penerimaan Syarat",
+      "content": "Dengan mengunduh, mengakses, dan menggunakan aplikasi Alera, pengguna menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang berlaku. Apabila pengguna tidak menyetujui ketentuan ini, maka disarankan untuk tidak melanjutkan penggunaan aplikasi."
+    },
+
+    "section2": {
+      "title": "2. Deskripsi Layanan",
+      "content": "Alera merupakan aplikasi kesehatan yang membantu pengguna dalam mengelola jadwal minum obat, membangun kebiasaan sehat, serta memantau progres kesehatan melalui fitur pengingat, aksi cepat, dan visualisasi analytics. Aplikasi ini berfungsi sebagai alat bantu dan tidak menggantikan peran tenaga medis profesional."
+    },
+
+    "section3": {
+      "title": "3. Tanggung Jawab Pengguna",
+      "content": "Pengguna bertanggung jawab penuh atas keakuratan dan kelengkapan data yang dimasukkan ke dalam aplikasi, termasuk jadwal obat, kebiasaan sehat, dan informasi lainnya. Segala keputusan yang diambil berdasarkan informasi dari aplikasi menjadi tanggung jawab pengguna sepenuhnya."
+    },
+
+    "section4": {
+      "title": "4. Pengingat dan Notifikasi",
+      "content": "Alera menyediakan sistem pengingat dan notifikasi untuk membantu pengguna menjalankan aktivitas kesehatan secara konsisten. Efektivitas pengingat dapat dipengaruhi oleh pengaturan perangkat, sistem operasi, izin aplikasi, serta koneksi internet pengguna."
+    },
+
+    "section5": {
+      "title": "5. Privasi dan Data Pengguna",
+      "content": "Alera menghormati dan melindungi privasi pengguna. Data yang dikumpulkan digunakan semata-mata untuk mendukung fungsi aplikasi dan meningkatkan pengalaman pengguna, serta tidak akan dibagikan kepada pihak ketiga tanpa persetujuan pengguna, kecuali diwajibkan oleh hukum."
+    },
+
+    "section6": {
+      "title": "6. Batasan Tanggung Jawab",
+      "content": "Alera tidak bertanggung jawab atas kerugian langsung maupun tidak langsung, risiko kesehatan, atau dampak lain yang timbul akibat penggunaan aplikasi, termasuk kelalaian pengguna dalam menindaklanjuti pengingat yang diberikan."
+    },
+
+    "section7": {
+      "title": "7. Perubahan Ketentuan",
+      "content": "Pengembang Alera berhak untuk mengubah, memperbarui, atau menyesuaikan syarat dan ketentuan ini sewaktu-waktu. Perubahan akan berlaku sejak ditampilkan di dalam aplikasi, dan pengguna dianggap menyetujui perubahan tersebut dengan tetap menggunakan Alera."
+    }
   }
 }

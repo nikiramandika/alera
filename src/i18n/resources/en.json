@@ -248,5 +248,44 @@
     "currentStreak": "Current Streak",
     "bestStreak": "Best Streak",
     "totalCompletions": "Total Completions"
+  },
+  "terms": {
+    "title": "Terms & Conditions",
+    "acceptButton": "Close",
+
+    "section1": {
+      "title": "1. Acceptance of Terms",
+      "content": "By downloading, accessing, and using the Alera application, users confirm that they have read, understood, and agreed to all applicable terms and conditions. If the user does not agree with these terms, it is recommended not to continue using the application."
+    },
+
+    "section2": {
+      "title": "2. Service Description",
+      "content": "Alera is a health reminder application designed to help users manage medication schedules, build healthy habits, and monitor health progress through reminders, quick actions, and analytics visualizations. This application serves as a support tool and does not replace professional medical services."
+    },
+
+    "section3": {
+      "title": "3. User Responsibility",
+      "content": "Users are fully responsible for the accuracy and completeness of the data entered into the application, including medication schedules, health habits, and other related information. Any decisions made based on the application’s information are the sole responsibility of the user."
+    },
+
+    "section4": {
+      "title": "4. Reminders and Notifications",
+      "content": "Alera provides reminder and notification features to help users maintain consistency in their health activities. The effectiveness of notifications may be affected by device settings, operating systems, application permissions, and internet connectivity."
+    },
+
+    "section5": {
+      "title": "5. Privacy and User Data",
+      "content": "Alera respects and protects user privacy. User data is used solely to support application functionality and improve user experience, and will not be shared with third parties without user consent, except as required by law."
+    },
+
+    "section6": {
+      "title": "6. Limitation of Liability",
+      "content": "Alera is not responsible for any direct or indirect losses, health risks, or other impacts arising from the use of the application, including user negligence in responding to provided reminders."
+    },
+
+    "section7": {
+      "title": "7. Changes to Terms",
+      "content": "The Alera development team reserves the right to modify, update, or adjust these terms and conditions at any time. Changes take effect once displayed within the application, and continued use of Alera constitutes acceptance of those changes."
+    }
   }
 }
