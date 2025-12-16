@@ -109,11 +109,15 @@ export default function HabitsScreen() {
       // Handle Firebase Timestamp objects and regular dates
       const aTime = (aDate as any)?.toDate
         ? (aDate as any).toDate().getTime()
-        : (aDate instanceof Date ? aDate.getTime() : new Date(aDate || 0).getTime());
+        : aDate instanceof Date
+        ? aDate.getTime()
+        : new Date(aDate || 0).getTime();
 
       const bTime = (bDate as any)?.toDate
         ? (bDate as any).toDate().getTime()
-        : (bDate instanceof Date ? bDate.getTime() : new Date(bDate || 0).getTime());
+        : bDate instanceof Date
+        ? bDate.getTime()
+        : new Date(bDate || 0).getTime();
 
       return bTime - aTime;
     });
@@ -139,7 +143,6 @@ export default function HabitsScreen() {
     }
   };
 
-  
   const handleEditHabit = () => {
     if (selectedHabit) {
       // Close the modal first
@@ -249,13 +252,13 @@ export default function HabitsScreen() {
         >
           {isDeleting ? (
             <View style={styles.deleteLoadingContainer}>
-              <ActivityIndicator size="small" color="#000" />
+              <ActivityIndicator size="small" color="#FFFFFF" />
               <Text style={styles.deleteButtonText}>Deleting...</Text>
             </View>
           ) : (
             <>
               <View style={styles.deleteIconContainer}>
-                <Ionicons name="trash-outline" size={22} color="#000" />
+                <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
               </View>
               <Text style={styles.deleteButtonText}>{t("common.delete")}</Text>
             </>
@@ -431,7 +434,7 @@ export default function HabitsScreen() {
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
                 onPress={handleEditHabit}
               >
-                <Ionicons name="create" size={16} color="#000" />
+                <Ionicons name="create" size={16} color="#FFFFFF" />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             </View>
@@ -444,14 +447,14 @@ export default function HabitsScreen() {
               <View
                 style={[
                   styles.detailCard,
-                  { backgroundColor: colors.background },
+                  { backgroundColor: colors.backgroundSecondary },
                 ]}
               >
                 <View style={styles.habitHeader}>
                   <View
                     style={[
                       styles.colorIndicatorLarge,
-                      { backgroundColor: selectedHabit?.color || "backgroundSecondary" },
+                      { backgroundColor: selectedHabit?.color || "#4ECDC4" },
                     ]}
                   >
                     {selectedHabit?.icon && (
@@ -481,7 +484,7 @@ export default function HabitsScreen() {
                   <View
                     style={[
                       styles.statItem,
-                      { backgroundColor: colors.background },
+                      { backgroundColor: colors.backgroundSecondary },
                     ]}
                   >
                     <Ionicons
@@ -496,7 +499,7 @@ export default function HabitsScreen() {
                   <View
                     style={[
                       styles.statItem,
-                      { backgroundColor: colors.background },
+                      { backgroundColor: colors.backgroundSecondary },
                     ]}
                   >
                     <Ionicons
@@ -558,7 +561,15 @@ export default function HabitsScreen() {
                   </Text>
                 </View>
                 <View style={styles.targetGoalsContent}>
-                  <View style={[styles.targetItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <View
+                    style={[
+                      styles.targetItem,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
                     <Text
                       style={[
                         styles.targetLabel,
@@ -567,13 +578,19 @@ export default function HabitsScreen() {
                     >
                       Daily Target
                     </Text>
-                    <Text
-                      style={[styles.targetValue, { color: colors.text }]}
-                    >
+                    <Text style={[styles.targetValue, { color: colors.text }]}>
                       {selectedHabit?.target.value} {selectedHabit?.target.unit}
                     </Text>
                   </View>
-                  <View style={[styles.targetItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <View
+                    style={[
+                      styles.targetItem,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
                     <Text
                       style={[
                         styles.targetLabel,
@@ -582,15 +599,21 @@ export default function HabitsScreen() {
                     >
                       Goal Type
                     </Text>
-                    <Text
-                      style={[styles.targetValue, { color: colors.text }]}
-                    >
+                    <Text style={[styles.targetValue, { color: colors.text }]}>
                       {selectedHabit?.frequency?.type === "interval"
                         ? "Selected Days"
                         : "Every Day"}
                     </Text>
                   </View>
-                  <View style={[styles.targetItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <View
+                    style={[
+                      styles.targetItem,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
                     <Text
                       style={[
                         styles.targetLabel,
@@ -605,7 +628,15 @@ export default function HabitsScreen() {
                       {selectedHabit?.streak} day streak
                     </Text>
                   </View>
-                  <View style={[styles.targetItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <View
+                    style={[
+                      styles.targetItem,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
                     <Text
                       style={[
                         styles.targetLabel,
@@ -614,9 +645,7 @@ export default function HabitsScreen() {
                     >
                       Best Achievement
                     </Text>
-                    <Text
-                      style={[styles.targetValue, { color: colors.text }]}
-                    >
+                    <Text style={[styles.targetValue, { color: colors.text }]}>
                       {selectedHabit?.bestStreak} days
                     </Text>
                   </View>
@@ -817,8 +846,7 @@ export default function HabitsScreen() {
                   )}
                 </View>
               </View>
-
-                          </ScrollView>
+            </ScrollView>
           </>
         )}
       </SafeAreaView>
@@ -840,7 +868,7 @@ export default function HabitsScreen() {
           <LinearGradient
             colors={[
               colors.background,
-              colors.background,
+              colors.backgroundSecondary,
               colors.gradientStart,
             ]}
             start={{ x: 0.5, y: 0 }}
@@ -861,7 +889,7 @@ export default function HabitsScreen() {
               <View
                 style={[
                   styles.totalHabitsBadge,
-                  { backgroundColor: "backgroundSecondary" },
+                  { backgroundColor: "#4ECDC4" },
                 ]}
               >
                 <Text style={styles.totalHabitsText}>
@@ -910,7 +938,7 @@ export default function HabitsScreen() {
                   ]}
                   onPress={() => router.push("/habits/create-step1")}
                 >
-                  <Ionicons name="add" size={20} color="#000" />
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
                   <Text style={styles.addHabitButtonText}>
                     {t("habits.addHabit")}
                   </Text>
@@ -934,11 +962,11 @@ export default function HabitsScreen() {
       {/* Floating Action Button */}
       {filteredHabits.length > 0 && (
         <TouchableOpacity
-          style={[styles.floatingActionButton, { backgroundColor: "backgroundSecondary" }]}
+          style={[styles.floatingActionButton, { backgroundColor: "#4ECDC4" }]}
           onPress={() => router.push("/habits/create-step1")}
           activeOpacity={0.8}
         >
-          <Ionicons name="add" size={28} color="#000" />
+          <Ionicons name="add" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       )}
 
@@ -966,7 +994,7 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
-        backgroundColor: "#000",
+        backgroundColor: "#ffffff",
       },
     }),
   },
@@ -1008,7 +1036,7 @@ const styles = StyleSheet.create({
   totalHabitsText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#000",
+    color: "#FFFFFF",
   },
   floatingActionButton: {
     position: "absolute",
@@ -1055,7 +1083,7 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
-        backgroundColor: "#000",
+        backgroundColor: "#ffffff",
       },
     }),
   },
@@ -1114,13 +1142,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   expiredBadgeText: {
-    color: "#000",
+    color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-    habitDescription: {
+  habitDescription: {
     fontSize: 14,
     marginBottom: 8,
   },
@@ -1192,7 +1220,7 @@ const styles = StyleSheet.create({
   addHabitButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000",
+    color: "#FFFFFF",
   },
   modalContainer: {
     flex: 1,
@@ -1292,7 +1320,7 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000",
+    color: "#FFFFFF",
   },
   habitHeader: {
     flexDirection: "row",
@@ -1405,7 +1433,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   deleteButtonText: {
-    color: "#000",
+    color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
