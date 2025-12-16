@@ -55,6 +55,17 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       setHabits(habitsData);
       setHabitHistory(historyData);
+
+      // Migration: Update best streaks for habits that don't have them or have incorrect values
+      try {
+        await habitService.updateAllBestStreaks(user.userId);
+        // Refetch habits to get updated best streak values
+        const updatedHabitsData = await habitService.getHabits(user.userId);
+        setHabits(updatedHabitsData);
+      } catch (migrationError) {
+        console.warn('Best streak migration failed:', migrationError);
+        // Don't fail the whole process if migration fails
+      }
     } catch (error) {
       console.error('Error fetching habit data:', error);
     } finally {

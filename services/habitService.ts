@@ -34,6 +34,7 @@ export const habitService = {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         streak: 0,
+        bestStreak: 0,
         completedDates: []
       });
       return docRef.id;
@@ -85,6 +86,7 @@ export const habitService = {
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
           streak: data.streak || 0,
+          bestStreak: data.bestStreak || 0,
           completedDates: data.completedDates || []
         };
       })
@@ -149,6 +151,7 @@ export const habitService = {
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
           streak: data.streak || 0,
+          bestStreak: data.bestStreak || 0,
           completedDates: data.completedDates || [],
           duration,
           endDate,
@@ -263,10 +266,12 @@ export const habitService = {
       if (!habit) return;
 
       const newStreak = increment ? habit.streak + 1 : Math.max(0, habit.streak - 1);
+      const newBestStreak = Math.max(habit.bestStreak || 0, newStreak);
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
       await this.updateHabit(userId, habitId, {
         streak: newStreak,
+        bestStreak: newBestStreak,
         completedDates: increment
           ? [...habit.completedDates, today].filter((date, index, arr) => arr.indexOf(date) === index) // Remove duplicates
           : habit.completedDates.filter(date => date !== today)
@@ -295,12 +300,71 @@ export const habitService = {
     }
   },
 
+  // Calculate best streak from completed dates
+  calculateBestStreak(completedDates: string[]): number {
+    if (completedDates.length === 0) return 0;
+
+    // Sort dates in ascending order
+    const sortedDates = completedDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+    let bestStreak = 0;
+    let currentStreak = 0;
+    let lastDate: Date | null = null;
+
+    for (const dateStr of sortedDates) {
+      const currentDate = new Date(dateStr);
+      currentDate.setHours(0, 0, 0, 0); // Set to start of day
+
+      if (!lastDate) {
+        currentStreak = 1;
+      } else {
+        // Check if this date is exactly 1 day after the last date
+        const daysDiff = Math.floor((currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysDiff === 1) {
+          currentStreak++;
+        } else if (daysDiff > 1) {
+          // Gap in dates, reset streak
+          currentStreak = 1;
+        }
+        // If daysDiff === 0, it's the same day (shouldn't happen with unique dates)
+      }
+
+      bestStreak = Math.max(bestStreak, currentStreak);
+      lastDate = currentDate;
+    }
+
+    return bestStreak;
+  },
+
+  // Update best streak for all habits (for migration)
+  async updateAllBestStreaks(userId: string): Promise<void> {
+    try {
+      const habits = await this.getHabits(userId);
+
+      for (const habit of habits) {
+        const calculatedBestStreak = this.calculateBestStreak(habit.completedDates);
+
+        // Only update if calculated best streak is different from stored best streak
+        if (calculatedBestStreak !== habit.bestStreak) {
+          await this.updateHabit(userId, habit.habitId, {
+            bestStreak: calculatedBestStreak
+          });
+          console.log(`Updated best streak for habit ${habit.habitName}: ${habit.bestStreak} -> ${calculatedBestStreak}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating all best streaks:', error);
+      throw error;
+    }
+  },
+
   // Get best performing habits
   async getBestPerformingHabits(userId: string, limit = 3): Promise<Habit[]> {
     try {
       const habits = await this.getHabits(userId);
       return habits
-        .sort((a, b) => b.streak - a.streak)
+        .sort((a, b) => b.bestStreak - a.bestStreak)
         .slice(0, limit);
     } catch (error) {
       console.error('Error getting best performing habits:', error);
