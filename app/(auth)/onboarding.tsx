@@ -17,9 +17,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { OnboardingData } from '@/types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { updateUserProfile, user } = useAuth();
@@ -70,18 +72,18 @@ export default function OnboardingScreen() {
   // Helper function to generate months array
   const generateMonths = () => {
     return [
-      { value: 0, label: 'January' },
-      { value: 1, label: 'February' },
-      { value: 2, label: 'March' },
-      { value: 3, label: 'April' },
-      { value: 4, label: 'May' },
-      { value: 5, label: 'June' },
-      { value: 6, label: 'July' },
-      { value: 7, label: 'August' },
-      { value: 8, label: 'September' },
-      { value: 9, label: 'October' },
-      { value: 10, label: 'November' },
-      { value: 11, label: 'December' },
+      { value: 0, label: t('profile.january') },
+      { value: 1, label: t('profile.february') },
+      { value: 2, label: t('profile.march') },
+      { value: 3, label: t('profile.april') },
+      { value: 4, label: t('profile.may') },
+      { value: 5, label: t('profile.june') },
+      { value: 6, label: t('profile.july') },
+      { value: 7, label: t('profile.august') },
+      { value: 8, label: t('profile.september') },
+      { value: 9, label: t('profile.october') },
+      { value: 10, label: t('profile.november') },
+      { value: 11, label: t('profile.december') },
     ];
   };
 
@@ -115,28 +117,28 @@ export default function OnboardingScreen() {
 
   const steps = [
     {
-      title: 'Welcome to Alera!',
-      subtitle: 'Let\'s personalize your health journey',
+      title: t('onboarding.welcomeTitle'),
+      subtitle: t('onboarding.welcomeSubtitle'),
       icon: '👋',
     },
     {
-      title: 'Select Your Gender',
-      subtitle: 'This helps us provide personalized recommendations',
+      title: t('onboarding.genderTitle'),
+      subtitle: t('onboarding.genderSubtitle'),
       icon: '👤',
     },
     {
-      title: 'Enter Your Weight',
-      subtitle: 'For accurate medication dosage calculations',
+      title: t('onboarding.weightTitle'),
+      subtitle: t('onboarding.weightSubtitle'),
       icon: '⚖️',
     },
     {
-      title: 'Enter Your Birth Date',
-      subtitle: 'To customize your health recommendations',
+      title: t('onboarding.birthDateTitle'),
+      subtitle: t('onboarding.birthDateSubtitle'),
       icon: '🎂',
     },
     {
-      title: 'You\'re All Set!',
-      subtitle: 'Your personalized health journey begins now',
+      title: t('onboarding.completeTitle'),
+      subtitle: t('onboarding.completeSubtitle'),
       icon: '🎉',
     },
   ];
@@ -172,10 +174,10 @@ export default function OnboardingScreen() {
       if (result.success) {
         router.replace('/(auth)/transition');
       } else {
-        Alert.alert('Error', result.error || 'Failed to save profile data');
+        Alert.alert(t('common.error'), result.error || t('onboarding.failedToSave'));
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert(t('common.error'), t('auth.unexpectedError'));
     } finally {
       setLoading(false);
     }
@@ -192,25 +194,25 @@ export default function OnboardingScreen() {
               resizeMode="contain"
             />
             <Text style={[styles.welcomeText, { color: colors.text }]}>
-              Your personal health companion for medication reminders and habit tracking
+              {t('onboarding.welcomeDescription')}
             </Text>
             <View style={styles.featuresList}>
               <View style={styles.featureItem}>
                 <Ionicons name="notifications-outline" size={24} color={colors.primary} />
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Smart medication reminders
+                  {t('onboarding.featureReminders')}
                 </Text>
               </View>
               <View style={styles.featureItem}>
                 <Ionicons name="heart-outline" size={24} color={colors.primary} />
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Track healthy habits
+                  {t('onboarding.featureHabits')}
                 </Text>
               </View>
               <View style={styles.featureItem}>
                 <Ionicons name="analytics-outline" size={24} color={colors.primary} />
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Monitor your progress
+                  {t('onboarding.featureProgress')}
                 </Text>
               </View>
             </View>
@@ -241,7 +243,7 @@ export default function OnboardingScreen() {
                   color: onboardingData.gender === 'male' ? '#FFFFFF' : colors.text
                 }
               ]}>
-                Male
+                {t('profile.male')}
               </Text>
             </TouchableOpacity>
 
@@ -266,7 +268,7 @@ export default function OnboardingScreen() {
                   color: onboardingData.gender === 'female' ? '#FFFFFF' : colors.text
                 }
               ]}>
-                Female
+                {t('profile.female')}
               </Text>
             </TouchableOpacity>
 
@@ -289,7 +291,7 @@ export default function OnboardingScreen() {
                     fontWeight: weightInput ? '700' : '400',
                   }
                 ]}
-                placeholder="Enter your weight"
+                placeholder={t('onboarding.enterWeight')}
                 placeholderTextColor={colors.textSecondary}
                 value={weightInput}
                 onChangeText={(text) => {
@@ -333,7 +335,7 @@ export default function OnboardingScreen() {
 
             <View style={styles.weightSliderContainer}>
               <Text style={[styles.sliderHint, { color: colors.textSecondary }]}>
-                Enter your weight (30-300 kg). You can adjust this later in settings.
+                {t('onboarding.weightHint')}
               </Text>
             </View>
           </View>
@@ -361,10 +363,10 @@ export default function OnboardingScreen() {
 
             <View style={styles.birthDateInfoContainer}>
               <Text style={[styles.calculatedAge, { color: colors.text }]}>
-                Age: {calculateAge(onboardingData.birthDate)} years
+                {t('onboarding.ageLabel', { age: calculateAge(onboardingData.birthDate) })}
               </Text>
               <Text style={[styles.sliderHint, { color: colors.textSecondary }]}>
-                Tap to select your birth date. You can adjust this later in settings.
+                {t('onboarding.birthDateHint')}
               </Text>
             </View>
 
@@ -384,18 +386,18 @@ export default function OnboardingScreen() {
                         style={styles.cancelButton}
                       >
                         <Text style={[styles.cancelText, { color: colors.primary }]}>
-                          Cancel
+                          {t('common.cancel')}
                         </Text>
                       </TouchableOpacity>
                       <Text style={[styles.modalTitle, { color: colors.text }]}>
-                        Select Birth Date
+                        {t('profile.selectBirthDate')}
                       </Text>
                       <TouchableOpacity
                         onPress={() => setShowDatePicker(false)}
                         style={styles.confirmButton}
                       >
                         <Text style={[styles.confirmText, { color: colors.primary }]}>
-                          Confirm
+                          {t('onboarding.confirm')}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -511,24 +513,24 @@ export default function OnboardingScreen() {
               <Ionicons name="checkmark-circle" size={80} color={colors.success} />
             </View>
             <Text style={[styles.completionText, { color: colors.text }]}>
-              Thank you for providing your information! This will help us give you personalized health recommendations and medication reminders.
+              {t('onboarding.completionMessage')}
             </Text>
             <View style={styles.completionSummary}>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
-                Gender: {onboardingData.gender.charAt(0).toUpperCase() + onboardingData.gender.slice(1)}
+                {t('onboarding.summaryGender', { gender: t(`profile.${onboardingData.gender}`) })}
               </Text>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
-                Weight: {onboardingData.weight} kg
+                {t('onboarding.summaryWeight', { weight: onboardingData.weight })}
               </Text>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
-                Birth Date: {onboardingData.birthDate.toLocaleDateString('en-US', {
+                {t('onboarding.summaryBirthDate', { date: onboardingData.birthDate.toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric'
-                })}
+                }) })}
               </Text>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
-                Age: {calculateAge(onboardingData.birthDate)} years
+                {t('onboarding.summaryAge', { age: calculateAge(onboardingData.birthDate) })}
               </Text>
             </View>
           </View>
@@ -602,7 +604,7 @@ export default function OnboardingScreen() {
             >
               <Ionicons name="chevron-back" size={20} color={colors.text} />
               <Text style={[styles.backButtonText, { color: colors.text }]}>
-                Back
+                {t('onboarding.back')}
               </Text>
             </TouchableOpacity>
           )}
@@ -616,11 +618,11 @@ export default function OnboardingScreen() {
             disabled={loading}
           >
             {loading ? (
-              <Text style={styles.nextButtonText}>Loading...</Text>
+              <Text style={styles.nextButtonText}>{t('common.loading')}</Text>
             ) : (
               <>
                 <Text style={styles.nextButtonText}>
-                  {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
+                  {currentStep === steps.length - 1 ? t('onboarding.getStarted') : t('onboarding.next')}
                 </Text>
                 <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
               </>
@@ -683,10 +685,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: Spacing.sm,
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.sm,
   },
   stepSubtitle: {
     ...Typography.body,
     textAlign: 'center',
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.sm,
   },
   welcomeContainer: {
     alignItems: 'center',
@@ -701,6 +707,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: Spacing.lg,
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.sm,
   },
   featuresList: {
     width: '100%',
@@ -716,6 +724,8 @@ const styles = StyleSheet.create({
   featureText: {
     ...Typography.body,
     marginLeft: Spacing.md,
+    flex: 1,
+    flexShrink: 1,
   },
   genderContainer: {
     flexDirection: 'row',
@@ -738,6 +748,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: Spacing.sm,
     textAlign: 'center',
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   weightContainer: {
     alignItems: 'center',
@@ -771,6 +783,7 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     textAlign: 'center',
     paddingHorizontal: Spacing.lg,
+    flexWrap: 'wrap',
   },
   birthDateContainer: {
     alignItems: 'center',
@@ -800,6 +813,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: Spacing.sm,
     textAlign: 'center',
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.sm,
   },
   modalOverlay: {
     flex: 1,
@@ -873,6 +888,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: Spacing.xl,
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.sm,
   },
   completionSummary: {
     alignItems: 'center',
@@ -883,6 +900,8 @@ const styles = StyleSheet.create({
   summaryText: {
     ...Typography.body,
     marginBottom: Spacing.sm,
+    flexWrap: 'wrap',
+    textAlign: 'center',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -903,6 +922,7 @@ const styles = StyleSheet.create({
     ...Typography.body,
     fontWeight: '600',
     marginLeft: Spacing.xs,
+    flexShrink: 1,
   },
   nextButton: {
     flexDirection: 'row',
@@ -917,6 +937,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     marginRight: Spacing.xs,
+    flexShrink: 1,
   },
   footerSpace: {
     height: 20,

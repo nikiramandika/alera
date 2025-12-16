@@ -15,11 +15,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function EditProfileScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user, updateUserProfile } = useAuth();
@@ -65,18 +67,18 @@ export default function EditProfileScreen() {
   // Helper function to generate months array
   const generateMonths = () => {
     return [
-      { value: 0, label: 'January' },
-      { value: 1, label: 'February' },
-      { value: 2, label: 'March' },
-      { value: 3, label: 'April' },
-      { value: 4, label: 'May' },
-      { value: 5, label: 'June' },
-      { value: 6, label: 'July' },
-      { value: 7, label: 'August' },
-      { value: 8, label: 'September' },
-      { value: 9, label: 'October' },
-      { value: 10, label: 'November' },
-      { value: 11, label: 'December' },
+      { value: 0, label: t('profile.january') },
+      { value: 1, label: t('profile.february') },
+      { value: 2, label: t('profile.march') },
+      { value: 3, label: t('profile.april') },
+      { value: 4, label: t('profile.may') },
+      { value: 5, label: t('profile.june') },
+      { value: 6, label: t('profile.july') },
+      { value: 7, label: t('profile.august') },
+      { value: 8, label: t('profile.september') },
+      { value: 9, label: t('profile.october') },
+      { value: 10, label: t('profile.november') },
+      { value: 11, label: t('profile.december') },
     ];
   };
 
@@ -100,25 +102,25 @@ export default function EditProfileScreen() {
   const handleSaveProfile = async () => {
     // Validation
     if (!editForm.displayName.trim()) {
-      Alert.alert('Error', 'Name is required');
+      Alert.alert(t('common.error'), t('profile.nameRequired'));
       return;
     }
 
     if (editForm.weight && (isNaN(Number(editForm.weight)) || Number(editForm.weight) <= 0)) {
-      Alert.alert('Error', 'Please enter a valid weight');
+      Alert.alert(t('common.error'), t('profile.validWeight'));
       return;
     }
 
     // Validate birth date (age between 10-120 years)
     const calculatedAge = calculateAge(editForm.birthDate);
     if (calculatedAge < 10 || calculatedAge > 120) {
-      Alert.alert('Error', 'Please enter a valid birth date (age between 10-120 years)');
+      Alert.alert(t('common.error'), t('profile.validBirthDate'));
       return;
     }
 
     // Additional validation to ensure the date is valid
     if (isNaN(editForm.birthDate.getTime())) {
-      Alert.alert('Error', 'Invalid birth date. Please select a valid date.');
+      Alert.alert(t('common.error'), t('profile.invalidBirthDate'));
       return;
     }
 
@@ -131,7 +133,7 @@ export default function EditProfileScreen() {
 
     // Double-check the created date is valid
     if (isNaN(validBirthDate.getTime())) {
-      Alert.alert('Error', 'Invalid birth date. Please select a valid date.');
+      Alert.alert(t('common.error'), t('profile.invalidBirthDate'));
       return;
     }
 
@@ -149,17 +151,17 @@ export default function EditProfileScreen() {
     try {
       const result = await updateUserProfile(profileData);
       if (result.success) {
-        Alert.alert('Success', 'Profile updated successfully', [
+        Alert.alert(t('common.success'), t('profile.profileUpdatedSuccess'), [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => router.back()
           }
         ]);
       } else {
-        Alert.alert('Error', result.error || 'Failed to update profile');
+        Alert.alert(t('common.error'), result.error || t('profile.profileUpdateFailed'));
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert(t('common.error'), t('profile.unexpectedError'));
     } finally {
       setLoading(false);
     }
@@ -176,12 +178,12 @@ export default function EditProfileScreen() {
           style={styles.headerButton}
         >
           <Text style={[styles.headerButtonText, { color: colors.textSecondary }]}>
-            Cancel
+            {t('common.cancel')}
           </Text>
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Edit Profile
+          {t('profile.editProfile')}
         </Text>
 
         <TouchableOpacity
@@ -190,7 +192,7 @@ export default function EditProfileScreen() {
           style={[styles.headerButton, { opacity: loading ? 0.6 : 1 }]}
         >
           <Text style={[styles.headerButtonText, { color: colors.primary, fontWeight: '600' }]}>
-            {loading ? 'Saving...' : 'Save'}
+            {loading ? t('profile.saving') : t('common.save')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -202,7 +204,7 @@ export default function EditProfileScreen() {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.formSection}>
             <Text style={[styles.formLabel, { color: colors.text }]}>
-              Name
+              {t('profile.name')}
             </Text>
             <TextInput
               style={[
@@ -215,7 +217,7 @@ export default function EditProfileScreen() {
               ]}
               value={editForm.displayName}
               onChangeText={(text) => setEditForm(prev => ({ ...prev, displayName: text }))}
-              placeholder="Enter your name"
+              placeholder={t('profile.name')}
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="words"
             />
@@ -223,7 +225,7 @@ export default function EditProfileScreen() {
 
           <View style={styles.formSection}>
             <Text style={[styles.formLabel, { color: colors.text }]}>
-              Gender
+              {t('profile.gender')}
             </Text>
             <View style={styles.genderOptions}>
               {['male', 'female'].map((gender) => (
@@ -244,7 +246,7 @@ export default function EditProfileScreen() {
                       color: editForm.gender === gender ? '#FFFFFF' : colors.text,
                     }
                   ]}>
-                    {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                    {t(`profile.${gender}`)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -253,7 +255,7 @@ export default function EditProfileScreen() {
 
           <View style={styles.formSection}>
             <Text style={[styles.formLabel, { color: colors.text }]}>
-              Weight (kg)
+              {t('profile.weightLabel')}
             </Text>
             <TextInput
               style={[
@@ -266,7 +268,7 @@ export default function EditProfileScreen() {
               ]}
               value={editForm.weight}
               onChangeText={(text) => setEditForm(prev => ({ ...prev, weight: text }))}
-              placeholder="Enter your weight"
+              placeholder={t('profile.weightPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               keyboardType="numeric"
             />
@@ -274,7 +276,7 @@ export default function EditProfileScreen() {
 
           <View style={styles.formSection}>
             <Text style={[styles.formLabel, { color: colors.text }]}>
-              Birth Date
+              {t('profile.birthDate')}
             </Text>
             <TouchableOpacity
               style={[
@@ -287,7 +289,7 @@ export default function EditProfileScreen() {
               onPress={showDatepicker}
             >
               <Text style={[styles.birthDateText, { color: colors.text }]}>
-                {editForm.birthDate.toLocaleDateString('en-US', {
+                {editForm.birthDate.toLocaleDateString('id-ID', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric'
@@ -296,7 +298,7 @@ export default function EditProfileScreen() {
               <Ionicons name="calendar-outline" size={20} color={colors.primary} />
             </TouchableOpacity>
             <Text style={[styles.ageHint, { color: colors.textSecondary }]}>
-              Age: {calculateAge(editForm.birthDate)} years
+              {t('profile.ageHint', { age: calculateAge(editForm.birthDate) })}
             </Text>
 
             {/* Date Picker Modal */}
@@ -315,18 +317,18 @@ export default function EditProfileScreen() {
                         style={styles.modalButton}
                       >
                         <Text style={[styles.modalButtonText, { color: colors.primary }]}>
-                          Cancel
+                          {t('common.cancel')}
                         </Text>
                       </TouchableOpacity>
                       <Text style={[styles.modalTitle, { color: colors.text }]}>
-                        Select Birth Date
+                        {t('profile.selectBirthDate')}
                       </Text>
                       <TouchableOpacity
                         onPress={() => setShowDatePicker(false)}
                         style={styles.modalButton}
                       >
                         <Text style={[styles.modalButtonText, { color: colors.primary }]}>
-                          Done
+                          {t('profile.done')}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -436,7 +438,7 @@ export default function EditProfileScreen() {
 
           <View style={styles.formSection}>
             <Text style={[styles.formNote, { color: colors.textSecondary }]}>
-              Email cannot be changed. Contact support if you need to update your email address.
+              {t('profile.emailCannotChange')}
             </Text>
           </View>
 

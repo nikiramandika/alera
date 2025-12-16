@@ -19,6 +19,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 import { medicineService } from "@/services";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 interface MedicineData {
   medicineName?: string;
@@ -35,23 +36,24 @@ interface MedicineTypeOption {
   dosageUnit: string;
 }
 
-const medicineTypes: MedicineTypeOption[] = [
-  { id: "tablet", label: "Tablet", dosageUnit: "tablet" },
-  { id: "capsule", label: "Capsule", dosageUnit: "capsule" },
-  { id: "liquid", label: "Liquid", dosageUnit: "ml" },
-  { id: "injection", label: "Injection", dosageUnit: "ml" },
-  { id: "topical", label: "Topical", dosageUnit: "application" },
-  { id: "inhaler", label: "Inhaler", dosageUnit: "puff" },
-  { id: "drops", label: "Drops", dosageUnit: "drops" },
-  { id: "spray", label: "Spray", dosageUnit: "spray" },
-];
-
 export default function AddMedicineStep1NewScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const params = useLocalSearchParams();
   const { user } = useAuth();
+  const { t } = useTranslation();
+
+  const medicineTypes: MedicineTypeOption[] = [
+    { id: "tablet", label: t("medicine.tablet"), dosageUnit: t("medicine.dosageUnitTablet") },
+    { id: "capsule", label: t("medicine.capsule"), dosageUnit: t("medicine.dosageUnitCapsule") },
+    { id: "liquid", label: t("medicine.liquid"), dosageUnit: t("medicine.dosageUnitMl") },
+    { id: "injection", label: t("medicine.injection"), dosageUnit: t("medicine.dosageUnitMl") },
+    { id: "topical", label: t("medicine.topical"), dosageUnit: t("medicine.dosageUnitApplication") },
+    { id: "inhaler", label: t("medicine.inhaler"), dosageUnit: t("medicine.dosageUnitPuff") },
+    { id: "drops", label: t("medicine.drops"), dosageUnit: t("medicine.dosageUnitDrops") },
+    { id: "spray", label: t("medicine.spray"), dosageUnit: t("medicine.dosageUnitSpray") },
+  ];
 
   // Check if edit mode
   const editMode = params.editMode === "true";
@@ -119,12 +121,12 @@ export default function AddMedicineStep1NewScreen() {
 
   const handleNext = () => {
     if (!medicineData.medicineName?.trim()) {
-      Alert.alert("Error", "Please enter medicine name");
+      Alert.alert(t("common.error"), t("medicine.pleaseEnterMedicineName"));
       return;
     }
 
     if (!medicineData.dosage?.trim()) {
-      Alert.alert("Error", "Please enter dosage");
+      Alert.alert(t("common.error"), t("medicine.pleaseEnterDosage"));
       return;
     }
 
@@ -159,7 +161,7 @@ export default function AddMedicineStep1NewScreen() {
         }));
       }
     } catch {
-      Alert.alert("Error", "Failed to pick image");
+      Alert.alert(t("common.error"), t("medicine.failedToPickImage"));
     }
   };
 
@@ -238,7 +240,7 @@ export default function AddMedicineStep1NewScreen() {
           },
         ]}
       >
-        {option === "before" ? "Before Meals" : "After Meals"}
+        {option === "before" ? t("medicine.beforeMeals") : t("medicine.afterMeals")}
       </Text>
     </TouchableOpacity>
   );
@@ -247,7 +249,7 @@ export default function AddMedicineStep1NewScreen() {
     const selectedType = medicineTypes.find(
       (t) => t.id === medicineData.medicineType
     );
-    return selectedType?.dosageUnit || "tablet";
+    return selectedType?.dosageUnit || t("medicine.dosageUnitTablet");
   };
 
   const updateDosage = (value: string) => {
@@ -279,7 +281,7 @@ export default function AddMedicineStep1NewScreen() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {editMode ? "Edit Medicine" : "Add Medicine"}
+          {editMode ? t("medicine.editMedicine") : t("medicine.addMedicine")}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -336,20 +338,20 @@ export default function AddMedicineStep1NewScreen() {
           {/* Title */}
           <View style={styles.section}>
             <Text style={[styles.title, { color: colors.text }]}>
-              Medicine Information
+              {t("medicine.medicineInformation")}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Enter basic details of your medicine
+              {t("medicine.enterBasicDetailsMedicine")}
             </Text>
           </View>
 
           {/* Drug Appearance (Photo Upload) */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>
-              Drug Appearance (Optional)
+              {t("medicine.drugAppearanceOptional")}
             </Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Add a photo to help identify your medicine
+              {t("medicine.addPhotoToIdentify")}
             </Text>
 
             <TouchableOpacity
@@ -387,7 +389,7 @@ export default function AddMedicineStep1NewScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    Tap to add photo
+                    {t("medicine.tapToAddPhoto")}
                   </Text>
                 </View>
               )}
@@ -397,7 +399,7 @@ export default function AddMedicineStep1NewScreen() {
           {/* Medicine Name Input */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>
-              Medicine Name
+              {t("medicine.medicineName")}
             </Text>
             <TextInput
               style={[
@@ -408,7 +410,7 @@ export default function AddMedicineStep1NewScreen() {
                   color: colors.text,
                 },
               ]}
-              placeholder="Enter medicine name..."
+              placeholder={t("medicine.enterMedicineName")}
               placeholderTextColor={colors.textSecondary}
               value={medicineData.medicineName}
               onChangeText={(text) =>
@@ -420,10 +422,10 @@ export default function AddMedicineStep1NewScreen() {
           {/* Medicine Type Selection */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>
-              Medicine Type
+              {t("medicine.medicineType")}
             </Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Select form of medicine (dosage will auto-adjust)
+              {t("medicine.selectFormAutoAdjust")}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.typeContainer}>
@@ -434,9 +436,9 @@ export default function AddMedicineStep1NewScreen() {
 
           {/* Dosage Input (Auto-adjust based on type) */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.label, { color: colors.text }]}>Dosage</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t("medicine.dosage")}</Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Amount per intake (auto-adjusts by medicine type)
+              {t("medicine.amountPerIntake")}
             </Text>
             <View style={styles.dosageContainer}>
               <TextInput
@@ -448,7 +450,7 @@ export default function AddMedicineStep1NewScreen() {
                     color: colors.text,
                   },
                 ]}
-                placeholder="e.g., 500, 1, 5"
+                placeholder={t("medicine.dosagePlaceholderExample")}
                 placeholderTextColor={colors.textSecondary}
                 value={medicineData.dosage?.split(" ")[0] || ""}
                 onChangeText={updateDosage}
@@ -466,10 +468,10 @@ export default function AddMedicineStep1NewScreen() {
           {/* Take with Meal Selection */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>
-              Take with Meal
+              {t("medicine.takeWithMeal")}
             </Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              When should this medicine be taken?
+              {t("medicine.whenShouldBeTaken")}
             </Text>
             <View style={styles.mealContainer}>
               {renderMealOption("before")}
@@ -480,10 +482,10 @@ export default function AddMedicineStep1NewScreen() {
           {/* Description Input */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>
-              Description (Optional)
+              {t("medicine.descriptionOptional")}
             </Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Add special instructions or notes
+              {t("medicine.addSpecialInstructions")}
             </Text>
             <TextInput
               style={[
@@ -494,7 +496,7 @@ export default function AddMedicineStep1NewScreen() {
                   color: colors.text,
                 },
               ]}
-              placeholder="Enter any special instructions or notes..."
+              placeholder={t("medicine.enterSpecialInstructions")}
               placeholderTextColor={colors.textSecondary}
               value={medicineData.description}
               onChangeText={(text) =>
@@ -523,7 +525,7 @@ export default function AddMedicineStep1NewScreen() {
           onPress={handleNext}
           activeOpacity={0.8}
         >
-          <Text style={styles.nextButtonText}>Next</Text>
+          <Text style={styles.nextButtonText}>{t("medicine.next")}</Text>
           <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>

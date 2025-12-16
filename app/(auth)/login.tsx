@@ -49,7 +49,7 @@ export default function LoginScreen() {
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
     }
 
@@ -59,29 +59,29 @@ export default function LoginScreen() {
       if (result.success) {
         router.replace('/(auth)/transition');
       } else {
-        let errorMessage = 'Login failed. Please check your credentials and try again.';
+        let errorMessage = t('auth.loginFailedMessage');
 
         // Handle specific Firebase auth errors
         if (result.error) {
           if (result.error.includes('invalid-credential') ||
               result.error.includes('wrong-password') ||
               result.error.includes('user-not-found')) {
-            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+            errorMessage = t('auth.invalidEmailOrPassword');
           } else if (result.error.includes('too-many-requests')) {
-            errorMessage = 'Too many failed login attempts. Please try again later.';
+            errorMessage = t('auth.tooManyLoginAttempts');
           } else if (result.error.includes('user-disabled')) {
-            errorMessage = 'This account has been disabled. Please contact support.';
+            errorMessage = t('auth.accountDisabled');
           } else if (result.error.includes('invalid-email')) {
-            errorMessage = 'Invalid email address format. Please check and try again.';
+            errorMessage = t('auth.invalidEmailFormat');
           } else if (result.error.includes('network')) {
-            errorMessage = 'Network error. Please check your internet connection and try again.';
+            errorMessage = t('auth.networkError');
           }
         }
 
-        Alert.alert('Login Failed', errorMessage);
+        Alert.alert(t('auth.loginFailed'), errorMessage);
       }
     } catch {
-      Alert.alert('Login Failed', 'An unexpected error occurred');
+      Alert.alert(t('auth.loginFailed'), t('auth.unexpectedError'));
     } finally {
       setLoading(false);
     }
@@ -99,10 +99,10 @@ export default function LoginScreen() {
           console.log('Google Sign-In was cancelled by user');
           return;
         }
-        Alert.alert('Google Sign-In Failed', result.error || 'An error occurred');
+        Alert.alert(t('auth.googleSignInFailed'), result.error || t('common.error'));
       }
     } catch {
-      Alert.alert('Google Sign-In Failed', 'An unexpected error occurred');
+      Alert.alert(t('auth.googleSignInFailed'), t('auth.unexpectedError'));
     } finally {
       setLoading(false);
     }
@@ -130,7 +130,7 @@ export default function LoginScreen() {
         {/* Login Card */}
         <View style={[styles.loginCard, { backgroundColor: colors.card }]}>
           {/* Title */}
-          <Text style={[styles.title, { color: colors.text }]}>Welcome Back!</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('auth.welcomeBack')}</Text>
 
           {/* Form */}
           <View style={styles.form}>
@@ -203,7 +203,7 @@ export default function LoginScreen() {
                   <Ionicons name="checkmark" size={16} color={colors.primary} />
                 )}
               </TouchableOpacity>
-              <Text style={[styles.checkboxLabel, { color: colors.textSecondary }]}>Remember me</Text>
+              <Text style={[styles.checkboxLabel, { color: colors.textSecondary }]}>{t('auth.rememberMe')}</Text>
             </View>
 
             {/* Sign In Button */}
@@ -224,13 +224,13 @@ export default function LoginScreen() {
               style={styles.forgotPasswordButton}
               onPress={() => router.push("/(auth)/forgot-password")}
             >
-              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>{t('auth.forgotPassword', 'Forgot Password?')}</Text>
+              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>{t('auth.forgotPassword')}</Text>
             </TouchableOpacity>
 
             {/* Divider */}
             <View style={styles.dividerContainer}>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>Or</Text>
+              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>{t('auth.or')}</Text>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
@@ -241,16 +241,16 @@ export default function LoginScreen() {
               disabled={loading}
             >
               <Ionicons name="logo-google" size={20} color="#4285F4" />
-              <Text style={[styles.googleButtonText, { color: colors.text }]}>Continue with Google</Text>
+              <Text style={[styles.googleButtonText, { color: colors.text }]}>{t('auth.continueWithGoogle')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Sign Up Link */}
         <View style={styles.signUpContainer}>
-          <Text style={[styles.signUpText, { color: colors.textSecondary }]}>Don&apos;t have an account? </Text>
+          <Text style={[styles.signUpText, { color: colors.textSecondary }]}>{t('auth.dontHaveAccount')} </Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-            <Text style={[styles.signUpLink, { color: colors.primary }]}>Sign Up</Text>
+            <Text style={[styles.signUpLink, { color: colors.primary }]}>{t('auth.signUp')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -299,6 +299,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginBottom: Spacing.xl,
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.sm,
   },
   form: {
     width: "100%",
@@ -337,6 +339,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: Spacing.lg,
+    flexWrap: 'wrap',
   },
   checkbox: {
     width: 20,
@@ -346,9 +349,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.sm,
+    flexShrink: 0,
   },
   checkboxLabel: {
     fontSize: 14,
+    flex: 1,
+    flexShrink: 1,
   },
   signInButton: {
     borderRadius: BorderRadius.md,

@@ -17,6 +17,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { habitService } from '@/services';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface HabitData {
   habitName?: string;
@@ -40,22 +41,23 @@ interface HabitTypeOption {
   defaultTarget: number;
 }
 
-const habitTypes: HabitTypeOption[] = [
-  { id: 'water', label: 'Water Intake', icon: 'water-outline', emoji: '💧', color: '#3498db', defaultUnit: 'glasses', defaultTarget: 8 },
-  { id: 'exercise', label: 'Exercise', icon: 'fitness-outline', emoji: '🏃', color: '#e74c3c', defaultUnit: 'minutes', defaultTarget: 30 },
-  { id: 'sleep', label: 'Sleep', icon: 'moon-outline', emoji: '🌙', color: '#9b59b6', defaultUnit: 'hours', defaultTarget: 8 },
-  { id: 'meditation', label: 'Meditation', icon: 'leaf-outline', emoji: '🧘', color: '#2ecc71', defaultUnit: 'minutes', defaultTarget: 15 },
-  { id: 'reading', label: 'Reading', icon: 'book-outline', emoji: '📚', color: '#f39c12', defaultUnit: 'pages', defaultTarget: 20 },
-  { id: 'health', label: 'Health', icon: 'heart-outline', emoji: '❤️', color: '#e91e63', defaultUnit: 'times', defaultTarget: 1 },
-  { id: 'custom', label: 'Custom', icon: 'star-outline', emoji: '⭐', color: '#34495e', defaultUnit: 'times', defaultTarget: 1 },
-];
-
 export default function AddHabitStep1NewScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const params = useLocalSearchParams();
   const { user } = useAuth();
+  const { t } = useTranslation();
+
+  const habitTypes: HabitTypeOption[] = [
+    { id: 'water', label: t('habits.waterIntake'), icon: 'water-outline', emoji: '💧', color: '#3498db', defaultUnit: t('habits.glasses'), defaultTarget: 8 },
+    { id: 'exercise', label: t('habits.exercise'), icon: 'fitness-outline', emoji: '🏃', color: '#e74c3c', defaultUnit: t('habits.minutes'), defaultTarget: 30 },
+    { id: 'sleep', label: t('habits.sleep'), icon: 'moon-outline', emoji: '🌙', color: '#9b59b6', defaultUnit: t('habits.hours'), defaultTarget: 8 },
+    { id: 'meditation', label: t('habits.meditation'), icon: 'leaf-outline', emoji: '🧘', color: '#2ecc71', defaultUnit: t('habits.minutes'), defaultTarget: 15 },
+    { id: 'reading', label: t('habits.reading'), icon: 'book-outline', emoji: '📚', color: '#f39c12', defaultUnit: t('habits.pages'), defaultTarget: 20 },
+    { id: 'health', label: t('habits.health'), icon: 'heart-outline', emoji: '❤️', color: '#e91e63', defaultUnit: t('habits.times'), defaultTarget: 1 },
+    { id: 'custom', label: t('habits.custom'), icon: 'star-outline', emoji: '⭐', color: '#34495e', defaultUnit: t('habits.times'), defaultTarget: 1 },
+  ];
 
   // Check if edit mode
   const editMode = params.editMode === 'true';
@@ -113,12 +115,12 @@ export default function AddHabitStep1NewScreen() {
 
   const handleNext = () => {
     if (!habitData.habitName?.trim()) {
-      Alert.alert('Error', 'Please enter habit name');
+      Alert.alert(t('common.error'), t('habits.pleaseEnterHabitName'));
       return;
     }
 
     if (!habitData.target?.value || habitData.target.value <= 0) {
-      Alert.alert('Error', 'Please enter a valid target value');
+      Alert.alert(t('common.error'), t('habits.pleaseEnterValidTargetValue'));
       return;
     }
 
@@ -188,7 +190,7 @@ export default function AddHabitStep1NewScreen() {
 
   const getCurrentUnit = () => {
     const selectedType = habitTypes.find(t => t.id === habitData.habitType);
-    return selectedType?.defaultUnit || 'times';
+    return selectedType?.defaultUnit || t('habits.times');
   };
 
   return (
@@ -204,7 +206,7 @@ export default function AddHabitStep1NewScreen() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {editMode ? 'Edit Habit' : 'Add Habit'}
+          {editMode ? t('habits.editHabit') : t('habits.addHabit')}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -232,23 +234,23 @@ export default function AddHabitStep1NewScreen() {
           {/* Title */}
           <View style={styles.section}>
             <Text style={[styles.title, { color: colors.text }]}>
-              Habit Information
+              {t('habits.habitInformation')}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Enter basic details of your habit
+              {t('habits.enterBasicDetails')}
             </Text>
           </View>
 
           {/* Habit Name Input */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.label, { color: colors.text }]}>Habit Name</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('habits.habitName')}</Text>
             <TextInput
               style={[styles.input, {
                 backgroundColor: colors.backgroundSecondary,
                 borderColor: colors.border,
                 color: colors.text
               }]}
-              placeholder="Enter habit name..."
+              placeholder={t('habits.enterHabitName')}
               placeholderTextColor={colors.textSecondary}
               value={habitData.habitName}
               onChangeText={(text) => setHabitData(prev => ({ ...prev, habitName: text }))}
@@ -257,9 +259,9 @@ export default function AddHabitStep1NewScreen() {
 
           {/* Habit Type Selection */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.label, { color: colors.text }]}>Habit Type</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('habits.habitType')}</Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Select type of habit (target will auto-adjust)
+              {t('habits.selectTypeAutoAdjust')}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.typeContainer}>
@@ -270,9 +272,9 @@ export default function AddHabitStep1NewScreen() {
 
           {/* Target Input (Auto-adjust based on type) */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.label, { color: colors.text }]}>Target</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('habits.target')}</Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Amount per session (auto-adjusts by habit type)
+              {t('habits.amountPerSession')}
             </Text>
             <View style={styles.targetContainer}>
               <TextInput
@@ -281,7 +283,7 @@ export default function AddHabitStep1NewScreen() {
                   borderColor: colors.border,
                   color: colors.text,
                 }]}
-                placeholder="e.g., 8, 30, 1"
+                placeholder={t('habits.targetPlaceholderExample')}
                 placeholderTextColor={colors.textSecondary}
                 value={habitData.target?.value && habitData.target.value > 0 ? habitData.target.value.toString() : ''}
                 onChangeText={(text) => {
@@ -305,9 +307,9 @@ export default function AddHabitStep1NewScreen() {
 
           {/* Description Input */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.label, { color: colors.text }]}>Description (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('habits.descriptionOptional')}</Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Add special instructions or notes
+              {t('habits.addSpecialInstructions')}
             </Text>
             <TextInput
               style={[styles.textArea, {
@@ -315,7 +317,7 @@ export default function AddHabitStep1NewScreen() {
                 borderColor: colors.border,
                 color: colors.text
               }]}
-              placeholder="Enter any special instructions or notes..."
+              placeholder={t('habits.enterSpecialInstructions')}
               placeholderTextColor={colors.textSecondary}
               value={habitData.description}
               onChangeText={(text) => setHabitData(prev => ({ ...prev, description: text }))}
@@ -337,7 +339,7 @@ export default function AddHabitStep1NewScreen() {
           onPress={handleNext}
           activeOpacity={0.8}
         >
-          <Text style={styles.nextButtonText}>Next</Text>
+          <Text style={styles.nextButtonText}>{t('habits.next')}</Text>
           <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>

@@ -21,6 +21,7 @@ import { MedicineReminder } from "@/types";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import { useTranslation } from "react-i18next";
 
 export default function AddMedicineScreen() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function AddMedicineScreen() {
   const colors = Colors[colorScheme ?? "light"];
   const { addMedicine, updateMedicine } = useMedicine();
   const params = useLocalSearchParams();
+  const { t } = useTranslation();
 
   // Check if we're in edit mode
   const isEditMode = params.editMode === "true";
@@ -81,13 +83,13 @@ export default function AddMedicineScreen() {
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   const medicineTypes = [
-    "Tablet",
-    "Capsule",
-    "Liquid",
-    "Injection",
-    "Cream",
-    "Inhaler",
-    "Other",
+    t("medicine.tablet"),
+    t("medicine.capsule"),
+    t("medicine.liquid"),
+    t("medicine.injection"),
+    t("medicine.cream"),
+    t("medicine.inhaler"),
+    t("medicine.other"),
   ];
   const medicineColors = [
     "#F47B9F",
@@ -99,12 +101,20 @@ export default function AddMedicineScreen() {
     "#FFB347",
   ];
   const frequencyTypes = [
-    { value: "daily", label: "Daily" },
-    { value: "interval", label: "Specific days" },
-    { value: "as_needed", label: "As needed" },
+    { value: "daily", label: t("habits.daily") },
+    { value: "interval", label: t("habits.specificDays") },
+    { value: "as_needed", label: t("medicine.asNeeded") },
   ];
 
-  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const daysOfWeek = [
+    t("common.sunday"),
+    t("common.monday"),
+    t("common.tuesday"),
+    t("common.wednesday"),
+    t("common.thursday"),
+    t("common.friday"),
+    t("common.saturday"),
+  ];
 
   // Date picker handlers
 
@@ -170,7 +180,7 @@ export default function AddMedicineScreen() {
         setMedicineData({
           medicineName: medicineData.medicineName || "",
           dosage: medicineData.dosage || "",
-          medicineType: medicineData.medicineType || "Tablet",
+          medicineType: medicineData.medicineType || t("medicine.tablet"),
           instructions: medicineData.instructions || "",
           stockQuantity: medicineData.stockQuantity || 30,
           stockAlert: medicineData.stockAlert || 5,
@@ -213,7 +223,7 @@ export default function AddMedicineScreen() {
         });
       } catch (error) {
         console.error("Error parsing medicine data:", error);
-        Alert.alert("Error", "Failed to load medicine data for editing");
+        Alert.alert(t("common.error"), t("medicine.failedToLoadMedicineData"));
       }
     }
   }, [isEditMode, params.medicineData]);
@@ -229,12 +239,12 @@ export default function AddMedicineScreen() {
   const handleRemoveTime = (index: number) => {
     if (frequency.times.length > 1) {
       Alert.alert(
-        "Remove Time",
-        "Are you sure you want to remove this reminder time?",
+        t("medicine.removeTime"),
+        t("medicine.removeTimeConfirm"),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t("habits.cancel"), style: "cancel" },
           {
-            text: "Remove",
+            text: t("medicine.remove"),
             style: "destructive",
             onPress: () => {
               setFrequency((prev) => ({
@@ -260,22 +270,22 @@ export default function AddMedicineScreen() {
   const handleSave = async () => {
     // Validation
     if (!medicineData.medicineName.trim()) {
-      Alert.alert("Error", "Please enter medicine name");
+      Alert.alert(t("common.error"), t("medicine.pleaseEnterMedicineName"));
       return;
     }
 
     if (!medicineData.dosage.trim()) {
-      Alert.alert("Error", "Please enter dosage");
+      Alert.alert(t("common.error"), t("medicine.pleaseEnterDosage"));
       return;
     }
 
     if (frequency.type !== "as_needed" && frequency.times.length === 0) {
-      Alert.alert("Error", "Please add at least one reminder time");
+      Alert.alert(t("common.error"), t("medicine.pleaseAddAtLeastOneReminderTime"));
       return;
     }
 
     if (frequency.type === "interval" && frequency.specificDays.length === 0) {
-      Alert.alert("Error", "Please select at least one day");
+      Alert.alert(t("common.error"), t("medicine.pleaseSelectAtLeastOneDay"));
       return;
     }
 
@@ -295,10 +305,10 @@ export default function AddMedicineScreen() {
         const result = await updateMedicine(editingMedicineId, updateData);
 
         if (result.success) {
-          Alert.alert("Success", "Medicine updated successfully");
+          Alert.alert(t("common.success"), t("medicine.medicineUpdatedSuccessfully"));
           router.back();
         } else {
-          Alert.alert("Error", result.error || "Failed to update medicine");
+          Alert.alert(t("common.error"), result.error || t("medicine.failedToUpdateMedicine"));
         }
       } else {
         // Add new medicine
@@ -314,15 +324,15 @@ export default function AddMedicineScreen() {
         const result = await addMedicine(newMedicine);
 
         if (result.success) {
-          Alert.alert("Success", "Medicine added successfully");
+          Alert.alert(t("common.success"), t("medicine.medicineAddedSuccessfully"));
           router.back();
         } else {
-          Alert.alert("Error", result.error || "Failed to add medicine");
+          Alert.alert(t("common.error"), result.error || t("medicine.failedToAddMedicine"));
         }
       }
     } catch (error) {
       console.error("Save error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
+      Alert.alert(t("common.error"), t("medicine.unexpectedErrorOccurred"));
     } finally {
       setLoading(false);
     }
@@ -333,13 +343,13 @@ export default function AddMedicineScreen() {
       <View style={styles.cardHeader}>
         <Ionicons name="medical-outline" size={24} color={colors.primary} />
         <Text style={[styles.cardTitle, { color: colors.text }]}>
-          Basic Information
+          {t("medicine.basicInformation")}
         </Text>
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Medicine Name *
+          {t("medicine.medicineNameRequired")}
         </Text>
         <TextInput
           style={[
@@ -354,13 +364,13 @@ export default function AddMedicineScreen() {
           onChangeText={(text) =>
             setMedicineData((prev) => ({ ...prev, medicineName: text }))
           }
-          placeholder="e.g., Paracetamol"
+          placeholder={t("medicine.medicineNamePlaceholder")}
           placeholderTextColor={colors.textSecondary}
         />
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Dosage *</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t("medicine.dosageRequired")}</Text>
         <TextInput
           style={[
             styles.input,
@@ -374,14 +384,14 @@ export default function AddMedicineScreen() {
           onChangeText={(text) =>
             setMedicineData((prev) => ({ ...prev, dosage: text }))
           }
-          placeholder="e.g., 500mg"
+          placeholder={t("medicine.dosagePlaceholder")}
           placeholderTextColor={colors.textSecondary}
         />
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Medicine Type
+          {t("medicine.medicineType")}
         </Text>
         <ScrollView
           horizontal
@@ -427,7 +437,7 @@ export default function AddMedicineScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Instructions</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t("medicine.instructions")}</Text>
         <TextInput
           style={[
             styles.textArea,
@@ -441,7 +451,7 @@ export default function AddMedicineScreen() {
           onChangeText={(text) =>
             setMedicineData((prev) => ({ ...prev, instructions: text }))
           }
-          placeholder="e.g., Take with food"
+          placeholder={t("medicine.instructionsPlaceholder")}
           placeholderTextColor={colors.textSecondary}
           multiline
           numberOfLines={3}
@@ -455,13 +465,13 @@ export default function AddMedicineScreen() {
       <View style={styles.cardHeader}>
         <Ionicons name="time-outline" size={24} color={colors.primary} />
         <Text style={[styles.cardTitle, { color: colors.text }]}>
-          Frequency Settings
+          {t("habits.frequencySettings")}
         </Text>
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Schedule Type
+          {t("medicine.scheduleType")}
         </Text>
         <View style={styles.frequencyGrid}>
           {frequencyTypes.map((type) => (
@@ -503,7 +513,7 @@ export default function AddMedicineScreen() {
       {frequency.type === "interval" && (
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: colors.text }]}>
-            Interval (hours)
+            {t("medicine.intervalHours")}
           </Text>
           <TextInput
             style={[
@@ -531,7 +541,7 @@ export default function AddMedicineScreen() {
       {frequency.type === "interval" && (
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: colors.text }]}>
-            Select Days
+            {t("medicine.selectDays")}
           </Text>
           <View style={styles.daysGrid}>
             {daysOfWeek.map((day, index) => (
@@ -572,7 +582,7 @@ export default function AddMedicineScreen() {
         <View style={styles.inputGroup}>
           <View style={styles.timeHeader}>
             <Text style={[styles.label, { color: colors.text }]}>
-              Reminder Times
+              {t("medicine.reminderTimes")}
             </Text>
             <TouchableOpacity onPress={handleAddTime} style={styles.addButton}>
               <Ionicons name="add" size={20} color="#FFFFFF" />
@@ -621,11 +631,11 @@ export default function AddMedicineScreen() {
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.cardHeader}>
         <Ionicons name="calendar-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Duration</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{t("medicine.duration")}</Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Start Date</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t("medicine.startDate")}</Text>
         <View
           style={Platform.OS === "ios" ? styles.inlineDatePickerContainer : {}}
         >
@@ -656,7 +666,7 @@ export default function AddMedicineScreen() {
 
       <View style={styles.inputGroup}>
         <View style={styles.toggleRow}>
-          <Text style={[styles.label, { color: colors.text }]}>End Date</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{t("medicine.endDate")}</Text>
           <TouchableOpacity
             style={[
               styles.toggleButton,
@@ -676,7 +686,7 @@ export default function AddMedicineScreen() {
             }}
           >
             <Text style={styles.toggleText}>
-              {duration.endDate ? "Remove" : "Add"}
+              {duration.endDate ? t("medicine.remove") : t("medicine.add")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -720,13 +730,13 @@ export default function AddMedicineScreen() {
       <View style={styles.cardHeader}>
         <Ionicons name="storefront-outline" size={24} color={colors.primary} />
         <Text style={[styles.cardTitle, { color: colors.text }]}>
-          Stock Management
+          {t("medicine.stockManagement")}
         </Text>
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Current Stock
+          {t("medicine.currentStock")}
         </Text>
         <TextInput
           style={[
@@ -758,7 +768,7 @@ export default function AddMedicineScreen() {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Alert When Below
+          {t("medicine.alertWhenBelow")}
         </Text>
         <TextInput
           style={[
@@ -846,7 +856,7 @@ export default function AddMedicineScreen() {
             ]}
           >
             <Text style={styles.badgeText}>
-              {isEditMode ? "Edit Medicine" : "New Medicine"}
+              {isEditMode ? t("medicine.editMedicine") : t("medicine.addMedicine")}
             </Text>
           </View>
         </View>
@@ -864,7 +874,7 @@ export default function AddMedicineScreen() {
           {loading ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
+            <Text style={styles.saveButtonText}>{t("habits.save")}</Text>
           )}
         </TouchableOpacity>
       </View>

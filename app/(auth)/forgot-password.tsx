@@ -32,14 +32,14 @@ export default function ForgotPasswordScreen() {
 
   const handleResetPassword = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email address');
+      Alert.alert(t('common.error'), t('auth.enterEmailAddress'));
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      Alert.alert(t('common.error'), t('auth.validEmailAddress'));
       return;
     }
 
@@ -51,15 +51,15 @@ export default function ForgotPasswordScreen() {
       if (signInMethods.length === 0) {
         // No account found with this email
         Alert.alert(
-          'Email Not Found',
-          'No account found with this email address. Please check the email or create a new account.',
+          t('auth.emailNotFound'),
+          t('auth.emailNotFoundMessage'),
           [
             {
-              text: 'Try Again',
+              text: t('auth.tryAgain'),
               onPress: () => {}
             },
             {
-              text: 'Sign Up',
+              text: t('auth.signUp'),
               onPress: () => router.push('/(auth)/register')
             }
           ]
@@ -71,11 +71,11 @@ export default function ForgotPasswordScreen() {
       await sendPasswordResetEmail(auth, email);
 
       Alert.alert(
-        'Reset Email Sent',
-        'A password reset email has been sent to your email address. Please check your inbox (and spam folder) and follow the instructions to reset your password.',
+        t('auth.resetEmailSent'),
+        t('auth.resetEmailSentMessage'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => router.back()
           }
         ]
@@ -83,37 +83,37 @@ export default function ForgotPasswordScreen() {
 
     } catch (error: any) {
       console.error('Error in forgot password:', error);
-      let errorMessage = 'Failed to send reset email. Please try again.';
+      let errorMessage = t('auth.failedToSendResetEmail');
 
       // Handle specific Firebase auth errors
       if (error?.code) {
         switch (error.code) {
           case 'auth/invalid-email':
-            errorMessage = 'Invalid email address format. Please check and try again.';
+            errorMessage = t('auth.invalidEmailFormat');
             break;
           case 'auth/too-many-requests':
-            errorMessage = 'Too many requests. For security, please wait a few minutes before trying again.';
+            errorMessage = t('auth.tooManyResetRequests');
             break;
           case 'auth/network-request-failed':
-            errorMessage = 'Network error. Please check your internet connection and try again.';
+            errorMessage = t('auth.networkError');
             break;
           case 'auth/timeout':
-            errorMessage = 'Request timed out. Please check your connection and try again.';
+            errorMessage = t('auth.requestTimedOut');
             break;
           case 'auth/user-disabled':
-            errorMessage = 'This account has been disabled. Please contact support.';
+            errorMessage = t('auth.accountDisabled');
             break;
           default:
-            errorMessage = 'Failed to send reset email. Please try again.';
+            errorMessage = t('auth.failedToSendResetEmail');
         }
       } else if (error?.message) {
         // Handle error messages that might come from network issues
         if (error.message.includes('network') || error.message.includes('connection')) {
-          errorMessage = 'Network error. Please check your internet connection and try again.';
+          errorMessage = t('auth.networkError');
         }
       }
 
-      Alert.alert('Error', errorMessage);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -266,6 +266,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginBottom: Spacing.md,
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.sm,
   },
   subtitle: {
     ...Typography.body,
@@ -273,6 +275,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
     paddingHorizontal: Spacing.md,
     lineHeight: 22,
+    flexWrap: 'wrap',
   },
   formCard: {
     borderRadius: BorderRadius.xl,

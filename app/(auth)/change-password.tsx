@@ -40,27 +40,27 @@ export default function ChangePasswordScreen() {
   const handleChangePassword = async () => {
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert(t('common.error'), t('auth.fillAllFieldsPassword'));
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Error', 'New password must be at least 6 characters long');
+      Alert.alert(t('common.error'), t('auth.passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'New passwords do not match');
+      Alert.alert(t('common.error'), t('auth.passwordsDoNotMatch'));
       return;
     }
 
     if (currentPassword === newPassword) {
-      Alert.alert('Error', 'New password must be different from current password');
+      Alert.alert(t('common.error'), t('auth.passwordMustBeDifferent'));
       return;
     }
 
     if (!user?.email) {
-      Alert.alert('Error', 'User session expired. Please login again.');
+      Alert.alert(t('common.error'), t('auth.userSessionExpired'));
       return;
     }
 
@@ -74,11 +74,11 @@ export default function ChangePasswordScreen() {
       await updatePassword(auth.currentUser!, newPassword);
 
       Alert.alert(
-        'Success',
-        'Your password has been changed successfully.',
+        t('common.success'),
+        t('auth.passwordChangedSuccess'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => router.back()
           }
         ]
@@ -90,52 +90,52 @@ export default function ChangePasswordScreen() {
       setConfirmPassword("");
 
     } catch (error: any) {
-      let errorMessage = 'Failed to change password. Please try again.';
+      let errorMessage = t('auth.failedToChangePassword');
 
       // Handle specific Firebase auth errors
       if (error?.code) {
         switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/invalid-credential':
-            errorMessage = 'Current password is incorrect. Please check and try again.';
+            errorMessage = t('auth.currentPasswordIncorrect');
             break;
           case 'auth/weak-password':
-            errorMessage = 'New password is too weak. Please choose a stronger password with at least 6 characters.';
+            errorMessage = t('auth.newPasswordTooWeak');
             break;
           case 'auth/too-many-requests':
-            errorMessage = 'Too many failed attempts. For your security, please try again later.';
+            errorMessage = t('auth.tooManyFailedAttempts');
             break;
           case 'auth/user-mismatch':
           case 'auth/user-not-found':
-            errorMessage = 'User session expired. Please login again and try.';
+            errorMessage = t('auth.pleaseLoginAgain');
             break;
           case 'auth/requires-recent-login':
-            errorMessage = 'For security, please login again before changing your password.';
+            errorMessage = t('auth.pleaseLoginAgainSecurity');
             break;
           case 'auth/invalid-email':
-            errorMessage = 'Account information is invalid. Please contact support.';
+            errorMessage = t('auth.accountInfoInvalid');
             break;
           case 'auth/network-request-failed':
-            errorMessage = 'Network error. Please check your internet connection and try again.';
+            errorMessage = t('auth.networkError');
             break;
           case 'auth/timeout':
-            errorMessage = 'Request timed out. Please check your connection and try again.';
+            errorMessage = t('auth.requestTimedOut');
             break;
           default:
-            errorMessage = 'Failed to change password. Please try again.';
+            errorMessage = t('auth.failedToChangePassword');
         }
       } else if (error?.message) {
         // Handle error messages that might come from the auth context
         if (error.message.includes('re-authenticate')) {
-          errorMessage = 'For security, please login again before changing your password.';
+          errorMessage = t('auth.pleaseLoginAgainSecurity');
         } else if (error.message.includes('network') || error.message.includes('connection')) {
-          errorMessage = 'Network error. Please check your internet connection and try again.';
+          errorMessage = t('auth.networkError');
         } else if (error.message.includes('password') && error.message.includes('weak')) {
-          errorMessage = 'New password is too weak. Please choose a stronger password.';
+          errorMessage = t('auth.newPasswordTooWeakShort');
         }
       }
 
-      Alert.alert('Error', errorMessage);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -302,16 +302,16 @@ export default function ChangePasswordScreen() {
               {/* Password Requirements */}
               <View style={styles.requirementsContainer}>
                 <Text style={[styles.requirementsTitle, { color: colors.textSecondary }]}>
-                  Password requirements:
+                  {t('auth.passwordRequirements')}
                 </Text>
                 <Text style={[styles.requirement, { color: newPassword.length >= 6 ? colors.success : colors.textSecondary }]}>
-                  {newPassword.length >= 6 ? '✓' : '•'} At least 6 characters
+                  {newPassword.length >= 6 ? '✓' : '•'} {t('auth.atLeast6Characters')}
                 </Text>
                 <Text style={[styles.requirement, { color: newPassword === confirmPassword && newPassword.length > 0 ? colors.success : colors.textSecondary }]}>
-                  {newPassword === confirmPassword && newPassword.length > 0 ? '✓' : '•'} Passwords match
+                  {newPassword === confirmPassword && newPassword.length > 0 ? '✓' : '•'} {t('auth.passwordsMatch')}
                 </Text>
                 <Text style={[styles.requirement, { color: currentPassword !== newPassword && newPassword.length > 0 ? colors.success : colors.textSecondary }]}>
-                  {currentPassword !== newPassword && newPassword.length > 0 ? '✓' : '•'} Different from current password
+                  {currentPassword !== newPassword && newPassword.length > 0 ? '✓' : '•'} {t('auth.differentFromCurrent')}
                 </Text>
               </View>
 

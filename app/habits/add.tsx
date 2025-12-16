@@ -19,6 +19,7 @@ import { Colors } from '@/constants/theme';
 import { useHabit } from '@/contexts/HabitContext';
 import { useAuth } from '@/contexts/AuthContext';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 
 export default function AddHabitScreen() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function AddHabitScreen() {
   const { addHabit, updateHabit } = useHabit();
   const { user } = useAuth();
   const params = useLocalSearchParams();
+  const { t } = useTranslation();
 
   // Check if we're in edit mode
   const isEditMode = params.editMode === 'true';
@@ -42,7 +44,7 @@ export default function AddHabitScreen() {
     description: '',
     target: {
       value: 30,
-      unit: 'minutes',
+      unit: t('habits.minutes'),
     },
     color: '#4ECDC4',
     icon: '🏃',
@@ -70,21 +72,29 @@ export default function AddHabitScreen() {
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
 
   const habitTypes = [
-    { value: 'exercise', label: 'Exercise', icon: '🏃' },
-    { value: 'water', label: 'Water', icon: '💧' },
-    { value: 'sleep', label: 'Sleep', icon: '😴' },
-    { value: 'meditation', label: 'Meditation', icon: '🧘' },
-    { value: 'reading', label: 'Reading', icon: '📚' },
-    { value: 'custom', label: 'Custom', icon: '⭐' },
+    { value: 'exercise', label: t('habits.exercise'), icon: '🏃' },
+    { value: 'water', label: t('habits.water'), icon: '💧' },
+    { value: 'sleep', label: t('habits.sleep'), icon: '😴' },
+    { value: 'meditation', label: t('habits.meditation'), icon: '🧘' },
+    { value: 'reading', label: t('habits.reading'), icon: '📚' },
+    { value: 'custom', label: t('habits.custom'), icon: '⭐' },
   ];
 
   const habitColors = ['#4ECDC4', '#F47B9F', '#FFD93D', '#A8E6CF', '#FF8B94', '#C9B1FF', '#FFB347'];
   const frequencyTypes = [
-    { value: 'daily', label: 'Daily' },
-    { value: 'interval', label: 'Specific days' },
+    { value: 'daily', label: t('habits.daily') },
+    { value: 'interval', label: t('habits.specificDays') },
   ];
 
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const daysOfWeek = [
+    t('common.sunday'),
+    t('common.monday'),
+    t('common.tuesday'),
+    t('common.wednesday'),
+    t('common.thursday'),
+    t('common.friday'),
+    t('common.saturday'),
+  ];
 
   // Date picker handlers
   const handleStartDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -147,7 +157,7 @@ export default function AddHabitScreen() {
         });
       } catch (error) {
         console.error('Error parsing habit data:', error);
-        Alert.alert('Error', 'Failed to load habit data for editing');
+        Alert.alert(t('common.error'), t('habits.failedToLoadHabitData'));
       }
     } else if (params.template) {
       // Load from template
@@ -159,7 +169,7 @@ export default function AddHabitScreen() {
           habitName: template.habitName || '',
           habitType: template.category || 'custom',
           description: template.description || '',
-          target: template.target || { value: 30, unit: 'minutes' },
+          target: template.target || { value: 30, unit: t('habits.minutes') },
           color: template.color || '#4ECDC4',
           icon: template.icon || '⭐',
           isActive: true,
@@ -187,12 +197,12 @@ export default function AddHabitScreen() {
   const handleRemoveTime = (index: number) => {
     if (frequency.times.length > 1) {
       Alert.alert(
-        "Remove Time",
-        "Are you sure you want to remove this reminder time?",
+        t('habits.removeTime'),
+        t('habits.removeTimeConfirm'),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t('habits.cancel'), style: "cancel" },
           {
-            text: "Remove",
+            text: t('habits.remove'),
             style: "destructive",
             onPress: () => {
               setFrequency(prev => ({
@@ -218,23 +228,23 @@ export default function AddHabitScreen() {
   const handleSave = async () => {
     // Check if user is authenticated
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to save habits');
+      Alert.alert(t('common.error'), t('habits.mustBeLoggedIn'));
       return;
     }
 
     // Validation
     if (!habitData.habitName.trim()) {
-      Alert.alert('Error', 'Please enter habit name');
+      Alert.alert(t('common.error'), t('habits.pleaseEnterHabitName'));
       return;
     }
 
     if (frequency.times.length === 0) {
-      Alert.alert('Error', 'Please add at least one reminder time');
+      Alert.alert(t('common.error'), t('habits.pleaseAddAtLeastOneReminderTime'));
       return;
     }
 
     if (frequency.type === 'interval' && (!frequency.specificDays || frequency.specificDays.length === 0)) {
-      Alert.alert('Error', 'Please select at least one day');
+      Alert.alert(t('common.error'), t('habits.pleaseSelectAtLeastOneDay'));
       return;
     }
 
@@ -266,10 +276,10 @@ export default function AddHabitScreen() {
         console.log('Update result:', result);
 
         if (result.success) {
-          Alert.alert('Success', 'Habit updated successfully');
+          Alert.alert(t('common.success'), t('habits.habitUpdatedSuccessfully'));
           router.back();
         } else {
-          Alert.alert('Error', result.error || 'Failed to update habit');
+          Alert.alert(t('common.error'), result.error || t('habits.failedToUpdateHabit'));
         }
       } else {
         // Add new habit
@@ -297,16 +307,16 @@ export default function AddHabitScreen() {
         const result = await addHabit(newHabit);
 
         if (result.success) {
-          Alert.alert('Success', 'Habit added successfully');
+          Alert.alert(t('common.success'), t('habits.habitAddedSuccessfully'));
           router.back();
         } else {
-          Alert.alert('Error', result.error || 'Failed to add habit');
+          Alert.alert(t('common.error'), result.error || t('habits.failedToCreateHabit'));
         }
       }
     } catch (error) {
       console.error('Save error:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
-      Alert.alert('Error', `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Alert.alert(t('common.error'), `${t('habits.unexpectedErrorOccurred')}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -316,22 +326,22 @@ export default function AddHabitScreen() {
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.cardHeader}>
         <Ionicons name="checkmark-circle-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Basic Information</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{t('habits.basicInformation')}</Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Habit Name *</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('habits.habitNameRequired')}</Text>
         <TextInput
           style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
           value={habitData.habitName}
           onChangeText={(text) => setHabitData(prev => ({ ...prev, habitName: text }))}
-          placeholder="e.g., Morning Exercise"
+          placeholder={t('habits.habitNamePlaceholder')}
           placeholderTextColor={colors.textSecondary}
         />
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Habit Type</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('habits.habitType')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
           {habitTypes.map((type) => (
             <TouchableOpacity
@@ -366,12 +376,12 @@ export default function AddHabitScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Description</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('habits.description')}</Text>
         <TextInput
           style={[styles.textArea, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
           value={habitData.description}
           onChangeText={(text) => setHabitData(prev => ({ ...prev, description: text }))}
-          placeholder="e.g., 30 minutes of morning exercise to stay healthy"
+          placeholder={t('habits.descriptionPlaceholder')}
           placeholderTextColor={colors.textSecondary}
           multiline
           numberOfLines={3}
@@ -379,7 +389,7 @@ export default function AddHabitScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Target</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('habits.target')}</Text>
         <View style={styles.targetRow}>
           <TextInput
             style={[styles.targetInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
@@ -389,7 +399,7 @@ export default function AddHabitScreen() {
               target: { ...prev.target, value: parseInt(text) || 1 }
             }))}
             keyboardType="numeric"
-            placeholder="30"
+            placeholder={t('habits.targetPlaceholder')}
             placeholderTextColor={colors.textSecondary}
           />
           <TextInput
@@ -399,7 +409,7 @@ export default function AddHabitScreen() {
               ...prev,
               target: { ...prev.target, unit: text }
             }))}
-            placeholder="minutes"
+            placeholder={t('habits.minutes')}
             placeholderTextColor={colors.textSecondary}
           />
         </View>
@@ -411,11 +421,11 @@ export default function AddHabitScreen() {
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.cardHeader}>
         <Ionicons name="time-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Frequency Settings</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{t('habits.frequencySettings')}</Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Schedule Type</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('habits.scheduleType')}</Text>
         <View style={styles.frequencyGrid}>
           {frequencyTypes.map((type) => (
             <TouchableOpacity
@@ -442,7 +452,7 @@ export default function AddHabitScreen() {
 
       {frequency.type === 'interval' && (
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>Select Days</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{t('habits.selectDays')}</Text>
           <View style={styles.daysGrid}>
             {daysOfWeek.map((day, index) => (
               <TouchableOpacity
@@ -470,7 +480,7 @@ export default function AddHabitScreen() {
 
       <View style={styles.inputGroup}>
         <View style={styles.timeHeader}>
-          <Text style={[styles.label, { color: colors.text }]}>Reminder Times</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{t('habits.reminderTimes')}</Text>
           <TouchableOpacity onPress={handleAddTime} style={styles.addButton}>
             <Ionicons name="add" size={20} color="#FFFFFF" />
           </TouchableOpacity>
@@ -509,11 +519,11 @@ export default function AddHabitScreen() {
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.cardHeader}>
         <Ionicons name="calendar-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Duration</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{t('habits.duration')}</Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Start Date</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('habits.startDate')}</Text>
         <TouchableOpacity
           style={[styles.dateInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
           onPress={() => setShowStartDatePicker(true)}
@@ -542,7 +552,7 @@ export default function AddHabitScreen() {
                 onPress={() => setShowStartDatePicker(false)}
                 style={[styles.pickerButton, { backgroundColor: colors.border }]}
               >
-                <Text style={[styles.pickerButtonText, { color: colors.text }]}>Done</Text>
+                <Text style={[styles.pickerButtonText, { color: colors.text }]}>{t('habits.done')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -555,7 +565,7 @@ export default function AddHabitScreen() {
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.cardHeader}>
         <Ionicons name="color-palette-outline" size={24} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.text }]}>Color & Appearance</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{t('habits.colorAppearance')}</Text>
       </View>
 
       <View style={styles.colorContainer}>
@@ -595,7 +605,7 @@ export default function AddHabitScreen() {
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </TouchableOpacity>
           <View style={[styles.badge, { backgroundColor: isEditMode ? '#FF8B94' : '#84CC16' }]}>
-            <Text style={styles.badgeText}>{isEditMode ? 'Edit Habit' : 'New Habit'}</Text>
+            <Text style={styles.badgeText}>{isEditMode ? t('habits.editHabit') : t('habits.newHabit')}</Text>
           </View>
         </View>
         <TouchableOpacity
@@ -612,7 +622,7 @@ export default function AddHabitScreen() {
           {loading ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
+            <Text style={styles.saveButtonText}>{t('habits.save')}</Text>
           )}
         </TouchableOpacity>
       </View>

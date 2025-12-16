@@ -21,6 +21,7 @@ import { medicineService } from "@/services";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import { useTranslation } from "react-i18next";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -42,31 +43,6 @@ interface FrequencyTab {
   description: string;
 }
 
-const frequencyTabs: FrequencyTab[] = [
-  {
-    id: "daily",
-    label: "Daily",
-    icon: "calendar-outline" as keyof typeof Ionicons.glyphMap,
-    description: "Every day at the same time",
-  },
-  {
-    id: "interval",
-    label: "Interval",
-    icon: "calendar-number-outline" as keyof typeof Ionicons.glyphMap,
-    description: "On specific days each week",
-  },
-];
-
-const daysOfWeek = [
-  { id: 0, label: "Sun" },
-  { id: 1, label: "Mon" },
-  { id: 2, label: "Tue" },
-  { id: 3, label: "Wed" },
-  { id: 4, label: "Thu" },
-  { id: 5, label: "Fri" },
-  { id: 6, label: "Sat" },
-];
-
 export default function AddMedicineStep2NewScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -74,6 +50,32 @@ export default function AddMedicineStep2NewScreen() {
   const { addMedicine, updateMedicine } = useMedicine();
   const { user } = useAuth();
   const params = useLocalSearchParams();
+  const { t } = useTranslation();
+
+  const frequencyTabs: FrequencyTab[] = [
+    {
+      id: "daily",
+      label: t("habits.daily"),
+      icon: "calendar-outline" as keyof typeof Ionicons.glyphMap,
+      description: t("habits.everyDaySameTime"),
+    },
+    {
+      id: "interval",
+      label: t("habits.interval"),
+      icon: "calendar-number-outline" as keyof typeof Ionicons.glyphMap,
+      description: t("habits.onSpecificDaysEachWeek"),
+    },
+  ];
+
+  const daysOfWeek = [
+    { id: 0, label: t("common.sunday") },
+    { id: 1, label: t("common.monday") },
+    { id: 2, label: t("common.tuesday") },
+    { id: 3, label: t("common.wednesday") },
+    { id: 4, label: t("common.thursday") },
+    { id: 5, label: t("common.friday") },
+    { id: 6, label: t("common.saturday") },
+  ];
 
   // Parse step1 data
   const step1Data = params.step1Data
@@ -252,12 +254,12 @@ export default function AddMedicineStep2NewScreen() {
         router.replace("/(tabs)/medicine");
       } else {
         Alert.alert(
-          "Error",
-          result.error || `Failed to ${editMode ? "update" : "add"} medicine`
+          t("common.error"),
+          result.error || (editMode ? t("medicine.failedToUpdateMedicine") : t("medicine.failedToAddMedicine"))
         );
       }
     } catch {
-      Alert.alert("Error", "An unexpected error occurred");
+      Alert.alert(t("common.error"), t("medicine.unexpectedErrorOccurred"));
     } finally {
       setLoading(false);
     }
@@ -407,12 +409,12 @@ export default function AddMedicineStep2NewScreen() {
           color={colors.primary}
         />
         <Text style={[styles.cardTitle, { color: colors.text }]}>
-          Daily Reminder Times
+          {t("medicine.dailyReminderTimes")}
         </Text>
       </View>
 
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        When should you be reminded to take this medicine?
+        {t("medicine.whenShouldBeRemindedMedicine")}
       </Text>
 
       <View style={styles.reminderGrid}>
@@ -462,7 +464,7 @@ export default function AddMedicineStep2NewScreen() {
       >
         <Ionicons name="add" size={20} color={colors.primary} />
         <Text style={[styles.addTimeText, { color: colors.primary }]}>
-          Add Reminder Time
+          {t("medicine.addReminderTime")}
         </Text>
       </TouchableOpacity>
     </View>
@@ -477,12 +479,12 @@ export default function AddMedicineStep2NewScreen() {
           color={colors.primary}
         />
         <Text style={[styles.cardTitle, { color: colors.text }]}>
-          Select Days
+          {t("medicine.selectDays")}
         </Text>
       </View>
 
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Select the days of the week when this medicine should be taken
+        {t("medicine.selectDaysOfWeekMedicine")}
       </Text>
 
       <View style={styles.daysGrid}>
@@ -530,7 +532,7 @@ export default function AddMedicineStep2NewScreen() {
           { marginTop: 16, color: colors.textSecondary },
         ]}
       >
-        Reminder times for selected days:
+        {t("medicine.reminderTimesForSelectedDays")}
       </Text>
 
       <View style={styles.reminderGrid}>
@@ -580,7 +582,7 @@ export default function AddMedicineStep2NewScreen() {
       >
         <Ionicons name="add" size={20} color={colors.primary} />
         <Text style={[styles.addTimeText, { color: colors.primary }]}>
-          Add Reminder Time
+          {t("medicine.addReminderTime")}
         </Text>
       </TouchableOpacity>
     </View>
@@ -607,7 +609,7 @@ export default function AddMedicineStep2NewScreen() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {editMode ? "Edit Medicine" : "Add Medicine"}
+          {editMode ? t("medicine.editMedicine") : t("medicine.addMedicine")}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -654,20 +656,20 @@ export default function AddMedicineStep2NewScreen() {
           {/* Title */}
           <View style={styles.section}>
             <Text style={[styles.title, { color: colors.text }]}>
-              Frequency & Duration
+              {t("medicine.frequencyDuration")}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Set when and how long to take this medicine
+              {t("medicine.setWhenAndHowLong")}
             </Text>
           </View>
 
           {/* Frequency Tabs */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>
-              Frequency
+              {t("medicine.frequency")}
             </Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              How often do you need to take this medicine?
+              {t("medicine.howOftenNeedToTake")}
             </Text>
 
             <View style={styles.frequencyTabContainer}>
@@ -701,18 +703,18 @@ export default function AddMedicineStep2NewScreen() {
                 color={colors.primary}
               />
               <Text style={[styles.cardTitle, { color: colors.text }]}>
-                Duration
+                {t("medicine.duration")}
               </Text>
             </View>
 
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Set how long you need to take this medicine
+              {t("medicine.setHowLongTake")}
             </Text>
 
             <View style={styles.durationRow}>
               <View style={styles.durationInput}>
                 <Text style={[styles.durationLabel, { color: colors.text }]}>
-                  Start Date
+                  {t("medicine.startDate")}
                 </Text>
                 <DateTimePicker
                   value={medicineData.duration.startDate}
@@ -735,7 +737,7 @@ export default function AddMedicineStep2NewScreen() {
 
               <View style={styles.durationInput}>
                 <Text style={[styles.durationLabel, { color: colors.text }]}>
-                  End Date (Optional)
+                  {t("medicine.endDateOptional")}
                 </Text>
                 {!showEndDate && !medicineData.duration.endDate ? (
                   <TouchableOpacity
@@ -823,12 +825,12 @@ export default function AddMedicineStep2NewScreen() {
         >
           {loading ? (
             <Text style={styles.saveButtonText}>
-              {editMode ? "Updating..." : "Adding..."}
+              {editMode ? t("medicine.updating") : t("medicine.adding")}
             </Text>
           ) : (
             <>
               <Text style={styles.saveButtonText}>
-                {editMode ? "Update Medicine" : "Add Medicine"}
+                {editMode ? t("medicine.updateMedicine") : t("medicine.addMedicine")}
               </Text>
               <Ionicons name="checkmark" size={20} color="#FFFFFF" />
             </>

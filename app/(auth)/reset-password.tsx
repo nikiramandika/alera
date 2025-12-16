@@ -38,7 +38,7 @@ export default function ResetPasswordScreen() {
   React.useEffect(() => {
     const verifyCode = async () => {
       if (!oobCode || typeof oobCode !== 'string') {
-        Alert.alert('Error', 'Invalid password reset link');
+        Alert.alert(t('common.error'), t('auth.invalidResetLink'));
         router.replace('/(auth)/login');
         return;
       }
@@ -48,21 +48,21 @@ export default function ResetPasswordScreen() {
         setCodeValid(true);
       } catch (error: any) {
         console.error('Error verifying reset code:', error);
-        let errorMessage = 'Invalid or expired password reset link';
+        let errorMessage = t('auth.invalidExpiredResetLink');
 
         if (error.code === 'auth/expired-action-code') {
-          errorMessage = 'Password reset link has expired. Please request a new one.';
+          errorMessage = t('auth.resetLinkExpired');
         } else if (error.code === 'auth/invalid-action-code') {
-          errorMessage = 'Invalid password reset link. Please request a new one.';
+          errorMessage = t('auth.invalidResetLinkRequest');
         } else if (error.code === 'auth/user-disabled') {
-          errorMessage = 'This account has been disabled';
+          errorMessage = t('auth.accountDisabled');
         } else if (error.code === 'auth/user-not-found') {
-          errorMessage = 'No account found with this email address';
+          errorMessage = t('auth.emailNotFoundMessage');
         }
 
-        Alert.alert('Error', errorMessage, [
+        Alert.alert(t('common.error'), errorMessage, [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => router.replace('/(auth)/forgot-password')
           }
         ]);
@@ -76,22 +76,22 @@ export default function ResetPasswordScreen() {
 
   const handleResetPassword = async () => {
     if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      Alert.alert(t('common.error'), t('auth.passwordTooShort'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert(t('common.error'), t('auth.passwordsDoNotMatch'));
       return;
     }
 
     if (!oobCode || typeof oobCode !== 'string') {
-      Alert.alert('Error', 'Invalid password reset link');
+      Alert.alert(t('common.error'), t('auth.invalidResetLink'));
       return;
     }
 
@@ -99,39 +99,39 @@ export default function ResetPasswordScreen() {
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
       Alert.alert(
-        'Success',
-        'Your password has been reset successfully. You can now login with your new password.',
+        t('common.success'),
+        t('auth.passwordResetSuccess'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => router.replace('/(auth)/login')
           }
         ]
       );
     } catch (error: any) {
-      let errorMessage = 'An error occurred while resetting your password';
+      let errorMessage = t('auth.passwordResetError');
 
       switch (error.code) {
         case 'auth/expired-action-code':
-          errorMessage = 'Password reset link has expired. Please request a new one.';
+          errorMessage = t('auth.resetLinkExpired');
           break;
         case 'auth/invalid-action-code':
-          errorMessage = 'Invalid password reset link. Please request a new one.';
+          errorMessage = t('auth.invalidResetLinkRequest');
           break;
         case 'auth/user-disabled':
-          errorMessage = 'This account has been disabled';
+          errorMessage = t('auth.accountDisabled');
           break;
         case 'auth/user-not-found':
-          errorMessage = 'No account found with this email address';
+          errorMessage = t('auth.emailNotFoundMessage');
           break;
         case 'auth/weak-password':
-          errorMessage = 'Password is too weak. Please choose a stronger password.';
+          errorMessage = t('auth.weakPassword');
           break;
         default:
           errorMessage = error.message;
       }
 
-      Alert.alert('Error', errorMessage);
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -149,7 +149,7 @@ export default function ResetPasswordScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            Verifying reset link...
+            {t('auth.verifyingResetLink')}
           </Text>
         </View>
       </SafeAreaView>
@@ -168,13 +168,13 @@ export default function ResetPasswordScreen() {
         <View style={styles.loadingContainer}>
           <Ionicons name="warning-outline" size={60} color={colors.error} />
           <Text style={[styles.errorText, { color: colors.text }]}>
-            Invalid reset link
+            {t('auth.invalidResetLink')}
           </Text>
           <TouchableOpacity
             style={[styles.backButton, { backgroundColor: colors.primary }]}
             onPress={() => router.replace('/(auth)/forgot-password')}
           >
-            <Text style={styles.backButtonText}>Request New Link</Text>
+            <Text style={styles.backButtonText}>{t('auth.requestNewLink')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -204,12 +204,12 @@ export default function ResetPasswordScreen() {
 
             {/* Title */}
             <Text style={[styles.title, { color: colors.text }]}>
-              {t('auth.resetPassword', 'Reset Password')}
+                    {t('auth.resetPassword')}
             </Text>
 
             {/* Subtitle */}
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {t('auth.resetPasswordDescription', 'Enter your new password below.')}
+              {t('auth.resetPasswordDescription')}
             </Text>
 
             {/* Form Card */}
@@ -267,13 +267,13 @@ export default function ResetPasswordScreen() {
               {/* Password Requirements */}
               <View style={styles.requirementsContainer}>
                 <Text style={[styles.requirementsTitle, { color: colors.textSecondary }]}>
-                  Password must:
+                  {t('auth.passwordMust')}
                 </Text>
                 <Text style={[styles.requirement, { color: newPassword.length >= 6 ? colors.success : colors.textSecondary }]}>
-                  {newPassword.length >= 6 ? '✓' : '•'} Be at least 6 characters
+                  {newPassword.length >= 6 ? '✓' : '•'} {t('auth.atLeast6Characters')}
                 </Text>
                 <Text style={[styles.requirement, { color: newPassword === confirmPassword && newPassword.length > 0 ? colors.success : colors.textSecondary }]}>
-                  {newPassword === confirmPassword && newPassword.length > 0 ? '✓' : '•'} Match confirm password
+                  {newPassword === confirmPassword && newPassword.length > 0 ? '✓' : '•'} {t('auth.matchConfirmPassword')}
                 </Text>
               </View>
 
@@ -289,7 +289,7 @@ export default function ResetPasswordScreen() {
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.resetButtonText}>
-                    {t('auth.resetPasswordButton', 'Reset Password')}
+                    {t('auth.resetPasswordButton')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -355,6 +355,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginBottom: Spacing.md,
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.sm,
   },
   subtitle: {
     ...Typography.body,
@@ -362,6 +364,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
     paddingHorizontal: Spacing.md,
     lineHeight: 22,
+    flexWrap: 'wrap',
   },
   formCard: {
     borderRadius: BorderRadius.xl,
@@ -408,6 +411,8 @@ const styles = StyleSheet.create({
   requirement: {
     fontSize: 12,
     marginBottom: Spacing.xs,
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   resetButton: {
     borderRadius: BorderRadius.md,

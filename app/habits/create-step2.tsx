@@ -20,6 +20,7 @@ import { useHabit } from '@/contexts/HabitContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { habitService } from '@/services';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -44,22 +45,7 @@ interface FrequencyTab {
   description: string;
 }
 
-const frequencyTabs: FrequencyTab[] = [
-  {
-    id: 'daily',
-    label: 'Daily',
-    icon: 'sunny-outline' as keyof typeof Ionicons.glyphMap,
-    description: 'Every day at the same time'
-  },
-  {
-    id: 'interval',
-    label: 'Interval',
-    icon: 'repeat-outline' as keyof typeof Ionicons.glyphMap,
-    description: 'On specific days each week'
-  }
-];
-
-const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// frequencyTabs and daysOfWeek will be defined inside component to use t()
 
 export default function CreateHabitStep2Screen() {
   const router = useRouter();
@@ -68,6 +54,32 @@ export default function CreateHabitStep2Screen() {
   const { addHabit, updateHabit } = useHabit();
   const { user } = useAuth();
   const params = useLocalSearchParams();
+  const { t } = useTranslation();
+
+  const frequencyTabs: FrequencyTab[] = [
+    {
+      id: 'daily',
+      label: t('habits.daily'),
+      icon: 'sunny-outline' as keyof typeof Ionicons.glyphMap,
+      description: t('habits.everyDaySameTime')
+    },
+    {
+      id: 'interval',
+      label: t('habits.interval'),
+      icon: 'repeat-outline' as keyof typeof Ionicons.glyphMap,
+      description: t('habits.onSpecificDaysEachWeek')
+    }
+  ];
+
+  const daysOfWeek = [
+    t('common.sunday'),
+    t('common.monday'),
+    t('common.tuesday'),
+    t('common.wednesday'),
+    t('common.thursday'),
+    t('common.friday'),
+    t('common.saturday'),
+  ];
 
   // Parse step1 data
   const step1Data = params.step1Data ? JSON.parse(params.step1Data as string) as Step1Data : {};
@@ -325,10 +337,10 @@ export default function CreateHabitStep2Screen() {
       if (result.success) {
         router.replace('/(tabs)/habits');
       } else {
-        Alert.alert('Error', result.error || `Failed to ${editMode ? 'update' : 'create'} habit`);
+        Alert.alert(t('common.error'), result.error || (editMode ? t('habits.failedToUpdateHabit') : t('habits.failedToCreateHabit')));
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert(t('common.error'), t('habits.unexpectedErrorOccurred'));
     } finally {
       setLoading(false);
     }
@@ -420,7 +432,7 @@ export default function CreateHabitStep2Screen() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {editMode ? 'Edit Habit' : 'Create New Habit'}
+          {editMode ? t('habits.editHabit') : t('habits.createNewHabit')}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -448,18 +460,18 @@ export default function CreateHabitStep2Screen() {
           {/* Title */}
           <View style={styles.section}>
             <Text style={[styles.title, { color: colors.text }]}>
-              Frequency & Goals
+              {t('habits.frequencyGoals')}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Set when and how often you want to do this habit
+              {t('habits.setWhenAndHowOften')}
             </Text>
           </View>
 
           {/* Frequency Tabs */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.label, { color: colors.text }]}>Frequency</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('habits.frequency')}</Text>
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              How often do you want to do this habit?
+              {t('habits.howOftenDoHabit')}
             </Text>
 
             <View style={styles.frequencyTabContainer}>
@@ -506,11 +518,11 @@ export default function CreateHabitStep2Screen() {
               <View style={styles.tabContent}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-                  <Text style={[styles.cardTitle, { color: colors.text }]}>Daily Reminder Times</Text>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>{t('habits.dailyReminderTimes')}</Text>
                 </View>
 
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                  When should you be reminded to do this habit?
+                  {t('habits.whenShouldBeReminded')}
                 </Text>
 
                 <View style={styles.reminderGrid}>
@@ -547,7 +559,7 @@ export default function CreateHabitStep2Screen() {
                 >
                   <Ionicons name="add" size={20} color={colors.primary} />
                   <Text style={[styles.addTimeText, { color: colors.primary }]}>
-                    Add Reminder Time
+                    {t('habits.addReminderTime')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -557,11 +569,11 @@ export default function CreateHabitStep2Screen() {
               <View style={styles.tabContent}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="calendar-number-outline" size={20} color={colors.primary} />
-                  <Text style={[styles.cardTitle, { color: colors.text }]}>Select Days</Text>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>{t('habits.selectDays')}</Text>
                 </View>
 
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                  Select the days of the week when this habit should be done
+                  {t('habits.selectDaysOfWeek')}
                 </Text>
 
                 <View style={styles.daysGrid}>
@@ -594,7 +606,7 @@ export default function CreateHabitStep2Screen() {
                 <View style={[styles.divider, { borderBottomColor: colors.border }]} />
 
                 <Text style={[styles.subtitle, { marginTop: 16, color: colors.textSecondary }]}>
-                  Reminder times for selected days:
+                  {t('habits.reminderTimesForSelectedDays')}
                 </Text>
 
                 <View style={styles.reminderGrid}>
@@ -631,7 +643,7 @@ export default function CreateHabitStep2Screen() {
                 >
                   <Ionicons name="add" size={20} color={colors.primary} />
                   <Text style={[styles.addTimeText, { color: colors.primary }]}>
-                    Add Reminder Time
+                    {t('habits.addReminderTime')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -643,16 +655,16 @@ export default function CreateHabitStep2Screen() {
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Duration</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{t('habits.duration')}</Text>
             </View>
 
             <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
-              Set how long you want to maintain this habit
+              {t('habits.setHowLongMaintain')}
             </Text>
 
             <View style={styles.durationRow}>
               <View style={styles.durationInput}>
-                <Text style={[styles.durationLabel, { color: colors.text }]}>Start Date</Text>
+                <Text style={[styles.durationLabel, { color: colors.text }]}>{t('habits.startDate')}</Text>
                 <DateTimePicker
                   value={(() => {
                     const date = habitData.duration.startDate;
@@ -689,7 +701,7 @@ export default function CreateHabitStep2Screen() {
               </View>
 
               <View style={styles.durationInput}>
-                <Text style={[styles.durationLabel, { color: colors.text }]}>End Date (Optional)</Text>
+                <Text style={[styles.durationLabel, { color: colors.text }]}>{t('habits.endDateOptional')}</Text>
                 {!showEndDate && !habitData.duration.endDate ? (
                   <TouchableOpacity
                     style={[styles.addEndDateButton, {
@@ -776,10 +788,10 @@ export default function CreateHabitStep2Screen() {
           activeOpacity={0.8}
         >
           {loading ? (
-            <Text style={styles.saveButtonText}>{editMode ? 'Updating...' : 'Creating...'}</Text>
+            <Text style={styles.saveButtonText}>{editMode ? t('habits.updating') : t('habits.creating')}</Text>
           ) : (
             <>
-              <Text style={styles.saveButtonText}>{editMode ? 'Update Habit' : 'Create Habit'}</Text>
+              <Text style={styles.saveButtonText}>{editMode ? t('habits.updateHabit') : t('habits.createHabit')}</Text>
               <Ionicons name="checkmark" size={20} color="#FFFFFF" />
             </>
           )}

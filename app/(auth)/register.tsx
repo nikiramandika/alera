@@ -54,35 +54,35 @@ export default function RegisterScreen() {
 
   const handleSignUp = async () => {
     if (!displayName || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
     }
 
     // Basic name validation
     if (displayName.trim().length < 2) {
-      Alert.alert('Error', 'Please enter a valid name (at least 2 characters)');
+      Alert.alert(t('common.error'), t('auth.validName'));
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      Alert.alert(t('common.error'), t('auth.validEmailAddress'));
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert(t('common.error'), t('auth.passwordsDoNotMatch'));
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      Alert.alert(t('common.error'), t('auth.passwordTooShort'));
       return;
     }
 
     if (!agreeTerms) {
-      Alert.alert('Error', 'Please agree to the terms and conditions');
+      Alert.alert(t('common.error'), t('auth.agreeTerms'));
       return;
     }
 
@@ -121,36 +121,36 @@ export default function RegisterScreen() {
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      let errorMessage = 'Registration failed. Please try again.';
+      let errorMessage = t('auth.registrationError');
 
       // Handle any unexpected Firebase errors
       if (error?.code) {
         switch (error.code) {
           case 'auth/email-already-in-use':
           case 'auth/email-already-exists':
-            errorMessage = 'This email address is already registered. Please use a different email or try signing in.';
+            errorMessage = t('auth.emailAlreadyExists');
             break;
           case 'auth/weak-password':
-            errorMessage = 'Password is too weak. Please choose a stronger password.';
+            errorMessage = t('auth.weakPassword');
             break;
           case 'auth/invalid-email':
-            errorMessage = 'Invalid email address format. Please check and try again.';
+            errorMessage = t('auth.invalidEmailFormat');
             break;
           case 'auth/operation-not-allowed':
-            errorMessage = 'Email registration is currently disabled. Please contact support.';
+            errorMessage = t('auth.registrationDisabled');
             break;
           case 'auth/too-many-requests':
-            errorMessage = 'Too many registration attempts. Please try again later.';
+            errorMessage = t('auth.tooManyRequests');
             break;
           case 'auth/network-request-failed':
-            errorMessage = 'Network error. Please check your internet connection.';
+            errorMessage = t('auth.networkError');
             break;
           default:
-            errorMessage = 'Registration failed. Please try again.';
+            errorMessage = t('auth.registrationError');
         }
       }
 
-      Alert.alert('Registration Failed', errorMessage);
+      Alert.alert(t('auth.registerFailed'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -169,24 +169,24 @@ export default function RegisterScreen() {
           return;
         }
 
-        let errorMessage = 'Google sign-up failed. Please try again.';
+        let errorMessage = t('auth.googleSignUpFailed');
         if (result.error) {
           if (result.error.includes('network')) {
-            errorMessage = 'Network error. Please check your internet connection and try again.';
+            errorMessage = t('auth.networkError');
           } else if (result.error.includes('too-many-requests')) {
-            errorMessage = 'Too many sign-up attempts. Please try again later.';
+            errorMessage = t('auth.tooManyRequests');
           } else if (result.error.includes('incomplete')) {
-            errorMessage = 'Incomplete authentication data. Please try again.';
+            errorMessage = t('auth.incompleteAuth');
           } else {
             errorMessage = result.error;
           }
         }
 
-        Alert.alert('Google Sign-Up Failed', errorMessage);
+        Alert.alert(t('auth.googleSignUpFailed'), errorMessage);
       }
     } catch (error: any) {
       console.error('Google sign-up error:', error);
-      let errorMessage = 'Google sign-up failed. Please try again.';
+      let errorMessage = t('auth.googleSignUpFailed');
 
       if (error?.code) {
         switch (error.code) {
@@ -196,17 +196,17 @@ export default function RegisterScreen() {
             console.log('Google Sign-Up was cancelled by user');
             return;
           case 'auth/popup-blocked':
-            errorMessage = 'Pop-up was blocked. Please allow pop-ups and try again.';
+            errorMessage = t('auth.popupBlocked');
             break;
           case 'auth/network-request-failed':
-            errorMessage = 'Network error. Please check your internet connection.';
+            errorMessage = t('auth.networkError');
             break;
           default:
-            errorMessage = 'Google sign-up failed. Please try again.';
+            errorMessage = t('auth.googleSignUpFailed');
         }
       }
 
-      Alert.alert('Google Sign-Up Failed', errorMessage);
+      Alert.alert(t('auth.googleSignUpFailed'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -234,7 +234,7 @@ export default function RegisterScreen() {
         {/* Register Card */}
         <View style={[styles.registerCard, { backgroundColor: colors.card }]}>
           {/* Title */}
-          <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('auth.createAccount')}</Text>
 
           {/* Form */}
           <View style={styles.form}>
@@ -253,7 +253,7 @@ export default function RegisterScreen() {
                     backgroundColor: colors.backgroundSecondary,
                     borderColor: colors.border
                   }]}
-                  placeholder="Full Name"
+                  placeholder={t('auth.fullName')}
                   placeholderTextColor={colors.textSecondary}
                   value={displayName}
                   onChangeText={setDisplayName}
@@ -277,7 +277,7 @@ export default function RegisterScreen() {
                     backgroundColor: colors.backgroundSecondary,
                     borderColor: colors.border
                   }]}
-                  placeholder="Email address"
+                  placeholder={t('auth.emailPlaceholder')}
                   placeholderTextColor={colors.textSecondary}
                   value={email}
                   onChangeText={setEmail}
@@ -302,7 +302,7 @@ export default function RegisterScreen() {
                     backgroundColor: colors.backgroundSecondary,
                     borderColor: colors.border
                   }]}
-                  placeholder="Password"
+                  placeholder={t('auth.passwordPlaceholder')}
                   placeholderTextColor={colors.textSecondary}
                   value={password}
                   onChangeText={setPassword}
@@ -336,7 +336,7 @@ export default function RegisterScreen() {
                     backgroundColor: colors.backgroundSecondary,
                     borderColor: colors.border
                   }]}
-                  placeholder="Confirm Password"
+                  placeholder={t('auth.confirmPassword')}
                   placeholderTextColor={colors.textSecondary}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -366,12 +366,12 @@ export default function RegisterScreen() {
                 )}
               </TouchableOpacity>
               <Text style={[styles.checkboxLabel, { color: colors.textSecondary }]}>
-                I agree with{' '}
+                {t('auth.agreeTermsText')}{' '}
                 <Text
                   style={[styles.termsLink, { color: colors.primary }]}
                   onPress={handleShowTerms}
                 >
-                  terms & conditions
+                  {t('auth.termsConditions')}
                 </Text>
               </Text>
             </View>
@@ -392,7 +392,7 @@ export default function RegisterScreen() {
             {/* Divider */}
             <View style={styles.dividerContainer}>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>Or</Text>
+              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>{t('auth.or')}</Text>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
@@ -403,16 +403,16 @@ export default function RegisterScreen() {
               disabled={loading}
             >
               <Ionicons name="logo-google" size={20} color="#4285F4" />
-              <Text style={[styles.googleButtonText, { color: colors.text }]}>Continue with Google</Text>
+              <Text style={[styles.googleButtonText, { color: colors.text }]}>{t('auth.continueWithGoogle')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Sign In Link */}
         <View style={styles.signInContainer}>
-          <Text style={[styles.signInText, { color: colors.textSecondary }]}>Already have an account? </Text>
+          <Text style={[styles.signInText, { color: colors.textSecondary }]}>{t('auth.alreadyHaveAccount')} </Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-            <Text style={[styles.signInLink, { color: colors.primary }]}>Sign In</Text>
+            <Text style={[styles.signInLink, { color: colors.primary }]}>{t('auth.signIn')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -462,6 +462,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginBottom: Spacing.xl,
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.sm,
   },
   form: {
     width: "100%",
@@ -504,6 +506,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     marginBottom: Spacing.lg,
+    flexWrap: 'wrap',
   },
   checkbox: {
     width: 20,
@@ -514,10 +517,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: Spacing.sm,
     marginTop: 2,
+    flexShrink: 0,
   },
   checkboxLabel: {
     fontSize: 14,
     flex: 1,
+    flexShrink: 1,
     lineHeight: 20,
   },
   termsLink: {

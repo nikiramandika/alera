@@ -115,7 +115,7 @@ export default function MedicationScreen() {
   };
 
   const getNextDoseTime = (times: string[]) => {
-    if (!times || times.length === 0) return "No schedule";
+    if (!times || times.length === 0) return t("medicine.noSchedule");
 
     const now = currentTime;
     let closestTime = null;
@@ -140,15 +140,15 @@ export default function MedicationScreen() {
       }
     }
 
-    if (!closestTime) return "No schedule";
+    if (!closestTime) return t("medicine.noSchedule");
 
     const diffHours = Math.floor(minDiffMs / (1000 * 60 * 60));
     const diffMins = Math.floor((minDiffMs % (1000 * 60 * 60)) / (1000 * 60));
 
-    if (diffHours > 24) return "Tomorrow";
-    if (diffHours > 0) return `In ${diffHours}h ${diffMins}m`;
-    if (diffMins > 0) return `In ${diffMins}m`;
-    return "Now";
+    if (diffHours > 24) return t("medicine.tomorrow");
+    if (diffHours > 0) return t("medicine.inHoursMinutes", { hours: diffHours, minutes: diffMins });
+    if (diffMins > 0) return t("medicine.inMinutes", { minutes: diffMins });
+    return t("medicine.now");
   };
 
   const handleDeleteMedicine = (medicine: any) => {
@@ -189,8 +189,8 @@ export default function MedicationScreen() {
                 });
 
                 Alert.alert(
-                  "Error",
-                  result.error || "Failed to delete medicine"
+                  t("common.error"),
+                  result.error || t("medicine.failedToDeleteMedicine")
                 );
               }
             } catch {
@@ -203,8 +203,8 @@ export default function MedicationScreen() {
               });
 
               Alert.alert(
-                "Error",
-                "An unexpected error occurred while deleting the medicine"
+                t("common.error"),
+                t("medicine.unexpectedErrorDeletingMedicine")
               );
             } finally {
               // Clear loading state
@@ -242,14 +242,14 @@ export default function MedicationScreen() {
           {isDeleting ? (
             <View style={styles.deleteLoadingContainer}>
               <ActivityIndicator size="small" color="#FFFFFF" />
-              <Text style={styles.deleteButtonText}>Deleting...</Text>
+              <Text style={styles.deleteButtonText}>{t("medicine.deleting")}</Text>
             </View>
           ) : (
             <>
               <View style={styles.deleteIconContainer}>
                 <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
               </View>
-              <Text style={styles.deleteButtonText}>Delete</Text>
+              <Text style={styles.deleteButtonText}>{t("common.delete")}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -359,7 +359,7 @@ export default function MedicationScreen() {
                   </Text>
                   {isMedicationExpired(item) && (
                     <View style={styles.expiredBadge}>
-                      <Text style={styles.expiredBadgeText}>Ended</Text>
+                      <Text style={styles.expiredBadgeText}>{t("medicine.ended")}</Text>
                     </View>
                   )}
                 </View>
@@ -521,29 +521,29 @@ export default function MedicationScreen() {
                     />
                     <Text style={[styles.statText, { color: colors.text }]}>
                       {(() => {
-                        const freq = selectedMedication?.frequency;
-                        if (freq?.type === "daily" && freq?.times) {
-                          return `${freq.times.length}x daily`;
-                        } else if (
-                          freq?.type === "interval" &&
-                          freq?.specificDays
-                        ) {
-                          const dayNames = [
-                            "Sun",
-                            "Mon",
-                            "Tue",
-                            "Wed",
-                            "Thu",
-                            "Fri",
-                            "Sat",
-                          ];
-                          return freq.specificDays
-                            .map((day: number) => dayNames[day])
-                            .join(", ");
-                        } else if (freq?.type === "as_needed") {
-                          return "As needed";
-                        }
-                        return "No schedule";
+                      const freq = selectedMedication?.frequency;
+                      if (freq?.type === "daily" && freq?.times) {
+                        return t("medicine.timesDaily", { count: freq.times.length });
+                      } else if (
+                        freq?.type === "interval" &&
+                        freq?.specificDays
+                      ) {
+                        const dayNames = [
+                          t("common.sunday"),
+                          t("common.monday"),
+                          t("common.tuesday"),
+                          t("common.wednesday"),
+                          t("common.thursday"),
+                          t("common.friday"),
+                          t("common.saturday"),
+                        ];
+                        return freq.specificDays
+                          .map((day: number) => dayNames[day])
+                          .join(", ");
+                      } else if (freq?.type === "as_needed") {
+                        return t("medicine.asNeeded");
+                      }
+                      return t("medicine.noSchedule");
                       })()}
                     </Text>
                   </View>
@@ -564,7 +564,7 @@ export default function MedicationScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Schedule
+                    {t("medicine.schedule")}
                   </Text>
                 </View>
                 <View>
@@ -578,37 +578,37 @@ export default function MedicationScreen() {
                         freq?.specificDays
                       ) {
                         const dayNames = [
-                          "Sun",
-                          "Mon",
-                          "Tue",
-                          "Wed",
-                          "Thu",
-                          "Fri",
-                          "Sat",
+                          t("common.sunday"),
+                          t("common.monday"),
+                          t("common.tuesday"),
+                          t("common.wednesday"),
+                          t("common.thursday"),
+                          t("common.friday"),
+                          t("common.saturday"),
                         ];
                         return freq.specificDays
                           .map((day: number) => dayNames[day])
                           .join(", ");
                       } else if (freq?.type === "as_needed") {
-                        return "As needed";
+                        return t("medicine.asNeeded");
                       } else if (
                         freq?.type === "interval" &&
                         freq?.specificDays
                       ) {
                         const dayNames = [
-                          "Sun",
-                          "Mon",
-                          "Tue",
-                          "Wed",
-                          "Thu",
-                          "Fri",
-                          "Sat",
+                          t("common.sunday"),
+                          t("common.monday"),
+                          t("common.tuesday"),
+                          t("common.wednesday"),
+                          t("common.thursday"),
+                          t("common.friday"),
+                          t("common.saturday"),
                         ];
-                        return `On ${freq.specificDays
+                        return t("medicine.onDays", { days: freq.specificDays
                           .map((day: number) => dayNames[day])
-                          .join(", ")}`;
+                          .join(", ") });
                       }
-                      return "No schedule";
+                      return t("medicine.noSchedule");
                     })()}
                   </Text>
                   <Text
@@ -622,29 +622,29 @@ export default function MedicationScreen() {
                       if (!freq?.type) return "";
                       switch (freq.type) {
                         case "daily":
-                          return "Daily";
+                          return t("habits.daily");
                         case "interval":
                           if (
                             freq.specificDays &&
                             freq.specificDays.length > 0
                           ) {
                             const dayNames = [
-                              "Sun",
-                              "Mon",
-                              "Tue",
-                              "Wed",
-                              "Thu",
-                              "Fri",
-                              "Sat",
+                              t("common.sunday"),
+                              t("common.monday"),
+                              t("common.tuesday"),
+                              t("common.wednesday"),
+                              t("common.thursday"),
+                              t("common.friday"),
+                              t("common.saturday"),
                             ];
                             return freq.specificDays
                               .map((day: number) => dayNames[day])
                               .join(", ");
                           } else {
-                            return "No days selected";
+                            return t("medicine.noDaysSelected");
                           }
                         case "as_needed":
-                          return "As Needed";
+                          return t("medicine.asNeededCapital");
                         default:
                           return freq.type.replace("_", " ").toUpperCase();
                       }
@@ -659,7 +659,7 @@ export default function MedicationScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Started
+                      {t("medicine.started")}
                     </Text>
                     <Text
                       style={[styles.durationValue, { color: colors.text }]}
@@ -675,7 +675,7 @@ export default function MedicationScreen() {
                           { color: colors.textSecondary },
                         ]}
                       >
-                        Ends
+                        {t("medicine.ends")}
                       </Text>
                       <Text
                         style={[styles.durationValue, { color: colors.text }]}
@@ -798,7 +798,7 @@ export default function MedicationScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Started
+                      {t("medicine.started")}
                     </Text>
                     <Text
                       style={[styles.durationValue, { color: colors.text }]}
@@ -814,7 +814,7 @@ export default function MedicationScreen() {
                           { color: colors.textSecondary },
                         ]}
                       >
-                        Ends
+                        {t("medicine.ends")}
                       </Text>
                       <Text
                         style={[styles.durationValue, { color: colors.text }]}
@@ -899,7 +899,7 @@ export default function MedicationScreen() {
                   color={colors.textSecondary}
                 />
                 <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                  No Medications!
+                  {t("medicine.noMedications")}
                 </Text>
                 <Text
                   style={[
@@ -907,8 +907,11 @@ export default function MedicationScreen() {
                     { color: colors.textSecondary },
                   ]}
                 >
-                  You have {filteredMedicines.length} medications setup. Kindly
-                  setup a new one!
+                  {filteredMedicines.length === 0
+                    ? t("medicine.setupNewMedicine")
+                    : filteredMedicines.length === 1
+                    ? t("medicine.hasOneMedication")
+                    : t("medicine.hasMultipleMedications", { count: filteredMedicines.length })}
                 </Text>
                 <TouchableOpacity
                   style={[
@@ -919,7 +922,7 @@ export default function MedicationScreen() {
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
                   <Text style={styles.addMedicationButtonText}>
-                    Add Medication
+                    {t("medicine.addMedication")}
                   </Text>
                 </TouchableOpacity>
               </View>

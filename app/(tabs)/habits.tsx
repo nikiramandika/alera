@@ -163,15 +163,15 @@ export default function HabitsScreen() {
   const getHabitTypeLabel = (habitType: string) => {
     switch (habitType) {
       case "water":
-        return "Water";
+        return t("habits.water");
       case "exercise":
-        return "Exercise";
+        return t("habits.exercise");
       case "sleep":
-        return "Sleep";
+        return t("habits.sleep");
       case "meditation":
-        return "Meditation";
+        return t("habits.meditation");
       default:
-        return "Custom";
+        return t("habits.custom");
     }
   };
 
@@ -205,7 +205,7 @@ export default function HabitsScreen() {
                 return newSet;
               });
 
-              Alert.alert("Error", result.error || "Failed to delete habit");
+              Alert.alert(t("common.error"), result.error || t("habits.failedToDeleteHabit"));
             }
           } catch {
             // Error - restore the habit in UI
@@ -216,8 +216,8 @@ export default function HabitsScreen() {
             });
 
             Alert.alert(
-              "Error",
-              "An unexpected error occurred while deleting the habit"
+              t("common.error"),
+              t("habits.unexpectedErrorDeletingHabit")
             );
           } finally {
             // Clear loading state
@@ -253,7 +253,7 @@ export default function HabitsScreen() {
           {isDeleting ? (
             <View style={styles.deleteLoadingContainer}>
               <ActivityIndicator size="small" color="#FFFFFF" />
-              <Text style={styles.deleteButtonText}>Deleting...</Text>
+              <Text style={styles.deleteButtonText}>{t("habits.deleting")}</Text>
             </View>
           ) : (
             <>
@@ -319,7 +319,7 @@ export default function HabitsScreen() {
                     </Text>
                     {isHabitExpired(item) && (
                       <View style={styles.expiredBadge}>
-                        <Text style={styles.expiredBadgeText}>Ended</Text>
+                        <Text style={styles.expiredBadgeText}>{t("habits.ended")}</Text>
                       </View>
                     )}
                   </View>
@@ -347,10 +347,10 @@ export default function HabitsScreen() {
                 >
                   {item.frequency?.times
                     ? item.frequency.times.join(", ")
-                    : "No reminders"}
+                    : t("habits.noReminders")}
                 </Text>
                 <Text style={[styles.nextReminder, { color: colors.primary }]}>
-                  {item.frequency?.type === "interval" ? "Interval" : "Daily"}
+                  {item.frequency?.type === "interval" ? t("habits.interval") : t("habits.daily")}
                 </Text>
               </View>
 
@@ -371,13 +371,13 @@ export default function HabitsScreen() {
                       {item.frequency.specificDays
                         ?.map((day: number) => {
                           const days = [
-                            "Sun",
-                            "Mon",
-                            "Tue",
-                            "Wed",
-                            "Thu",
-                            "Fri",
-                            "Sat",
+                            t("common.sunday"),
+                            t("common.monday"),
+                            t("common.tuesday"),
+                            t("common.wednesday"),
+                            t("common.thursday"),
+                            t("common.friday"),
+                            t("common.saturday"),
                           ];
                           return days[day] || day;
                         })
@@ -428,14 +428,14 @@ export default function HabitsScreen() {
                 <Ionicons name="close-outline" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Habit Details
+                {t("habits.habitDetails")}
               </Text>
               <TouchableOpacity
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
                 onPress={handleEditHabit}
               >
                 <Ionicons name="create" size={16} color="#FFFFFF" />
-                <Text style={styles.editButtonText}>Edit</Text>
+                <Text style={styles.editButtonText}>{t("habits.edit")}</Text>
               </TouchableOpacity>
             </View>
 
@@ -508,7 +508,7 @@ export default function HabitsScreen() {
                       color={colors.primary}
                     />
                     <Text style={[styles.statText, { color: colors.text }]}>
-                      {selectedHabit?.streak} streak
+                      {selectedHabit?.streak} {t("habits.dayStreak")}
                     </Text>
                   </View>
                 </View>
@@ -529,7 +529,7 @@ export default function HabitsScreen() {
                       color={colors.primary}
                     />
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Description
+                      {t("habits.description")}
                     </Text>
                   </View>
                   <Text
@@ -556,9 +556,9 @@ export default function HabitsScreen() {
                     size={20}
                     color={colors.primary}
                   />
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Target & Goals
-                  </Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {t("habits.targetGoals")}
+                    </Text>
                 </View>
                 <View style={styles.targetGoalsContent}>
                   <View
@@ -576,7 +576,7 @@ export default function HabitsScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Daily Target
+                      {t("habits.dailyTarget")}
                     </Text>
                     <Text style={[styles.targetValue, { color: colors.text }]}>
                       {selectedHabit?.target.value} {selectedHabit?.target.unit}
@@ -597,12 +597,12 @@ export default function HabitsScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Goal Type
+                      {t("habits.goalType")}
                     </Text>
                     <Text style={[styles.targetValue, { color: colors.text }]}>
                       {selectedHabit?.frequency?.type === "interval"
-                        ? "Selected Days"
-                        : "Every Day"}
+                        ? t("habits.selectedDays")
+                        : t("habits.everyDay")}
                     </Text>
                   </View>
                   <View
@@ -620,12 +620,12 @@ export default function HabitsScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Current Progress
+                      {t("habits.currentProgress")}
                     </Text>
                     <Text
                       style={[styles.targetValue, { color: colors.primary }]}
                     >
-                      {selectedHabit?.streak} day streak
+                      {selectedHabit?.streak} {t("habits.dayStreak")}
                     </Text>
                   </View>
                   <View
@@ -643,10 +643,10 @@ export default function HabitsScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Best Achievement
+                      {t("habits.bestAchievement")}
                     </Text>
                     <Text style={[styles.targetValue, { color: colors.text }]}>
-                      {selectedHabit?.bestStreak} days
+                      {selectedHabit?.bestStreak} {t("habits.days")}
                     </Text>
                   </View>
                 </View>
@@ -666,14 +666,14 @@ export default function HabitsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Schedule
+                    {t("habits.schedule")}
                   </Text>
                 </View>
                 <View style={styles.scheduleContent}>
                   <Text style={[styles.scheduleType, { color: colors.text }]}>
                     {selectedHabit?.frequency?.type === "interval"
-                      ? "Interval"
-                      : "Daily"}
+                      ? t("habits.interval")
+                      : t("habits.daily")}
                   </Text>
                   <Text
                     style={[
@@ -683,7 +683,7 @@ export default function HabitsScreen() {
                   >
                     {selectedHabit?.frequency?.times
                       ? selectedHabit.frequency.times.join(", ")
-                      : "No reminders"}
+                      : t("habits.noReminders")}
                   </Text>
                   {selectedHabit?.frequency?.type === "interval" &&
                     selectedHabit?.frequency?.specificDays && (
@@ -693,17 +693,17 @@ export default function HabitsScreen() {
                           { color: colors.textSecondary },
                         ]}
                       >
-                        Days:{" "}
+                        {t("habits.days")}:{" "}
                         {selectedHabit.frequency?.specificDays
                           ?.map((day: number) => {
                             const days = [
-                              "Sun",
-                              "Mon",
-                              "Tue",
-                              "Wed",
-                              "Thu",
-                              "Fri",
-                              "Sat",
+                              t("common.sunday"),
+                              t("common.monday"),
+                              t("common.tuesday"),
+                              t("common.wednesday"),
+                              t("common.thursday"),
+                              t("common.friday"),
+                              t("common.saturday"),
                             ];
                             return days[day] || day;
                           })
@@ -727,7 +727,7 @@ export default function HabitsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Duration
+                    {t("habits.duration")}
                   </Text>
                 </View>
                 <View style={styles.durationContent}>
@@ -738,7 +738,7 @@ export default function HabitsScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Start Date
+                      {t("habits.startDate")}
                     </Text>
                     <Text
                       style={[styles.durationValue, { color: colors.text }]}
@@ -750,7 +750,7 @@ export default function HabitsScreen() {
                           selectedHabit?.duration?.startDate ||
                           selectedHabit?.createdAt;
 
-                        if (!startDate) return "Not set";
+                        if (!startDate) return t("habits.notSet");
 
                         // Handle Firebase Timestamp
                         if (typeof startDate?.toDate === "function") {
@@ -762,7 +762,7 @@ export default function HabitsScreen() {
                         // Check if date is valid
                         if (isNaN(date.getTime())) {
                           console.log("Invalid start date:", startDate);
-                          return "Invalid Date";
+                          return t("habits.invalidDate");
                         }
 
                         return date.toLocaleDateString("id-ID", {
@@ -782,7 +782,7 @@ export default function HabitsScreen() {
                           { color: colors.textSecondary },
                         ]}
                       >
-                        End Date
+                        {t("habits.endDate")}
                       </Text>
                       <Text
                         style={[styles.durationValue, { color: colors.text }]}
@@ -791,7 +791,7 @@ export default function HabitsScreen() {
                           const endDate =
                             selectedHabit?.endDate ||
                             selectedHabit?.duration?.endDate;
-                          if (!endDate) return "No end date";
+                          if (!endDate) return t("habits.noEndDate");
 
                           // Handle Firebase Timestamp
                           let date = endDate;
@@ -804,7 +804,7 @@ export default function HabitsScreen() {
                           // Check if date is valid
                           if (isNaN(parsedDate.getTime())) {
                             console.log("Invalid end date:", endDate);
-                            return "Invalid Date";
+                            return t("habits.invalidDate");
                           }
 
                           return parsedDate.toLocaleDateString("id-ID", {
@@ -823,7 +823,7 @@ export default function HabitsScreen() {
                           { color: colors.primary, fontStyle: "italic" },
                         ]}
                       >
-                        Ongoing • No end date set
+                        {t("habits.ongoing")} • {t("habits.noEndDateSet")}
                       </Text>
                     </View>
                   )}
@@ -835,12 +835,12 @@ export default function HabitsScreen() {
                           { color: colors.textSecondary },
                         ]}
                       >
-                        Duration
+                        {t("habits.duration")}
                       </Text>
                       <Text
                         style={[styles.durationValue, { color: colors.text }]}
                       >
-                        {selectedHabit.duration.totalDays} days
+                        {selectedHabit.duration.totalDays} {t("habits.days")}
                       </Text>
                     </View>
                   )}
@@ -928,8 +928,11 @@ export default function HabitsScreen() {
                     { color: colors.textSecondary },
                   ]}
                 >
-                  You have {filteredHabits.length} habits setup. Kindly setup a
-                  new one!
+                  {filteredHabits.length === 0
+                    ? t("habits.setupNewHabit")
+                    : filteredHabits.length === 1
+                    ? t("habits.hasOneHabit")
+                    : t("habits.hasMultipleHabits", { count: filteredHabits.length })}
                 </Text>
                 <TouchableOpacity
                   style={[
