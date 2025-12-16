@@ -444,7 +444,7 @@ export default function HabitsScreen() {
               <View
                 style={[
                   styles.detailCard,
-                  { backgroundColor: colors.backgroundSecondary },
+                  { backgroundColor: colors.background },
                 ]}
               >
                 <View style={styles.habitHeader}>
@@ -481,7 +481,7 @@ export default function HabitsScreen() {
                   <View
                     style={[
                       styles.statItem,
-                      { backgroundColor: colors.backgroundSecondary },
+                      { backgroundColor: colors.background },
                     ]}
                   >
                     <Ionicons
@@ -496,7 +496,7 @@ export default function HabitsScreen() {
                   <View
                     style={[
                       styles.statItem,
-                      { backgroundColor: colors.backgroundSecondary },
+                      { backgroundColor: colors.background },
                     ]}
                   >
                     <Ionicons
@@ -840,7 +840,7 @@ export default function HabitsScreen() {
           <LinearGradient
             colors={[
               colors.background,
-              colors.backgroundSecondary,
+              colors.background,
               colors.gradientStart,
             ]}
             start={{ x: 0.5, y: 0 }}

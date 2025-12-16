@@ -243,13 +243,13 @@ export default function MedicationScreen() {
         >
           {isDeleting ? (
             <View style={styles.deleteLoadingContainer}>
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color="*000" />
               <Text style={styles.deleteButtonText}>Deleting...</Text>
             </View>
           ) : (
             <>
               <View style={styles.deleteIconContainer}>
-                <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+                <Ionicons name="trash-outline" size={22} color="*000" />
               </View>
               <Text style={styles.deleteButtonText}>Delete</Text>
             </>
@@ -444,7 +444,7 @@ export default function MedicationScreen() {
                 onPress={handleEditMedication}
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
               >
-                <Ionicons name="create" size={16} color="#FFFFFF" />
+                <Ionicons name="create" size={16} color="*000" />
                 <Text style={styles.editButtonText}>{t("common.edit")}</Text>
               </TouchableOpacity>
             </View>
@@ -457,7 +457,7 @@ export default function MedicationScreen() {
               <View
                 style={[
                   styles.detailCard,
-                  { backgroundColor: colors.backgroundSecondary },
+                  { backgroundColor: colors.background },
                 ]}
               >
                 <View style={styles.medicineHeader}>
@@ -513,7 +513,7 @@ export default function MedicationScreen() {
                   <View
                     style={[
                       styles.statItem,
-                      { backgroundColor: colors.backgroundSecondary },
+                      { backgroundColor: colors.background },
                     ]}
                   >
                     <Ionicons
@@ -556,7 +556,7 @@ export default function MedicationScreen() {
               <View
                 style={[
                   styles.detailSection,
-                  { backgroundColor: colors.backgroundSecondary },
+                  { backgroundColor: colors.background },
                 ]}
               >
                 <View style={styles.sectionHeader}>
@@ -694,7 +694,7 @@ export default function MedicationScreen() {
                 <View
                   style={[
                     styles.detailSection,
-                    { backgroundColor: colors.backgroundSecondary },
+                    { backgroundColor: colors.background },
                   ]}
                 >
                   <View style={styles.sectionHeader}>
@@ -723,7 +723,7 @@ export default function MedicationScreen() {
                 <View
                   style={[
                     styles.detailSection,
-                    { backgroundColor: colors.backgroundSecondary },
+                    { backgroundColor: colors.background },
                   ]}
                 >
                   <View style={styles.sectionHeader}>
@@ -754,7 +754,7 @@ export default function MedicationScreen() {
                 <View
                   style={[
                     styles.detailSection,
-                    { backgroundColor: colors.backgroundSecondary },
+                    { backgroundColor: colors.background },
                   ]}
                 >
                   <View style={styles.sectionHeader}>
@@ -771,7 +771,7 @@ export default function MedicationScreen() {
                     source={{ uri: selectedMedication.drugAppearance }}
                     style={[
                       styles.medicinePhoto,
-                      { backgroundColor: colors.backgroundSecondary },
+                      { backgroundColor: colors.background },
                     ]}
                     resizeMode="cover"
                   />
@@ -849,7 +849,7 @@ export default function MedicationScreen() {
           <LinearGradient
             colors={[
               colors.background,
-              colors.backgroundSecondary,
+              colors.background,
               colors.gradientStart,
             ]}
             start={{ x: 0.5, y: 0 }}
@@ -870,7 +870,7 @@ export default function MedicationScreen() {
               <View
                 style={[
                   styles.totalMedicationsBadge,
-                  { backgroundColor: "#84CC16" },
+                  { backgroundColor: colors.primary },
                 ]}
               >
                 <Text style={styles.totalMedicationsText}>
@@ -919,7 +919,7 @@ export default function MedicationScreen() {
                   ]}
                   onPress={() => router.push("/medicine/add-step1")}
                 >
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                  <Ionicons name="add" size={20} color="*000" />
                   <Text style={styles.addMedicationButtonText}>
                     Add Medication
                   </Text>
@@ -943,14 +943,14 @@ export default function MedicationScreen() {
       {/* Floating Action Button */}
       {filteredMedicines.length > 0 && (
         <TouchableOpacity
-          style={[styles.floatingActionButton, { backgroundColor: "#84CC16" }]}
+          style={[styles.floatingActionButton, { backgroundColor: colors.primary }]}
           onPress={() => {
             console.log("FAB pressed - navigating to add screen");
             router.push("/medicine/add-step1");
           }}
           activeOpacity={0.8}
         >
-          <Ionicons name="add" size={28} color="#FFFFFF" />
+          <Ionicons name="add" size={28} color="*000" />
         </TouchableOpacity>
       )}
 
@@ -978,7 +978,7 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
-        backgroundColor: "#ffffff",
+        backgroundColor: "*000",
       },
     }),
   },
@@ -1020,7 +1020,7 @@ const styles = StyleSheet.create({
   totalMedicationsText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "*000",
   },
   floatingActionButton: {
     position: "absolute",
@@ -1067,7 +1067,7 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
-        backgroundColor: "#ffffff",
+        backgroundColor: "*000",
       },
     }),
   },
@@ -1111,7 +1111,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   expiredBadgeText: {
-    color: "#FFFFFF",
+    color: "*000",
     fontSize: 10,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -1179,7 +1179,7 @@ const styles = StyleSheet.create({
   addMedicationButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "*000",
   },
   modalContainer: {
     flex: 1,
@@ -1274,7 +1274,7 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "*000",
   },
   medicineHeader: {
     flexDirection: "row",
@@ -1365,7 +1365,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   deleteButtonText: {
-    color: "#FFFFFF",
+    color: "*000",
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
