@@ -36,8 +36,7 @@ export default function MedicationScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
-  const { medicines, refreshMedicines, deleteMedicine } =
-    useMedicine();
+  const { medicines, refreshMedicines, deleteMedicine } = useMedicine();
 
   const [selectedMedication, setSelectedMedication] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -107,7 +106,6 @@ export default function MedicationScreen() {
     transform: [{ translateY: cardTranslateY.value }],
   }));
 
-  
   const parseTime = (time: string) => {
     const [hours, minutes, period] = time.split(/[:\s]/);
     let hour24 = parseInt(hours);
@@ -243,13 +241,13 @@ export default function MedicationScreen() {
         >
           {isDeleting ? (
             <View style={styles.deleteLoadingContainer}>
-              <ActivityIndicator size="small" color="*000" />
+              <ActivityIndicator size="small" color="#FFFFFF" />
               <Text style={styles.deleteButtonText}>Deleting...</Text>
             </View>
           ) : (
             <>
               <View style={styles.deleteIconContainer}>
-                <Ionicons name="trash-outline" size={22} color="*000" />
+                <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
               </View>
               <Text style={styles.deleteButtonText}>Delete</Text>
             </>
@@ -444,7 +442,7 @@ export default function MedicationScreen() {
                 onPress={handleEditMedication}
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
               >
-                <Ionicons name="create" size={16} color="*000" />
+                <Ionicons name="create" size={16} color="#FFFFFF" />
                 <Text style={styles.editButtonText}>{t("common.edit")}</Text>
               </TouchableOpacity>
             </View>
@@ -457,7 +455,7 @@ export default function MedicationScreen() {
               <View
                 style={[
                   styles.detailCard,
-                  { backgroundColor: colors.background },
+                  { backgroundColor: colors.backgroundSecondary },
                 ]}
               >
                 <View style={styles.medicineHeader}>
@@ -513,7 +511,7 @@ export default function MedicationScreen() {
                   <View
                     style={[
                       styles.statItem,
-                      { backgroundColor: colors.background },
+                      { backgroundColor: colors.backgroundSecondary },
                     ]}
                   >
                     <Ionicons
@@ -556,7 +554,7 @@ export default function MedicationScreen() {
               <View
                 style={[
                   styles.detailSection,
-                  { backgroundColor: colors.background },
+                  { backgroundColor: colors.backgroundSecondary },
                 ]}
               >
                 <View style={styles.sectionHeader}>
@@ -694,7 +692,7 @@ export default function MedicationScreen() {
                 <View
                   style={[
                     styles.detailSection,
-                    { backgroundColor: colors.background },
+                    { backgroundColor: colors.backgroundSecondary },
                   ]}
                 >
                   <View style={styles.sectionHeader}>
@@ -723,7 +721,7 @@ export default function MedicationScreen() {
                 <View
                   style={[
                     styles.detailSection,
-                    { backgroundColor: colors.background },
+                    { backgroundColor: colors.backgroundSecondary },
                   ]}
                 >
                   <View style={styles.sectionHeader}>
@@ -754,7 +752,7 @@ export default function MedicationScreen() {
                 <View
                   style={[
                     styles.detailSection,
-                    { backgroundColor: colors.background },
+                    { backgroundColor: colors.backgroundSecondary },
                   ]}
                 >
                   <View style={styles.sectionHeader}>
@@ -771,7 +769,7 @@ export default function MedicationScreen() {
                     source={{ uri: selectedMedication.drugAppearance }}
                     style={[
                       styles.medicinePhoto,
-                      { backgroundColor: colors.background },
+                      { backgroundColor: colors.backgroundSecondary },
                     ]}
                     resizeMode="cover"
                   />
@@ -849,7 +847,7 @@ export default function MedicationScreen() {
           <LinearGradient
             colors={[
               colors.background,
-              colors.background,
+              colors.backgroundSecondary,
               colors.gradientStart,
             ]}
             start={{ x: 0.5, y: 0 }}
@@ -870,7 +868,7 @@ export default function MedicationScreen() {
               <View
                 style={[
                   styles.totalMedicationsBadge,
-                  { backgroundColor: colors.primary },
+                  { backgroundColor: "#84CC16" },
                 ]}
               >
                 <Text style={styles.totalMedicationsText}>
@@ -919,7 +917,7 @@ export default function MedicationScreen() {
                   ]}
                   onPress={() => router.push("/medicine/add-step1")}
                 >
-                  <Ionicons name="add" size={20} color="*000" />
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
                   <Text style={styles.addMedicationButtonText}>
                     Add Medication
                   </Text>
@@ -943,14 +941,14 @@ export default function MedicationScreen() {
       {/* Floating Action Button */}
       {filteredMedicines.length > 0 && (
         <TouchableOpacity
-          style={[styles.floatingActionButton, { backgroundColor: colors.primary }]}
+          style={[styles.floatingActionButton, { backgroundColor: "#84CC16" }]}
           onPress={() => {
             console.log("FAB pressed - navigating to add screen");
             router.push("/medicine/add-step1");
           }}
           activeOpacity={0.8}
         >
-          <Ionicons name="add" size={28} color="*000" />
+          <Ionicons name="add" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       )}
 
@@ -978,7 +976,7 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
-        backgroundColor: "*000",
+        backgroundColor: "#ffffff",
       },
     }),
   },
@@ -1020,7 +1018,7 @@ const styles = StyleSheet.create({
   totalMedicationsText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "*000",
+    color: "#FFFFFF",
   },
   floatingActionButton: {
     position: "absolute",
@@ -1067,7 +1065,7 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
-        backgroundColor: "*000",
+        backgroundColor: "#ffffff",
       },
     }),
   },
@@ -1111,13 +1109,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   expiredBadgeText: {
-    color: "*000",
+    color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-    dosage: {
+  dosage: {
     fontSize: 14,
     marginBottom: 8,
   },
@@ -1179,7 +1177,7 @@ const styles = StyleSheet.create({
   addMedicationButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "*000",
+    color: "#FFFFFF",
   },
   modalContainer: {
     flex: 1,
@@ -1274,7 +1272,7 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "*000",
+    color: "#FFFFFF",
   },
   medicineHeader: {
     flexDirection: "row",
@@ -1282,10 +1280,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   medicineInfo: {
-  flex: 1,
-  justifyContent: 'center',
-  gap: 4,
-},
+    flex: 1,
+    justifyContent: "center",
+    gap: 4,
+  },
   medicineIconLarge: {
     fontSize: 36,
   },
@@ -1365,7 +1363,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   deleteButtonText: {
-    color: "*000",
+    color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,

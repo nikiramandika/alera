@@ -1,14 +1,16 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet, Dimensions } from 'react-native';
-import { Image } from 'expo-image';
+import React, { useEffect, useRef } from "react";
+import { View, Animated, StyleSheet, Dimensions } from "react-native";
+import { Image } from "expo-image";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 interface LoadingAnimationProps {
-  size?: 'small' | 'medium' | 'large';
+  size?: "small" | "medium" | "large";
 }
 
-const LoadingAnimation: React.FC<LoadingAnimationProps> = ({ size = 'medium' }) => {
+const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
+  size = "medium",
+}) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const breathingScale = useRef(new Animated.Value(0.8)).current;
 
@@ -59,17 +61,17 @@ const LoadingAnimation: React.FC<LoadingAnimationProps> = ({ size = 'medium' }) 
   // Size configurations
   const getSizeConfig = () => {
     switch (size) {
-      case 'small':
+      case "small":
         return {
           logoSize: width * 0.15, // 15% of screen width
           circleSize: width * 0.2, // 20% of screen width
         };
-      case 'large':
+      case "large":
         return {
           logoSize: width * 0.4, // 40% of screen width
           circleSize: width * 0.5, // 50% of screen width
         };
-      case 'medium':
+      case "medium":
       default:
         return {
           logoSize: width * 0.25, // 25% of screen width
@@ -117,7 +119,7 @@ const LoadingAnimation: React.FC<LoadingAnimationProps> = ({ size = 'medium' }) 
         ]}
       >
         <Image
-          source={require('../assets/images/aleraLogo.png')}
+          source={require("../assets/images/aleraLogo.png")}
           style={styles.logo}
           contentFit="contain"
           transition={200}
@@ -127,134 +129,48 @@ const LoadingAnimation: React.FC<LoadingAnimationProps> = ({ size = 'medium' }) 
   );
 };
 
-const createStyles = (logoSize: number, circleSize: number) => StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    minHeight: 200,
-  },
-  circlesContainer: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    height: '100%',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  logo: {
-    width: logoSize,
-    height: logoSize,
-    maxWidth: 150,
-    maxHeight: 150,
-  },
-  breathingCircle: {
-    position: 'absolute',
-    borderRadius: 9999, // Circular shape
-    opacity: 0.08,
-  },
-  breathingCircle1: {
-    width: circleSize,
-    height: circleSize,
-    backgroundColor: '#84CC16',
-  },
-  breathingCircle2: {
-    width: circleSize * 0.7,
-    height: circleSize * 0.7,
-    backgroundColor: '#65A30D',
-  },import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet, Dimensions } from 'react-native';
-
-const { width } = Dimensions.get('window');
-
-interface LoadingAnimationProps {
-  size?: 'small' | 'medium' | 'large';
-}
-
-const LoadingAnimation: React.FC<LoadingAnimationProps> = ({ size = 'medium' }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const breathingScale = useRef(new Animated.Value(0.8)).current;
-
-  useEffect(() => {
-    const entranceAnimation = Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(breathingScale, {
-        toValue: 1,
-        friction: 5,
-        useNativeDriver: true,
-      }),
-    ]);
-
-    const breathingAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(breathingScale, {
-          toValue: 1.1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(breathingScale, {
-          toValue: 0.9,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    entranceAnimation.start(() => breathingAnimation.start());
-
-    return () => breathingAnimation.stop();
-  }, [fadeAnim, breathingScale]);
-
-  const getSize = () => {
-    switch (size) {
-      case 'small':
-        return width * 0.1;
-      case 'large':
-        return width * 0.3;
-      default:
-        return width * 0.2;
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.circle,
-          {
-            width: getSize(),
-            height: getSize(),
-            opacity: fadeAnim,
-            transform: [{ scale: breathingScale }],
-          },
-        ]}
-      />
-    </View>
-  );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  circle: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 1000,
-  },
-});
-
-export default LoadingAnimation;
-});
+const createStyles = (logoSize: number, circleSize: number) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      position: "relative",
+      minHeight: 200,
+    },
+    circlesContainer: {
+      position: "absolute",
+      justifyContent: "center",
+      alignItems: "center",
+      width: "100%",
+      height: "100%",
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 10,
+    },
+    logo: {
+      width: logoSize,
+      height: logoSize,
+      maxWidth: 150,
+      maxHeight: 150,
+    },
+    breathingCircle: {
+      position: "absolute",
+      borderRadius: 9999, // Circular shape
+      opacity: 0.08,
+    },
+    breathingCircle1: {
+      width: circleSize,
+      height: circleSize,
+      backgroundColor: "#84CC16",
+    },
+    breathingCircle2: {
+      width: circleSize * 0.7,
+      height: circleSize * 0.7,
+      backgroundColor: "#65A30D",
+    },
+  });
 
 export default LoadingAnimation;
