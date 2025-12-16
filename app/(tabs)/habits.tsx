@@ -249,13 +249,13 @@ export default function HabitsScreen() {
         >
           {isDeleting ? (
             <View style={styles.deleteLoadingContainer}>
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color="#000" />
               <Text style={styles.deleteButtonText}>Deleting...</Text>
             </View>
           ) : (
             <>
               <View style={styles.deleteIconContainer}>
-                <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+                <Ionicons name="trash-outline" size={22} color="#000" />
               </View>
               <Text style={styles.deleteButtonText}>{t("common.delete")}</Text>
             </>
@@ -431,7 +431,7 @@ export default function HabitsScreen() {
                 style={[styles.editButton, { backgroundColor: colors.primary }]}
                 onPress={handleEditHabit}
               >
-                <Ionicons name="create" size={16} color="#FFFFFF" />
+                <Ionicons name="create" size={16} color="#000" />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             </View>
@@ -451,7 +451,7 @@ export default function HabitsScreen() {
                   <View
                     style={[
                       styles.colorIndicatorLarge,
-                      { backgroundColor: selectedHabit?.color || "#4ECDC4" },
+                      { backgroundColor: selectedHabit?.color || "backgroundSecondary" },
                     ]}
                   >
                     {selectedHabit?.icon && (
@@ -861,7 +861,7 @@ export default function HabitsScreen() {
               <View
                 style={[
                   styles.totalHabitsBadge,
-                  { backgroundColor: "#4ECDC4" },
+                  { backgroundColor: "backgroundSecondary" },
                 ]}
               >
                 <Text style={styles.totalHabitsText}>
@@ -910,7 +910,7 @@ export default function HabitsScreen() {
                   ]}
                   onPress={() => router.push("/habits/create-step1")}
                 >
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                  <Ionicons name="add" size={20} color="#000" />
                   <Text style={styles.addHabitButtonText}>
                     {t("habits.addHabit")}
                   </Text>
@@ -934,11 +934,11 @@ export default function HabitsScreen() {
       {/* Floating Action Button */}
       {filteredHabits.length > 0 && (
         <TouchableOpacity
-          style={[styles.floatingActionButton, { backgroundColor: "#4ECDC4" }]}
+          style={[styles.floatingActionButton, { backgroundColor: "backgroundSecondary" }]}
           onPress={() => router.push("/habits/create-step1")}
           activeOpacity={0.8}
         >
-          <Ionicons name="add" size={28} color="#FFFFFF" />
+          <Ionicons name="add" size={28} color="#000" />
         </TouchableOpacity>
       )}
 
@@ -966,7 +966,7 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
-        backgroundColor: "#ffffff",
+        backgroundColor: "#000",
       },
     }),
   },
@@ -1008,7 +1008,7 @@ const styles = StyleSheet.create({
   totalHabitsText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "#000",
   },
   floatingActionButton: {
     position: "absolute",
@@ -1055,7 +1055,7 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
-        backgroundColor: "#ffffff",
+        backgroundColor: "#000",
       },
     }),
   },
@@ -1114,7 +1114,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   expiredBadgeText: {
-    color: "#FFFFFF",
+    color: "#000",
     fontSize: 10,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -1192,7 +1192,7 @@ const styles = StyleSheet.create({
   addHabitButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "#000",
   },
   modalContainer: {
     flex: 1,
@@ -1292,7 +1292,7 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "#000",
   },
   habitHeader: {
     flexDirection: "row",
@@ -1405,7 +1405,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   deleteButtonText: {
-    color: "#FFFFFF",
+    color: "#000",
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
