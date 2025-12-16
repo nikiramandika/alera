@@ -903,6 +903,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "center",
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
   },
   stepActive: {
     width: 32,
@@ -910,6 +914,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "center",
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
   },
   stepActiveText: {
     color: "#FFFFFF",
@@ -1105,10 +1113,13 @@ const styles = StyleSheet.create({
   addEndDateButton: {
     width: 32,
     height: 32,
-    borderRadius: 24,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
   },
   endDateContainer: {
     flexDirection: "row",
@@ -1126,6 +1137,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "center",
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
   },
   floatingButtonContainer: {
     position: "absolute",
