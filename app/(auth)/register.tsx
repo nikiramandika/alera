@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
+import TermsAndConditions, { useTermsAndConditions } from '@/components/common/TermsAndConditions';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { visible: showTermsModal, showTerms: handleShowTerms, hideTerms: hideTermsModal } = useTermsAndConditions();
 
   // Redirect authenticated users away from register screen
   useEffect(() => {
@@ -364,7 +366,13 @@ export default function RegisterScreen() {
                 )}
               </TouchableOpacity>
               <Text style={[styles.checkboxLabel, { color: colors.textSecondary }]}>
-                I agree with terms &amp; conditions
+                I agree with{' '}
+                <Text
+                  style={[styles.termsLink, { color: colors.primary }]}
+                  onPress={handleShowTerms}
+                >
+                  terms & conditions
+                </Text>
               </Text>
             </View>
 
@@ -408,6 +416,7 @@ export default function RegisterScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      <TermsAndConditions visible={showTermsModal} onClose={hideTermsModal} />
     </SafeAreaView>
   );
 }
@@ -510,6 +519,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
     lineHeight: 20,
+  },
+  termsLink: {
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   signUpButton: {
     borderRadius: BorderRadius.md,

@@ -122,7 +122,8 @@
     "takeWithMeal": "Take With Meal",
     "duration": "Duration",
     "setupNewMedicine": "Kindly setup a new medication!",
-    "hasMedications": "You have {{count}} medications setup. Kindly setup a new one!"
+    "hasMedications": "You have {{count}} medications setup. Kindly setup a new one!",
+    "description": "Description"
   },
   "tasks": {
     "overdue": "Overdue",

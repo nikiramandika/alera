@@ -511,7 +511,36 @@ export default function HabitsScreen() {
                 </View>
               </View>
 
-              {/* Target Section */}
+              {/* Description Section (if exists) */}
+              {selectedHabit?.description && (
+                <View
+                  style={[
+                    styles.detailSection,
+                    { backgroundColor: colors.backgroundSecondary },
+                  ]}
+                >
+                  <View style={styles.sectionHeader}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      Description
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.sectionContent,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {selectedHabit.description}
+                  </Text>
+                </View>
+              )}
+
+              {/* Target & Goals Section */}
               <View
                 style={[
                   styles.detailSection,
@@ -520,23 +549,78 @@ export default function HabitsScreen() {
               >
                 <View style={styles.sectionHeader}>
                   <Ionicons
-                    name="at-outline"
+                    name="flag-outline"
                     size={20}
                     color={colors.primary}
                   />
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Target
+                    Target & Goals
                   </Text>
                 </View>
-                <Text
-                  style={[
-                    styles.sectionContent,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {selectedHabit?.target.value} {selectedHabit?.target.unit} per{" "}
-                  {selectedHabit?.target.frequency}
-                </Text>
+                <View style={styles.targetGoalsContent}>
+                  <View style={[styles.targetItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Text
+                      style={[
+                        styles.targetLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Daily Target
+                    </Text>
+                    <Text
+                      style={[styles.targetValue, { color: colors.text }]}
+                    >
+                      {selectedHabit?.target.value} {selectedHabit?.target.unit}
+                    </Text>
+                  </View>
+                  <View style={[styles.targetItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Text
+                      style={[
+                        styles.targetLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Goal Type
+                    </Text>
+                    <Text
+                      style={[styles.targetValue, { color: colors.text }]}
+                    >
+                      {selectedHabit?.frequency?.type === "interval"
+                        ? "Selected Days"
+                        : "Every Day"}
+                    </Text>
+                  </View>
+                  <View style={[styles.targetItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Text
+                      style={[
+                        styles.targetLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Current Progress
+                    </Text>
+                    <Text
+                      style={[styles.targetValue, { color: colors.primary }]}
+                    >
+                      {selectedHabit?.streak} day streak
+                    </Text>
+                  </View>
+                  <View style={[styles.targetItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Text
+                      style={[
+                        styles.targetLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Best Achievement
+                    </Text>
+                    <Text
+                      style={[styles.targetValue, { color: colors.text }]}
+                    >
+                      {selectedHabit?.bestStreak} days
+                    </Text>
+                  </View>
+                </View>
               </View>
 
               {/* Schedule Section */}
@@ -734,57 +818,7 @@ export default function HabitsScreen() {
                 </View>
               </View>
 
-              {/* Progress Section */}
-              <View
-                style={[
-                  styles.detailSection,
-                  { backgroundColor: colors.backgroundSecondary },
-                ]}
-              >
-                <View style={styles.sectionHeader}>
-                  <Ionicons
-                    name="stats-chart-outline"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Progress
-                  </Text>
-                </View>
-                <View style={styles.progressContent}>
-                  <View style={styles.progressItem}>
-                    <Text
-                      style={[
-                        styles.progressLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      Current Streak
-                    </Text>
-                    <Text
-                      style={[styles.progressValue, { color: colors.text }]}
-                    >
-                      {selectedHabit?.streak} days
-                    </Text>
-                  </View>
-                  <View style={styles.progressItem}>
-                    <Text
-                      style={[
-                        styles.progressLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      Best Streak
-                    </Text>
-                    <Text
-                      style={[styles.progressValue, { color: colors.text }]}
-                    >
-                      {selectedHabit?.bestStreak} days
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </ScrollView>
+                          </ScrollView>
           </>
         )}
       </SafeAreaView>
@@ -1409,5 +1443,30 @@ const styles = StyleSheet.create({
   intervalDays: {
     fontSize: 12,
     fontStyle: "italic",
+  },
+  targetGoalsContent: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  targetItem: {
+    width: "48%",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  targetLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  targetValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

@@ -117,9 +117,18 @@ export default function AddHabitStep1NewScreen() {
       return;
     }
 
+    if (!habitData.target?.value || habitData.target.value <= 0) {
+      Alert.alert('Error', 'Please enter a valid target value');
+      return;
+    }
+
     // Prepare data for step 2
     const step2Data = {
       ...habitData,
+      target: {
+        ...habitData.target,
+        value: Math.max(1, habitData.target?.value || 1), // Ensure minimum value is 1
+      },
       editMode,
       habitId,
     };
@@ -274,14 +283,17 @@ export default function AddHabitStep1NewScreen() {
                 }]}
                 placeholder="e.g., 8, 30, 1"
                 placeholderTextColor={colors.textSecondary}
-                value={habitData.target?.value?.toString() || ''}
-                onChangeText={(text) => setHabitData(prev => ({
-                  ...prev,
-                  target: {
-                    ...prev.target!,
-                    value: parseInt(text) || 1
-                  }
-                }))}
+                value={habitData.target?.value && habitData.target.value > 0 ? habitData.target.value.toString() : ''}
+                onChangeText={(text) => {
+                  const numericValue = text.replace(/[^0-9]/g, '');
+                  setHabitData(prev => ({
+                    ...prev,
+                    target: {
+                      ...prev.target!,
+                      value: numericValue ? parseInt(numericValue) : 0
+                    }
+                  }));
+                }}
                 keyboardType="numeric"
                 maxLength={4}
               />

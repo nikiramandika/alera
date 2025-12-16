@@ -28,6 +28,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppTranslation } from '../../src/i18n/utils';
+import TermsAndConditions, { useTermsAndConditions } from '@/components/common/TermsAndConditions';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
@@ -39,6 +40,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [localVibration, setLocalVibration] = useState(user?.settings?.vibration || false);
+  const { visible: showTermsModal, showTerms: handleShowTerms, hideTerms: hideTermsModal } = useTermsAndConditions();
 
   // Animation values
   const headerScale = useSharedValue(0.9);
@@ -434,28 +436,15 @@ export default function ProfileScreen() {
       entering={FadeInDown.delay(300)}
       style={styles.sectionContainer}
     >
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        {t('profile.quickActions')}
-      </Text>
 
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
           style={[styles.actionCard, { backgroundColor: colors.card }]}
-          onPress={() => {/* Privacy policy */}}
-        >
-          <Ionicons name="shield-outline" size={24} color={colors.primary} />
-          <Text style={[styles.actionText, { color: colors.text }]}>
-            {t('profile.privacyPolicy')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.card }]}
-          onPress={() => {/* Terms of service */}}
+          onPress={handleShowTerms}
         >
           <Ionicons name="document-text-outline" size={24} color={colors.primary} />
           <Text style={[styles.actionText, { color: colors.text }]}>
-            {t('profile.termsOfService')}
+            Terms & Conditions
           </Text>
         </TouchableOpacity>
       </View>
@@ -558,6 +547,7 @@ export default function ProfileScreen() {
     </Modal>
   );
 
+  
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
@@ -574,6 +564,7 @@ export default function ProfileScreen() {
         <View style={styles.footerSpace} />
       </ScrollView>
       {renderLanguageModal()}
+      <TermsAndConditions visible={showTermsModal} onClose={hideTermsModal} />
     </SafeAreaView>
   );
 }
@@ -803,7 +794,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   actionCard: {
-    width: '48%',
+    width: '100%',
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     alignItems: 'center',

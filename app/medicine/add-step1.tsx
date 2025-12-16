@@ -252,12 +252,10 @@ export default function AddMedicineStep1NewScreen() {
 
   const updateDosage = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, "");
-    if (numericValue) {
-      setMedicineData((prevData) => ({
-        ...prevData,
-        dosage: `${numericValue} ${getCurrentDosageUnit()}`,
-      }));
-    }
+    setMedicineData((prevData) => ({
+      ...prevData,
+      dosage: numericValue ? `${numericValue} ${getCurrentDosageUnit()}` : "",
+    }));
   };
 
   return (

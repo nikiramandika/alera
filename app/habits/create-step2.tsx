@@ -268,7 +268,7 @@ export default function CreateHabitStep2Screen() {
         habitType: habitData.habitType,
         description: habitData.description,
         target: {
-          value: habitData.target.value,
+          value: Math.max(1, habitData.target.value || 1), // Ensure minimum value is 1
           unit: habitData.target.unit,
         },
         color: habitData.color,
@@ -638,55 +638,7 @@ export default function CreateHabitStep2Screen() {
             )}
           </View>
 
-          {/* Goal Container */}
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="flag-outline" size={20} color={colors.primary} />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Goal</Text>
-            </View>
-
-            <View style={styles.goalRow}>
-              <View style={styles.goalInput}>
-                <Text style={[styles.goalLabel, { color: colors.text }]}>Target</Text>
-                <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colors.backgroundSecondary,
-                    borderColor: colors.border,
-                    color: colors.text
-                  }]}
-                  value={habitData.target.value.toString()}
-                  onChangeText={(text) => setHabitData(prev => ({
-                    ...prev,
-                    target: {
-                      ...prev.target,
-                      value: parseInt(text) || 1
-                    }
-                  }))}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={styles.goalInput}>
-                <Text style={[styles.goalLabel, { color: colors.text }]}>Unit</Text>
-                <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colors.backgroundSecondary,
-                    borderColor: colors.border,
-                    color: colors.text
-                  }]}
-                  value={habitData.target.unit}
-                  onChangeText={(text) => setHabitData(prev => ({
-                    ...prev,
-                    target: {
-                      ...prev.target,
-                      unit: text
-                    }
-                  }))}
-                  placeholder="times, minutes, etc."
-                />
-              </View>
-            </View>
-          </View>
-
+          
           {/* Duration Settings */}
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <View style={styles.cardHeader}>
