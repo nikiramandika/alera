@@ -161,7 +161,8 @@
     "noEndDateSet": "Tidak Ada Tanggal Selesai Diatur",
     "setupNewHabit": "Silakan atur kebiasaan baru!",
     "hasOneHabit": "Anda punya 1 kebiasaan. Silakan tambah yang baru!",
-    "hasMultipleHabits": "Anda punya {{count}} kebiasaan. Silakan tambah yang baru!"
+    "hasMultipleHabits": "Anda punya {{count}} kebiasaan. Silakan tambah yang baru!",
+    "enterHabitName": "Masukkan Nama Kebiasaan"
   },
   "medicine": {
     "title": "Obat",

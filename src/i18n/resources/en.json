@@ -269,7 +269,22 @@
     "noEndDateSet": "No End Date Set",
     "setupNewHabit": "Kindly setup a new habit!",
     "hasOneHabit": "You have 1 habit. Kindly setup a new one!",
-    "hasMultipleHabits": "You have {{count}} habits. Kindly setup new ones!"
+    "hasMultipleHabits": "You have {{count}} habits. Kindly setup new ones!",
+    "enterHabitName": "Enter habit name",
+    "selectTypeAutoAdjust": "Select habit type (target will auto-adjust)",
+    "amountPerSession": "Amount per session (auto-adjusts based on habit type)",
+    "addSpecialInstructions": "Add special instructions or notes",
+    "enterSpecialInstructions": "Enter special instructions or notes...",
+    "pleaseEnterHabitName": "Please enter habit name",
+    "next": "Next",
+    "setWhenAndHowOften": "Set when and how often you should do this habit",
+    "frequencyGoals": "Frequency & Goals",
+    "howOftenDoHabit": "How often do you want to do this habit?",
+    "everyDaySameTime": "Every day at the same time",
+    "dailyReminderTimes": "Daily Reminder Times",
+    "whenShouldBeReminded": "When should you be reminded to do this habit?",
+    "addReminderTime": "Add Reminder Time",
+    "setHowLongMaintain": "Set how long you want to maintain this habit"
   },
   "medicine": {
     "title": "Medicine",
