@@ -407,6 +407,10 @@
     "noTasks": "No tasks found",
     "loading": "Loading your tasks...",
     "search": "Search Tasks",
+    "searchTitle": "Search Tasks",
+    "searchResultsFor": "Search Results for \"{{query}}\"",
+    "noResultsFound": "No results found",
+    "tryDifferentKeywords": "Try different keywords",
     "tasks": "Tasks",
     "completed": "Completed",
     "pending": "Pending",
@@ -421,6 +425,18 @@
     "allDay": "All Day",
     "dailyAt": "daily at {{time}}",
     "timesDaily": "{{count}}x daily",
+    "habit": "Habit",
+    "medicine": "Medicine",
+    "beforeMeals": "Before meals",
+    "afterMeals": "After meals",
+    "defaultUser": "User",
+    "today": "Today",
+    "done": "Done",
+    "year": "Year",
+    "month": "Month",
+    "quickSelect": "Quick Select",
+    "thisYear": "This Year",
+    "cancel": "Cancel",
     "dayNames": {
       "sun": "Sun",
       "mon": "Mon",
@@ -429,6 +445,20 @@
       "thu": "Thu",
       "fri": "Fri",
       "sat": "Sat"
+    },
+    "months": {
+      "jan": "Jan",
+      "feb": "Feb",
+      "mar": "Mar",
+      "apr": "Apr",
+      "may": "May",
+      "jun": "Jun",
+      "jul": "Jul",
+      "aug": "Aug",
+      "sep": "Sep",
+      "oct": "Oct",
+      "nov": "Nov",
+      "dec": "Dec"
     }
   },
   "profile": {
@@ -585,7 +615,31 @@
     "weeklyCompletion": "Weekly Completion",
     "currentStreak": "Current Streak",
     "bestStreak": "Best Streak",
-    "totalCompletions": "Total Completions"
+    "totalCompletions": "Total Completions",
+    "shortDays": {
+      "monday": "Mon",
+      "tuesday": "Tue",
+      "wednesday": "Wed",
+      "thursday": "Thu",
+      "friday": "Fri",
+      "saturday": "Sat",
+      "sunday": "Sun"
+    },
+    "months": {
+      "january": "Jan",
+      "february": "Feb",
+      "march": "Mar",
+      "april": "Apr",
+      "may": "May",
+      "june": "Jun",
+      "july": "Jul",
+      "august": "Aug",
+      "september": "Sep",
+      "october": "Oct",
+      "november": "Nov",
+      "december": "Dec"
+    },
+    "weekLabel": "Week {{number}}"
   },
   "terms": {
     "title": "Terms & Conditions",
