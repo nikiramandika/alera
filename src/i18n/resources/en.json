@@ -523,7 +523,8 @@
     "errorSendingResetEmail": "An error occurred while sending the reset email",
     "noAccountFoundWithEmail": "No account found with this email address",
     "invalidEmailAddress": "Invalid email address",
-    "tooManyRequestsTryLater": "Too many requests. Please try again later"
+    "tooManyRequestsTryLater": "Too many requests. Please try again later",
+    "changePasswordDescription": "Reset your account password"
   },
   "categories": {
     "title": "Habit Categories",

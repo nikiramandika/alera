@@ -324,7 +324,9 @@
     "privacyPolicy": "Kebijakan Privasi",
     "termsOfService": "Syarat Layanan",
     "signOut": "Keluar",
-    "selectLanguage": "Pilih Bahasa"
+    "selectLanguage": "Pilih Bahasa",
+    "changePassword": "Ubah Password",
+    "changePasswordDescription": "Ubah password akun Anda"
   },
   "categories": {
     "title": "Kategori Kebiasaan",
