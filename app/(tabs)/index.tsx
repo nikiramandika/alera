@@ -452,7 +452,15 @@ const generateTasksFromData = React.useCallback(() => {
           subtitleParts.push(`${habit.reminderTimes.length}x daily`);
         }
       } else if (freq.type === 'interval' && freq.specificDays) {
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dayNames = [
+          t('tasks.dayNames.sun'),
+          t('tasks.dayNames.mon'),
+          t('tasks.dayNames.tue'),
+          t('tasks.dayNames.wed'),
+          t('tasks.dayNames.thu'),
+          t('tasks.dayNames.fri'),
+          t('tasks.dayNames.sat')
+        ];
         const days = freq.specificDays.map((day: number) => dayNames[day]).join(', ');
         subtitleParts.push(days);
       } else if (freq.type === 'daily') {
@@ -462,19 +470,27 @@ const generateTasksFromData = React.useCallback(() => {
 
     // Fallback to old reminderDays logic if no frequency found
     if (subtitleParts.length === 0 && habit.reminderDays?.length > 0) {
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayNames = [
+        t('tasks.dayNames.sun'),
+        t('tasks.dayNames.mon'),
+        t('tasks.dayNames.tue'),
+        t('tasks.dayNames.wed'),
+        t('tasks.dayNames.thu'),
+        t('tasks.dayNames.fri'),
+        t('tasks.dayNames.sat')
+      ];
       const days = habit.reminderDays.map((day: number) => dayNames[day]).join(', ');
       subtitleParts.push(days);
     }
 
     // If still no subtitle, provide a default
-    const subtitle = subtitleParts.length > 0 ? subtitleParts.join(' • ') : 'Daily habit';
+    const subtitle = subtitleParts.length > 0 ? subtitleParts.join(' • ') : t('tasks.dailyHabit');
 
     return {
       id: `habit-${habit.habitId}`,
       title: habit.habitName,
       subtitle: subtitle,
-      time: 'All Day',
+      time: t('tasks.allDay'),
       completed: isCompletedOnSelectedDate,
       icon: habit.icon || '🎯',
       color: habit.color || '#84CC16',
@@ -528,7 +544,7 @@ const generateTasksFromData = React.useCallback(() => {
 
     // Add meal timing information
     if (medicine.takeWithMeal) {
-      const mealTiming = medicine.takeWithMeal === 'before' ? 'Before meals' : 'After meals';
+      const mealTiming = medicine.takeWithMeal === 'before' ? t('tasks.beforeMeals') : t('tasks.afterMeals');
       subtitleParts.push(mealTiming);
     }
 
@@ -542,7 +558,15 @@ const generateTasksFromData = React.useCallback(() => {
           subtitleParts.push(`${freq.times.length}x daily`);
         }
       } else if (freq.type === 'interval' && freq.specificDays) {
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dayNames = [
+          t('tasks.dayNames.sun'),
+          t('tasks.dayNames.mon'),
+          t('tasks.dayNames.tue'),
+          t('tasks.dayNames.wed'),
+          t('tasks.dayNames.thu'),
+          t('tasks.dayNames.fri'),
+          t('tasks.dayNames.sat')
+        ];
         const days = freq.specificDays.map((day: number) => dayNames[day]).join(', ');
         subtitleParts.push(`${days}`);
       } else if (freq.type === 'as_needed') {
@@ -566,7 +590,7 @@ const generateTasksFromData = React.useCallback(() => {
       id: `medicine-${medicine.reminderId}`,
       title: medicine.medicineName,
       subtitle: subtitle,
-      time: 'All Day',
+      time: t('tasks.allDay'),
       completed: isTakenOnSelectedDate,
       icon: medicine.drugAppearance || '💊',
       color: medicine.color || '#84CC16',
@@ -1034,7 +1058,20 @@ const generateTasksFromData = React.useCallback(() => {
   const currentYear = new Date().getFullYear();
   const yearRange = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i); // 10 years back, 10 years forward
 
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthNames = [
+    t('tasks.months.jan'),
+    t('tasks.months.feb'),
+    t('tasks.months.mar'),
+    t('tasks.months.apr'),
+    t('tasks.months.may'),
+    t('tasks.months.jun'),
+    t('tasks.months.jul'),
+    t('tasks.months.aug'),
+    t('tasks.months.sep'),
+    t('tasks.months.oct'),
+    t('tasks.months.nov'),
+    t('tasks.months.dec')
+  ];
 
   // Get current time in Indonesia timezone for calendar comparison
   const getIndonesiaTimeForCalendar = (date: Date = new Date()) => {
@@ -1077,7 +1114,15 @@ const generateTasksFromData = React.useCallback(() => {
       days.push({
         date: date,
         dayNumber: date.getDate(),
-        dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()],
+        dayName: [
+          t('tasks.dayNames.sun'),
+          t('tasks.dayNames.mon'),
+          t('tasks.dayNames.tue'),
+          t('tasks.dayNames.wed'),
+          t('tasks.dayNames.thu'),
+          t('tasks.dayNames.fri'),
+          t('tasks.dayNames.sat')
+        ][date.getDay()],
         isToday,
         isSelected
       });
@@ -1153,9 +1198,9 @@ const generateTasksFromData = React.useCallback(() => {
             <TouchableOpacity onPress={handleCloseSearch}>
               <Ionicons name="chevron-down" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.searchModalTitle, { color: colors.text }]}>Search Tasks</Text>
+            <Text style={[styles.searchModalTitle, { color: colors.text }]}>{t('tasks.searchTitle')}</Text>
             <TouchableOpacity onPress={handleCloseSearch}>
-              <Text style={[styles.searchModalCancel, { color: colors.primary }]}>Cancel</Text>
+              <Text style={[styles.searchModalCancel, { color: colors.primary }]}>{t('tasks.cancel')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -1176,7 +1221,7 @@ const generateTasksFromData = React.useCallback(() => {
             {searchQuery.length > 0 && (
               <View style={styles.searchResultsSection}>
                 <Text style={[styles.searchResultsTitle, { color: colors.textSecondary }]}>
-                  Search Results for &quot;{searchQuery}&quot;
+                  {t('tasks.searchResultsFor', { query: searchQuery })}
                 </Text>
 
                 {getTaskCount(filteredTasks.overdue) === 0 &&
@@ -1184,9 +1229,9 @@ const generateTasksFromData = React.useCallback(() => {
                  Object.keys(filteredTasks.timeBased).length === 0 ? (
                   <View style={styles.noResultsContainer}>
                     <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
-                    <Text style={[styles.noResultsText, { color: colors.text }]}>No results found</Text>
+                    <Text style={[styles.noResultsText, { color: colors.text }]}>{t('tasks.noResultsFound')}</Text>
                     <Text style={[styles.noResultsSubtext, { color: colors.textSecondary }]}>
-                      Try different keywords
+                      {t('tasks.tryDifferentKeywords')}
                     </Text>
                   </View>
                 ) : (
@@ -1198,7 +1243,7 @@ const generateTasksFromData = React.useCallback(() => {
                     {getTaskCount(filteredTasks.overdue) > 0 && (
                       <View style={styles.searchTaskSection}>
                         <View style={styles.searchSectionHeader}>
-                          <Text style={[styles.searchSectionLabel, { color: '#F43F5E' }]}>Overdue</Text>
+                          <Text style={[styles.searchSectionLabel, { color: '#F43F5E' }]}>{t('tasks.overdue')}</Text>
                           <Text style={[styles.searchTaskCount, { backgroundColor: '#F43F5E20', color: '#F43F5E' }]}>
                             {getTaskCount(filteredTasks.overdue)}
                           </Text>
@@ -1217,7 +1262,7 @@ const generateTasksFromData = React.useCallback(() => {
                                 <Text style={[styles.searchTaskTitle, { color: colors.text }]}>{task.title}</Text>
                                 <View style={[styles.searchTaskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
                                   <Text style={[styles.searchTaskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
-                                    {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                                    {task.type === 'habit' ? t('tasks.habit') : t('tasks.medicine')}
                                   </Text>
                                 </View>
                               </View>
@@ -1232,7 +1277,7 @@ const generateTasksFromData = React.useCallback(() => {
                     {getTaskCount(filteredTasks.upcoming) > 0 && (
                       <View style={styles.searchTaskSection}>
                         <View style={styles.searchSectionHeader}>
-                          <Text style={[styles.searchSectionLabel, { color: '#F59E0B' }]}>Should Do Soon</Text>
+                          <Text style={[styles.searchSectionLabel, { color: '#F59E0B' }]}>{t('tasks.shouldDoSoon')}</Text>
                           <Text style={[styles.searchTaskCount, { backgroundColor: '#F59E0B20', color: '#F59E0B' }]}>
                             {getTaskCount(filteredTasks.upcoming)}
                           </Text>
@@ -1251,7 +1296,7 @@ const generateTasksFromData = React.useCallback(() => {
                                 <Text style={[styles.searchTaskTitle, { color: colors.text }]}>{task.title}</Text>
                                 <View style={[styles.searchTaskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
                                   <Text style={[styles.searchTaskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
-                                    {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                                    {task.type === 'habit' ? t('tasks.habit') : t('tasks.medicine')}
                                   </Text>
                                 </View>
                               </View>
@@ -1286,7 +1331,7 @@ const generateTasksFromData = React.useCallback(() => {
                                 <Text style={[styles.searchTaskTitle, { color: colors.text }]}>{task.title}</Text>
                                 <View style={[styles.searchTaskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
                                   <Text style={[styles.searchTaskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
-                                    {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                                    {task.type === 'habit' ? t('tasks.habit') : t('tasks.medicine')}
                                   </Text>
                                 </View>
                               </View>
@@ -1333,7 +1378,7 @@ const generateTasksFromData = React.useCallback(() => {
             </View>
 
             <TouchableOpacity onPress={() => closeCalendar()}>
-              <Text style={[styles.calendarDone, { color: colors.primary }]}>Done</Text>
+              <Text style={[styles.calendarDone, { color: colors.primary }]}>{t('tasks.done')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -1361,7 +1406,7 @@ const generateTasksFromData = React.useCallback(() => {
               <View style={[styles.inlineMonthYearPicker, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
                 {/* Year Selection */}
                 <View style={styles.pickerSection}>
-                  <Text style={[styles.pickerSectionTitle, { color: colors.text }]}>Year</Text>
+                  <Text style={[styles.pickerSectionTitle, { color: colors.text }]}>{t('tasks.year')}</Text>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -1395,7 +1440,7 @@ const generateTasksFromData = React.useCallback(() => {
 
                 {/* Month Selection */}
                 <View style={styles.pickerSection}>
-                  <Text style={[styles.pickerSectionTitle, { color: colors.text }]}>Month</Text>
+                  <Text style={[styles.pickerSectionTitle, { color: colors.text }]}>{t('tasks.month')}</Text>
                   <View style={styles.monthPickerGrid}>
                     {monthNames.map((month, index) => (
                       <TouchableOpacity
@@ -1424,7 +1469,7 @@ const generateTasksFromData = React.useCallback(() => {
 
                 {/* Quick Selection */}
                 <View style={styles.pickerSection}>
-                  <Text style={[styles.pickerSectionTitle, { color: colors.text }]}>Quick Select</Text>
+                  <Text style={[styles.pickerSectionTitle, { color: colors.text }]}>{t('tasks.quickSelect')}</Text>
                   <View style={styles.quickSelectGrid}>
                     <TouchableOpacity
                       style={[styles.quickSelectButton, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -1435,7 +1480,7 @@ const generateTasksFromData = React.useCallback(() => {
                       }}
                     >
                       <Ionicons name="today" size={20} color={colors.primary} />
-                      <Text style={[styles.quickSelectButtonText, { color: colors.text }]}>Today</Text>
+                      <Text style={[styles.quickSelectButtonText, { color: colors.text }]}>{t('tasks.today')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -1447,7 +1492,7 @@ const generateTasksFromData = React.useCallback(() => {
                       }}
                     >
                       <Ionicons name="calendar" size={20} color={colors.primary} />
-                      <Text style={[styles.quickSelectButtonText, { color: colors.text }]}>This Year</Text>
+                      <Text style={[styles.quickSelectButtonText, { color: colors.text }]}>{t('tasks.thisYear')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1456,7 +1501,15 @@ const generateTasksFromData = React.useCallback(() => {
 
             {/* Calendar Grid */}
             <View style={styles.calendarGrid}>
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              {[
+                t('tasks.dayNames.sun'),
+                t('tasks.dayNames.mon'),
+                t('tasks.dayNames.tue'),
+                t('tasks.dayNames.wed'),
+                t('tasks.dayNames.thu'),
+                t('tasks.dayNames.fri'),
+                t('tasks.dayNames.sat')
+              ].map((day) => (
                 <View key={day} style={styles.dayHeader}>
                   <Text style={styles.dayHeaderText}>{day}</Text>
                 </View>
@@ -1567,7 +1620,7 @@ const generateTasksFromData = React.useCallback(() => {
                 adjustsFontSizeToFit
               >
                 Hi, {(() => {
-                  const displayName = user?.displayName || 'User';
+                  const displayName = user?.displayName || t('tasks.defaultUser');
                   const words = displayName.trim().split(' ');
                   if (words.length <= 2) return displayName;
                   return words.slice(0, 2).join(' ');
@@ -1647,7 +1700,7 @@ const generateTasksFromData = React.useCallback(() => {
                     }
                   ]}
                 >
-                  Today
+                  {t('tasks.today')}
                 </Text>
               </TouchableOpacity>
             </Animated.View>
@@ -1721,7 +1774,7 @@ const generateTasksFromData = React.useCallback(() => {
                 {getTaskCount(tasks.overdue) > 0 && (
               <View style={styles.taskSection}>
                 <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionLabel, { color: '#F43F5E' }]}>Overdue</Text>
+                  <Text style={[styles.sectionLabel, { color: '#F43F5E' }]}>{t('tasks.overdue')}</Text>
                   <Text style={[styles.taskCount, { backgroundColor: '#F43F5E20', color: '#F43F5E' }]}>{getTaskCount(tasks.overdue)}</Text>
                 </View>
                 {tasks.overdue.map((task) => (
@@ -1750,7 +1803,7 @@ const generateTasksFromData = React.useCallback(() => {
                         <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
                         <View style={[styles.taskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
                           <Text style={[styles.taskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
-                            {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                            {task.type === 'habit' ? t('tasks.habit') : t('tasks.medicine')}
                           </Text>
                         </View>
                       </View>
@@ -1771,7 +1824,7 @@ const generateTasksFromData = React.useCallback(() => {
             {getTaskCount(tasks.upcoming || []) > 0 && (
               <View style={styles.taskSection}>
                 <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionLabel, { color: '#F59E0B' }]}>Should Do Soon</Text>
+                  <Text style={[styles.sectionLabel, { color: '#F59E0B' }]}>{t('tasks.shouldDoSoon')}</Text>
                   <Text style={[styles.taskCount, { backgroundColor: '#F59E0B20', color: '#F59E0B' }]}>{getTaskCount(tasks.upcoming || [])}</Text>
                 </View>
                 {(tasks.upcoming || []).map((task) => (
@@ -1799,7 +1852,7 @@ const generateTasksFromData = React.useCallback(() => {
                         <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
                         <View style={[styles.taskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
                           <Text style={[styles.taskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
-                            {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                            {task.type === 'habit' ? t('tasks.habit') : t('tasks.medicine')}
                           </Text>
                         </View>
                       </View>
@@ -1857,7 +1910,7 @@ const generateTasksFromData = React.useCallback(() => {
                         </Text>
                         <View style={[styles.taskTypeBadge, { backgroundColor: task.type === 'habit' ? '#84CC1620' : '#3B82F620' }]}>
                           <Text style={[styles.taskTypeText, { color: task.type === 'habit' ? '#84CC16' : '#3B82F6' }]}>
-                            {task.type === 'habit' ? 'Habit' : 'Medicine'}
+                            {task.type === 'habit' ? t('tasks.habit') : t('tasks.medicine')}
                           </Text>
                         </View>
                       </View>
