@@ -284,7 +284,10 @@
     "dailyReminderTimes": "Daily Reminder Times",
     "whenShouldBeReminded": "When should you be reminded to do this habit?",
     "addReminderTime": "Add Reminder Time",
-    "setHowLongMaintain": "Set how long you want to maintain this habit"
+    "setHowLongMaintain": "Set how long you want to maintain this habit",
+    "habitInformation": "Habit Information",
+    "enterBasicDetails": "Enter basic details of your habit",
+    "descriptionOptional": "Description (Optional)"
   },
   "medicine": {
     "title": "Medicine",
