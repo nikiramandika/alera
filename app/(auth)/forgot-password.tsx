@@ -18,7 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
-import { sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 
 export default function ForgotPasswordScreen() {
@@ -45,29 +45,7 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      // First, check if email exists in Firebase
-      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
-
-      if (signInMethods.length === 0) {
-        // No account found with this email
-        Alert.alert(
-          t('auth.emailNotFound'),
-          t('auth.emailNotFoundMessage'),
-          [
-            {
-              text: t('auth.tryAgain'),
-              onPress: () => {}
-            },
-            {
-              text: t('auth.signUp'),
-              onPress: () => router.push('/(auth)/register')
-            }
-          ]
-        );
-        return;
-      }
-
-      // Email exists, send reset email
+      // Send reset email directly - Firebase will handle non-existent emails gracefully
       await sendPasswordResetEmail(auth, email);
 
       Alert.alert(
