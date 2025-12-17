@@ -215,6 +215,8 @@
     "selectDaysOfWeek": "Select the days of the week to perform this habit",
     "reminderTimesForSelectedDays": "Reminder times for selected days",
     "selectDays": "Select Days",
+    "pages" : "pages",
+    "hours" : "hours",
     "pleaseSelectAtLeastOneDay": "Please select at least one day",
     "pleaseEnterValidTargetValue": "Please enter a valid target value",
     "habitUpdatedSuccessfully": "Habit updated successfully",

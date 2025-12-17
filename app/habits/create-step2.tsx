@@ -726,6 +726,7 @@ export default function CreateHabitStep2Screen() {
                         return new Date();
                       })()}
                       mode="date"
+                      minimumDate={habitData.duration.startDate}
                       onChange={(event, selectedDate) => {
                         if (event.type === 'set' && selectedDate) {
                           // Create date in local timezone and set to end of day
@@ -735,13 +736,22 @@ export default function CreateHabitStep2Screen() {
 
                           console.log('End date selected:', selectedDate, 'Local end of day:', endOfDay);
 
-                          setHabitData(prev => ({
-                            ...prev,
-                            duration: {
-                              ...prev.duration,
-                              endDate: endOfDay
-                            }
-                          }));
+                          // Ensure end date is not before start date
+                          if (selectedDate >= habitData.duration.startDate) {
+                            setHabitData(prev => ({
+                              ...prev,
+                              duration: {
+                                ...prev.duration,
+                                endDate: endOfDay
+                              }
+                            }));
+                          } else {
+                            // Show alert if end date is before start date
+                            Alert.alert(
+                              t('common.error'),
+                              t('habits.endDateCannotBeBeforeStartDate')
+                            );
+                          }
                         }
                       }}
                       textColor={colors.text}

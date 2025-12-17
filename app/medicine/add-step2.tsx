@@ -759,15 +759,25 @@ export default function AddMedicineStep2NewScreen() {
                     <DateTimePicker
                       value={medicineData.duration.endDate || new Date()}
                       mode="date"
+                      minimumDate={medicineData.duration.startDate}
                       onChange={(event, selectedDate) => {
-                        if (event.type === "set") {
-                          setMedicineData((prev) => ({
-                            ...prev,
-                            duration: {
-                              ...prev.duration,
-                              endDate: selectedDate,
-                            },
-                          }));
+                        if (event.type === "set" && selectedDate) {
+                          // Ensure end date is not before start date
+                          if (selectedDate >= medicineData.duration.startDate) {
+                            setMedicineData((prev) => ({
+                              ...prev,
+                              duration: {
+                                ...prev.duration,
+                                endDate: selectedDate,
+                              },
+                            }));
+                          } else {
+                            // Show alert if end date is before start date
+                            Alert.alert(
+                              t("common.error"),
+                              t("medicine.endDateCannotBeBeforeStartDate")
+                            );
+                          }
                         }
                       }}
                       textColor={colors.text}
