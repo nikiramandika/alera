@@ -444,7 +444,7 @@ export default function ProfileScreen() {
         >
           <Ionicons name="document-text-outline" size={24} color={colors.primary} />
           <Text style={[styles.actionText, { color: colors.text }]}>
-            Terms & Conditions
+            {t('terms.title')}
           </Text>
         </TouchableOpacity>
       </View>

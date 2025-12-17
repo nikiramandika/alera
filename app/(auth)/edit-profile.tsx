@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -27,14 +27,148 @@ export default function EditProfileScreen() {
   const { user, updateUserProfile } = useAuth();
   const router = useRouter();
 
+  // Function to parse date from various formats including Firestore Timestamp
+  const parseDate = (dateInput: any): Date => {
+    try {
+      console.log('🔍 [DEBUG] parseDate called with:', dateInput, 'type:', typeof dateInput);
+
+      // Check if dateInput is valid
+      if (!dateInput) {
+        console.warn('⚠️ [DEBUG] Invalid dateInput provided (empty/null):', dateInput);
+        return new Date(1998, 0, 1);
+      }
+
+      // If it's already a Date object, return it
+      if (dateInput instanceof Date) {
+        console.log('🔍 [DEBUG] dateInput is already a Date object:', dateInput);
+        return dateInput;
+      }
+
+      // Handle Firestore Timestamp object (from logs)
+      if (typeof dateInput === 'object' && dateInput.type === 'firestore/timestamp/1.0') {
+        console.log('🔍 [DEBUG] Detected Firestore Timestamp object');
+        const timestamp = dateInput;
+        const date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+        console.log('🔍 [DEBUG] Firestore Timestamp converted to Date:', date, 'isValid:', !isNaN(date.getTime()));
+
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Handle Firestore Timestamp object (alternative format)
+      if (typeof dateInput === 'object' && typeof dateInput.seconds === 'number') {
+        console.log('🔍 [DEBUG] Detected Firestore Timestamp object (alternative)');
+        const date = new Date(dateInput.seconds * 1000);
+        console.log('🔍 [DEBUG] Firestore Timestamp converted to Date:', date, 'isValid:', !isNaN(date.getTime()));
+
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Convert to string for other processing
+      let dateStr = dateInput;
+      if (typeof dateInput !== 'string') {
+        dateStr = String(dateInput);
+      }
+
+      console.log('🔍 [DEBUG] Processing as string:', dateStr);
+
+      // Try direct parsing first
+      const directParse = new Date(dateStr);
+      console.log('🔍 [DEBUG] Direct parsing result:', directParse, 'isValid:', !isNaN(directParse.getTime()));
+
+      if (!isNaN(directParse.getTime())) {
+        return directParse;
+      }
+
+      // Handle "16 November 2003 at 00:00:00 UTC+7" format (from database display)
+      const match = dateStr.match(/(\d{1,2})\s+(\w+)\s+(\d{4})\s+at\s+(\d{1,2}):(\d{1,2}):(\d{1,2})\s+UTC([+-]\d+)/);
+      console.log('🔍 [DEBUG] Regex match result:', match);
+
+      if (match) {
+        const [, day, monthStr, year, hours, minutes, seconds, offsetStr] = match;
+        const monthNames = {
+          'january': 0, 'february': 1, 'march': 2, 'april': 3,
+          'may': 4, 'june': 5, 'july': 6, 'august': 7,
+          'september': 8, 'october': 9, 'november': 10, 'december': 11
+        };
+
+        const month = monthNames[monthStr.toLowerCase()];
+        const date = new Date(
+          parseInt(year),
+          month,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        );
+
+        console.log('🔍 [DEBUG] Manual parsing result:', date, 'isValid:', !isNaN(date.getTime()));
+
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Handle numbers (timestamp in milliseconds)
+      if (typeof dateInput === 'number') {
+        console.log('🔍 [DEBUG] Processing as number (timestamp):', dateInput);
+        const date = new Date(dateInput);
+        console.log('🔍 [DEBUG] Number converted to Date:', date, 'isValid:', !isNaN(date.getTime()));
+
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Fallback if all parsing fails
+      console.warn('⚠️ [DEBUG] Failed to parse date, using fallback. Original:', dateInput);
+      return new Date(1998, 0, 1);
+    } catch (error) {
+      console.error('❌ [DEBUG] Error parsing date:', error);
+      return new Date(1998, 0, 1);
+    }
+  };
+
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+
   const [editForm, setEditForm] = useState({
     displayName: user?.displayName || '',
     gender: user?.profile?.gender || '',
     weight: user?.profile?.weight?.toString() || '',
-    birthDate: user?.profile?.birthDate ? new Date(user.profile.birthDate) : new Date(1998, 0, 1),
+    birthDate: new Date(1998, 0, 1), // Default value
   });
+
+  // Update form when user data changes
+  useEffect(() => {
+    console.log('🔍 [DEBUG] User data changed:', user);
+    console.log('🔍 [DEBUG] User profile:', user?.profile);
+    console.log('🔍 [DEBUG] BirthDate from database:', user?.profile?.birthDate, 'type:', typeof user?.profile?.birthDate);
+
+    if (user) {
+      const parsedBirthDate = user?.profile?.birthDate ? parseDate(user.profile.birthDate) : new Date(1998, 0, 1);
+      console.log('🔍 [DEBUG] Parsed birthDate:', parsedBirthDate);
+
+      setEditForm({
+        displayName: user.displayName || '',
+        gender: user.profile?.gender || '',
+        weight: user.profile?.weight?.toString() || '',
+        birthDate: parsedBirthDate,
+      });
+
+      console.log('🔍 [DEBUG] Updated editForm:', {
+        displayName: user.displayName || '',
+        gender: user.profile?.gender || '',
+        weight: user.profile?.weight?.toString() || '',
+        birthDate: parsedBirthDate,
+      });
+    }
+  }, [user]);
+
+  console.log('🔍 [DEBUG] Current editForm:', editForm);
 
   // Function to calculate age from birth date
   const calculateAge = (birthDate: Date): number => {
