@@ -496,9 +496,9 @@ export default function AnalyticsScreen() {
                 ]}
               />
             </View>
-            <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+            {/* <Text style={[styles.progressText, { color: colors.textSecondary }]}>
               {getMedicationAdherence()}% {t('analytics.adherence')}
-            </Text>
+            </Text> */}
           </View>
         </View>
 
@@ -521,9 +521,9 @@ export default function AnalyticsScreen() {
                 ]}
               />
             </View>
-            <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+            {/* <Text style={[styles.progressText, { color: colors.textSecondary }]}>
               {getHabitCompletionRate()}% {t('analytics.completion')}
-            </Text>
+            </Text> */}
           </View>
         </View>
       </View>
@@ -707,7 +707,7 @@ export default function AnalyticsScreen() {
       </View>
 
       {/* Statistics */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
+      {/* <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t('analytics.medicationStatistics')}
         </Text>
@@ -748,7 +748,7 @@ export default function AnalyticsScreen() {
             </Text>
           </View>
         </View>
-      </View>
+      </View> */}
     </Animated.View>
   );
 
@@ -807,7 +807,7 @@ export default function AnalyticsScreen() {
       </View>
 
       {/* Habit Statistics */}
-      <View style={[styles.section, { backgroundColor: colors.card }]}>
+      {/* <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t('analytics.habitStatistics')}
         </Text>
@@ -845,7 +845,7 @@ export default function AnalyticsScreen() {
             </Text>
           </View>
         </View>
-      </View>
+      </View> */}
     </Animated.View>
   );
 
