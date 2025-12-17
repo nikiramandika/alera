@@ -186,7 +186,15 @@ export default function AnalyticsScreen() {
     // Generate labels and data based on selected period
     switch (selectedPeriod) {
       case 'week':
-        labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        labels = [
+          t('analytics.shortDays.monday'),
+          t('analytics.shortDays.tuesday'),
+          t('analytics.shortDays.wednesday'),
+          t('analytics.shortDays.thursday'),
+          t('analytics.shortDays.friday'),
+          t('analytics.shortDays.saturday'),
+          t('analytics.shortDays.sunday')
+        ];
         const startOfWeek = new Date(today);
         startOfWeek.setDate(today.getDate() - today.getDay() + 1);
 
@@ -201,7 +209,7 @@ export default function AnalyticsScreen() {
         // Show weekly data for month
         const weeksInMonth = Math.ceil(today.getDate() / 7);
         for (let i = 1; i <= weeksInMonth; i++) {
-          labels.push(`Week ${i}`);
+          labels.push(t('analytics.weekLabel', { number: i }));
         }
 
         for (let i = 0; i < weeksInMonth; i++) {
@@ -220,7 +228,20 @@ export default function AnalyticsScreen() {
 
       case 'year':
         // Show monthly data for year
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const months = [
+          t('analytics.months.january'),
+          t('analytics.months.february'),
+          t('analytics.months.march'),
+          t('analytics.months.april'),
+          t('analytics.months.may'),
+          t('analytics.months.june'),
+          t('analytics.months.july'),
+          t('analytics.months.august'),
+          t('analytics.months.september'),
+          t('analytics.months.october'),
+          t('analytics.months.november'),
+          t('analytics.months.december')
+        ];
         labels = months;
 
         for (let month = 0; month < 12; month++) {
@@ -306,7 +327,15 @@ export default function AnalyticsScreen() {
     // Generate labels and data based on selected period
     switch (selectedPeriod) {
       case 'week':
-        labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        labels = [
+          t('analytics.shortDays.monday'),
+          t('analytics.shortDays.tuesday'),
+          t('analytics.shortDays.wednesday'),
+          t('analytics.shortDays.thursday'),
+          t('analytics.shortDays.friday'),
+          t('analytics.shortDays.saturday'),
+          t('analytics.shortDays.sunday')
+        ];
         const startOfWeek = new Date(today);
         startOfWeek.setDate(today.getDate() - today.getDay() + 1);
 
@@ -321,7 +350,7 @@ export default function AnalyticsScreen() {
         // Show weekly data for month
         const weeksInMonth = Math.ceil(today.getDate() / 7);
         for (let i = 1; i <= weeksInMonth; i++) {
-          labels.push(`Week ${i}`);
+          labels.push(t('analytics.weekLabel', { number: i }));
         }
 
         for (let i = 0; i < weeksInMonth; i++) {
@@ -340,7 +369,20 @@ export default function AnalyticsScreen() {
 
       case 'year':
         // Show monthly data for year
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const months = [
+          t('analytics.months.january'),
+          t('analytics.months.february'),
+          t('analytics.months.march'),
+          t('analytics.months.april'),
+          t('analytics.months.may'),
+          t('analytics.months.june'),
+          t('analytics.months.july'),
+          t('analytics.months.august'),
+          t('analytics.months.september'),
+          t('analytics.months.october'),
+          t('analytics.months.november'),
+          t('analytics.months.december')
+        ];
         labels = months;
 
         for (let month = 0; month < 12; month++) {
@@ -548,8 +590,11 @@ export default function AnalyticsScreen() {
             );
           }
 
+          // Use the labels from one of the data sources (they should be consistent)
+          const chartLabels = medicationData?.labels || habitData?.labels || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
           const combinedData = {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            labels: chartLabels,
             datasets: [
               ...(medicationData ? [{
                 data: medicationData.datasets[0].data,
